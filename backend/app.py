@@ -14,6 +14,7 @@ from processors.image_processor import ImageProcessor
 from processors.text_processor import TextFileProcessor
 from processors.pdf_processor import PDFProcessor
 from calendar_service import CalendarService
+from logging_utils import log_agent_execution, app_logger
 
 load_dotenv()
 
@@ -123,6 +124,125 @@ class CalendarEvent(BaseModel):
 
 # Create structured output LLM for calendar formatting
 calendar_formatting_llm = llm.with_structured_output(CalendarEvent)
+
+# ============================================================================
+# Logged Agent Functions - Wrapped with automatic logging
+# ============================================================================
+
+@log_agent_execution("Agent1_EventIdentification")
+def run_event_identification(raw_input: str, metadata: dict, requires_vision: bool, system_prompt: str):
+    """
+    Agent 1: Event Identification - Wrapped with logging.
+    Identifies all calendar events and extracts relevant text for each.
+    """
+    if requires_vision:
+        # Vision API processing for images or PDF pages
+        content = []
+
+        # Handle single image (from image file)
+        if 'image_data' in metadata:
+            content.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": metadata.get('media_type', 'image/jpeg'),
+                    "data": metadata['image_data']
+                }
+            })
+
+        # Handle multiple pages (from PDF)
+        elif 'pages' in metadata:
+            for page in metadata['pages']:
+                content.append({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": page.get('media_type', 'image/jpeg'),
+                        "data": page['image_data']
+                    }
+                })
+
+        # Add the identification instruction
+        content.append({
+            "type": "text",
+            "text": "Identify all calendar events in this image/document following the instructions above. Extract complete text chunks for each event."
+        })
+
+        # Create messages for vision API
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": content}
+        ]
+
+        # Use structured output with vision
+        result = identification_llm.invoke(messages)
+    else:
+        # Text-only processing
+        if not raw_input:
+            raise ValueError("No input provided for text-only processing")
+
+        identification_prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", "{input}")
+        ])
+
+        # Run identification
+        chain = identification_prompt | identification_llm
+        result = chain.invoke({"input": raw_input})
+
+    return result
+
+
+@log_agent_execution("Agent2_FactExtraction")
+def run_fact_extraction(raw_text_list: List[str], description: str, system_prompt: str):
+    """
+    Agent 2: Semantic Fact Extraction - Wrapped with logging.
+    Extracts labeled semantic facts from event text.
+    """
+    if not raw_text_list:
+        raise ValueError("No raw_text provided for fact extraction")
+
+    # Combine raw_text chunks for processing
+    combined_text = ' '.join(raw_text_list)
+
+    fact_extraction_prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", "Event description: {description}\n\nEvent text: {text}\n\nExtract all semantic facts from this event.")
+    ])
+
+    # Run fact extraction
+    chain = fact_extraction_prompt | fact_extraction_llm
+    result = chain.invoke({
+        "description": description,
+        "text": combined_text
+    })
+
+    return result
+
+
+@log_agent_execution("Agent3_CalendarFormatting")
+def run_calendar_formatting(facts: dict, system_prompt: str):
+    """
+    Agent 3: Calendar Formatting - Wrapped with logging.
+    Takes extracted facts and normalizes them into Google Calendar API format.
+    """
+    if not facts:
+        raise ValueError("No facts provided for calendar formatting")
+
+    calendar_formatting_prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", "Event facts: {facts}\n\nFormat this event for Google Calendar API.")
+    ])
+
+    # Run calendar formatting
+    chain = calendar_formatting_prompt | calendar_formatting_llm
+    result = chain.invoke({"facts": str(facts)})
+
+    return result
+
+# ============================================================================
+# Flask Endpoints
+# ============================================================================
 
 @app.route('/api/health', methods=['GET'])
 def health():
@@ -309,62 +429,8 @@ Event 2:
 """
 
     try:
-        if requires_vision:
-            # Vision API processing for images or PDF pages
-            # Build content array with images
-            content = []
-
-            # Handle single image (from image file)
-            if 'image_data' in metadata:
-                content.append({
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": metadata.get('media_type', 'image/jpeg'),
-                        "data": metadata['image_data']
-                    }
-                })
-
-            # Handle multiple pages (from PDF)
-            elif 'pages' in metadata:
-                for page in metadata['pages']:
-                    content.append({
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": page.get('media_type', 'image/jpeg'),
-                            "data": page['image_data']
-                        }
-                    })
-
-            # Add the identification instruction
-            content.append({
-                "type": "text",
-                "text": "Identify all calendar events in this image/document following the instructions above. Extract complete text chunks for each event."
-            })
-
-            # Create messages for vision API
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": content}
-            ]
-
-            # Use structured output with vision
-            result = identification_llm.invoke(messages)
-
-        else:
-            # Text-only processing
-            if not raw_input:
-                return jsonify({'error': 'No input provided'}), 400
-
-            identification_prompt = ChatPromptTemplate.from_messages([
-                ("system", system_prompt),
-                ("human", "{input}")
-            ])
-
-            # Run identification
-            chain = identification_prompt | identification_llm
-            result = chain.invoke({"input": raw_input})
+        # Call the logged agent function
+        result = run_event_identification(raw_input, metadata, requires_vision, system_prompt)
 
         # Convert Pydantic model to dict for JSON response
         return jsonify({
@@ -374,6 +440,7 @@ Event 2:
         })
 
     except Exception as e:
+        app_logger.error(f"Event identification endpoint failed: {str(e)}")
         return jsonify({'error': f'Event identification failed: {str(e)}'}), 500
 
 @app.route('/api/extract-facts', methods=['POST'])
@@ -389,9 +456,6 @@ def extract_facts():
 
     if not raw_text_list:
         return jsonify({'error': 'No raw_text provided'}), 400
-
-    # Combine raw_text chunks for processing
-    combined_text = ' '.join(raw_text_list)
 
     # System prompt for fact extraction
     system_prompt = """You are a semantic fact extraction specialist. Your ONLY job is to extract and label facts from event text.
@@ -452,22 +516,14 @@ title="Recitation session", date="Thursdays", is_recurring=true, pattern="weekly
 """
 
     try:
-        fact_extraction_prompt = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
-            ("human", "Event description: {description}\n\nEvent text: {text}\n\nExtract all semantic facts from this event.")
-        ])
-
-        # Run fact extraction
-        chain = fact_extraction_prompt | fact_extraction_llm
-        result = chain.invoke({
-            "description": description,
-            "text": combined_text
-        })
+        # Call the logged agent function
+        result = run_fact_extraction(raw_text_list, description, system_prompt)
 
         # Convert Pydantic model to dict for JSON response
         return jsonify(result.model_dump())
 
     except Exception as e:
+        app_logger.error(f"Fact extraction endpoint failed: {str(e)}")
         return jsonify({'error': f'Fact extraction failed: {str(e)}'}), 500
 
 @app.route('/api/format-calendar', methods=['POST'])
@@ -576,19 +632,14 @@ recurrence=null
 """
 
     try:
-        calendar_formatting_prompt = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
-            ("human", "Event facts: {facts}\n\nFormat this event for Google Calendar API.")
-        ])
-
-        # Run calendar formatting
-        chain = calendar_formatting_prompt | calendar_formatting_llm
-        result = chain.invoke({"facts": str(facts)})
+        # Call the logged agent function
+        result = run_calendar_formatting(facts, system_prompt)
 
         # Convert Pydantic model to dict for JSON response
         return jsonify(result.model_dump())
 
     except Exception as e:
+        app_logger.error(f"Calendar formatting endpoint failed: {str(e)}")
         return jsonify({'error': f'Calendar formatting failed: {str(e)}'}), 500
 
 # ============================================================================
