@@ -121,16 +121,13 @@
 }
 
 .icon-circle.clickable:hover {
-  transform: scale(1.25) translateY(-2px);
   box-shadow: 0 8px 20px rgba(17, 112, 197, 0.25);
   background-color: var(--white);
   color: var(--primary-color);
 }
 
 .icon-circle.clickable:active {
-  transform: scale(1.15) translateY(-1px);
   box-shadow: 0 4px 10px rgba(17, 112, 197, 0.2);
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
 .icon-circle.small {
@@ -280,18 +277,32 @@
   font-weight: 600;
 }
 
+/* Sound Input Container */
+.sound-input-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 420px;
+}
+
 /* Sound Input Dock */
 .sound-input-dock {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 0.75rem;
-  width: 100%;
-  max-width: 480px;
+  flex: 1;
   padding: 0.5rem 1rem;
   background-color: var(--white);
   border-radius: 100px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Plus Button External */
+.plus-button-external {
+  flex-shrink: 0;
 }
 
 .sound-visualizer-wrapper {
@@ -329,40 +340,37 @@
   height: 48px;
   border-radius: 50%;
   border: none;
-  background-color: #f5f5f5;
+  background-color: var(--white);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   color: #5f6368;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.3s ease,
+              color 0.2s ease;
+  will-change: transform;
   flex-shrink: 0;
 }
 
 .dock-button:hover {
-  background-color: #e8e8e8;
-  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(17, 112, 197, 0.25);
+  background-color: var(--white);
+  color: var(--primary-color);
 }
 
 .dock-button:active {
-  transform: scale(0.95);
-}
-
-.dock-button.close {
-  color: #5f6368;
-}
-
-.dock-button.close:hover {
-  background-color: rgba(220, 53, 69, 0.1);
-  color: #dc3545;
+  box-shadow: 0 4px 10px rgba(17, 112, 197, 0.2);
 }
 
 .dock-button.submit {
   background-color: var(--primary-color);
+  box-shadow: 0 4px 12px rgba(17, 112, 197, 0.3);
   color: var(--white);
   width: 48px;
   height: 48px;
 }
 
 .dock-button.submit:hover {
-  background-color: rgba(17, 112, 197, 0.9);
+  color: var(--white);
 }
 
 .footer {
@@ -375,7 +383,7 @@
 }
 
 .wordmark {
-  height: 60px;
+  height: 90px;
   width: auto;
   object-fit: contain;
 }
@@ -398,6 +406,6 @@
   }
 
   .wordmark {
-    height: 48px;
+    height: 65px;
   }
 }

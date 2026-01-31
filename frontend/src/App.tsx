@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Images as ImagesIcon,
   Files as FileIcon,
@@ -12,7 +12,6 @@ import {
 } from '@phosphor-icons/react'
 import { useVoiceVisualizer, VoiceVisualizer } from 'react-voice-visualizer'
 import './App.css'
-import wordmarkImage from './assets/Wordmark.png'
 
 // Import all greeting images dynamically
 const greetingImages = import.meta.glob('./assets/greetings/*.{png,jpg,jpeg,svg}', { eager: true, as: 'url' })
@@ -51,64 +50,64 @@ function SoundInputDock({ onClose, onSubmit, onUploadFile }: SoundInputDockProps
   }
 
   return (
-    <motion.div
-      className="sound-input-dock"
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ duration: 0.3 }}
-    >
-      {/* Plus Button */}
+    <div className="sound-input-container">
+      {/* Plus Button - Outside dock */}
       <motion.button
-        className="dock-button"
+        className="dock-button plus-button-external"
         onClick={onUploadFile}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
         title="Upload Audio File"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        transition={{ duration: 0.3 }}
       >
         <PlusIcon size={24} weight="bold" />
       </motion.button>
 
-      {/* Close Button */}
-      <motion.button
-        className="dock-button close"
-        onClick={handleClose}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        title="Cancel"
+      <motion.div
+        className="sound-input-dock"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        transition={{ duration: 0.3 }}
       >
-        <XIcon size={24} weight="bold" />
-      </motion.button>
+        {/* Close Button */}
+        <button
+          className="dock-button close"
+          onClick={handleClose}
+          title="Cancel"
+        >
+          <XIcon size={24} weight="bold" />
+        </button>
 
-      {/* Sound Wave Visualization */}
-      <div className="sound-visualizer-wrapper">
-        <VoiceVisualizer
-          controls={recorderControls}
-          height={40}
-          width="100%"
-          backgroundColor="transparent"
-          mainBarColor="#1170C5"
-          secondaryBarColor="#a0a0a0"
-          barWidth={2}
-          gap={2}
-          rounded={8}
-          isControlPanelShown={false}
-          isDefaultUIShown={false}
-          onlyRecording={true}
-        />
-      </div>
+        {/* Sound Wave Visualization */}
+        <div className="sound-visualizer-wrapper">
+          <VoiceVisualizer
+            controls={recorderControls}
+            height={40}
+            width="100%"
+            backgroundColor="transparent"
+            mainBarColor="#1170C5"
+            secondaryBarColor="#a0a0a0"
+            barWidth={2}
+            gap={2}
+            rounded={8}
+            isControlPanelShown={false}
+            isDefaultUIShown={false}
+            onlyRecording={true}
+          />
+        </div>
 
-      {/* Submit Button */}
-      <motion.button
-        className="dock-button submit"
-        onClick={handleSubmit}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        title="Submit Recording"
-      >
-        <ArrowFatUpIcon size={28} weight="bold" />
-      </motion.button>
-    </motion.div>
+        {/* Submit Button */}
+        <button
+          className="dock-button submit"
+          onClick={handleSubmit}
+          title="Submit Recording"
+        >
+          <ArrowFatUpIcon size={28} weight="bold" />
+        </button>
+      </motion.div>
+    </div>
   )
 }
 
@@ -360,66 +359,82 @@ function App() {
             </div>
           ) : (
             <div className="icon-row">
-              {!isDragging && (
-                <motion.div
-                  className="icon-circle small clickable"
-                  initial={{ opacity: 0, x: 20, scale: 0.8 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  transition={{ duration: 0.3, ease: "easeOut", delay: 0.6 }}
-                  onClick={handleImageClick}
-                  title="Upload Image"
-                >
-                  <ImagesIcon size={24} weight="regular" />
-                </motion.div>
-              )}
-              {!isDragging && (
-                <motion.div
-                  className="icon-circle small clickable"
-                  initial={{ opacity: 0, x: 10, scale: 0.8 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  transition={{ duration: 0.3, ease: "easeOut", delay: 0.7 }}
-                  onClick={handleDocumentClick}
-                  title="Upload Document"
-                >
-                  <FileIcon size={24} weight="regular" />
-                </motion.div>
-              )}
+              <AnimatePresence>
+                {!isDragging && (
+                  <motion.div
+                    key="image-button"
+                    className="icon-circle small clickable"
+                    initial={{ opacity: 0, x: 20, scale: 0.8 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={{ opacity: 0, x: 20, scale: 0.8 }}
+                    transition={{ duration: 0.2, ease: "easeOut", delay: 0.05 }}
+                    onClick={handleImageClick}
+                    title="Upload Image"
+                  >
+                    <ImagesIcon size={24} weight="regular" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <AnimatePresence>
+                {!isDragging && (
+                  <motion.div
+                    key="document-button"
+                    className="icon-circle small clickable"
+                    initial={{ opacity: 0, x: 10, scale: 0.8 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={{ opacity: 0, x: 10, scale: 0.8 }}
+                    transition={{ duration: 0.2, ease: "easeOut", delay: 0.1 }}
+                    onClick={handleDocumentClick}
+                    title="Upload Document"
+                  >
+                    <FileIcon size={24} weight="regular" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <motion.div
                 className="icon-circle center"
                 initial={{ opacity: 0, scale: 0.5 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3, ease: "easeOut", delay: 0.5 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
               >
                 {isDragging ? (
-                  <CloudArrowUpIcon size={40} weight="bold" />
+                  <ArrowFatUpIcon size={32} weight="fill" />
                 ) : (
                   <ArrowFatUpIcon size={32} weight="bold" />
                 )}
               </motion.div>
-              {!isDragging && (
-                <motion.div
-                  className="icon-circle small clickable"
-                  initial={{ opacity: 0, x: -10, scale: 0.8 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  transition={{ duration: 0.3, ease: "easeOut", delay: 0.7 }}
-                  onClick={handleAudioClick}
-                  title="Record Audio"
-                >
-                  <MicrophoneIcon size={24} weight="regular" />
-                </motion.div>
-              )}
-              {!isDragging && (
-                <motion.div
-                  className="icon-circle small clickable"
-                  initial={{ opacity: 0, x: -20, scale: 0.8 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  transition={{ duration: 0.3, ease: "easeOut", delay: 0.6 }}
-                  onClick={handleEmailClick}
-                  title="Upload Email"
-                >
-                  <EnvelopeIcon size={24} weight="regular" />
-                </motion.div>
-              )}
+              <AnimatePresence>
+                {!isDragging && (
+                  <motion.div
+                    key="audio-button"
+                    className="icon-circle small clickable"
+                    initial={{ opacity: 0, x: -10, scale: 0.8 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={{ opacity: 0, x: -10, scale: 0.8 }}
+                    transition={{ duration: 0.2, ease: "easeOut", delay: 0.1 }}
+                    onClick={handleAudioClick}
+                    title="Record Audio"
+                  >
+                    <MicrophoneIcon size={24} weight="regular" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <AnimatePresence>
+                {!isDragging && (
+                  <motion.div
+                    key="email-button"
+                    className="icon-circle small clickable"
+                    initial={{ opacity: 0, x: -20, scale: 0.8 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={{ opacity: 0, x: -20, scale: 0.8 }}
+                    transition={{ duration: 0.2, ease: "easeOut", delay: 0.05 }}
+                    onClick={handleEmailClick}
+                    title="Upload Email"
+                  >
+                    <EnvelopeIcon size={24} weight="regular" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
         </motion.div>
@@ -456,10 +471,6 @@ function App() {
           </motion.div>
         )}
       </div>
-
-      <footer className="footer">
-        <img src={wordmarkImage} alt="DropCal" className="wordmark" />
-      </footer>
     </div>
   )
 }
