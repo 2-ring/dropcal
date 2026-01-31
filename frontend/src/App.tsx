@@ -1,17 +1,116 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Images as ImagesIcon,
   Files as FileIcon,
   Microphone as MicrophoneIcon,
   ChatsCircle as EnvelopeIcon,
-  ArrowFatUp as ArrowFatUpIcon
+  ArrowFatUp as ArrowFatUpIcon,
+  Plus as PlusIcon,
+  X as XIcon,
+  CloudArrowUp as CloudArrowUpIcon
 } from '@phosphor-icons/react'
+import { useVoiceVisualizer, VoiceVisualizer } from 'react-voice-visualizer'
 import './App.css'
+import wordmarkImage from './assets/Wordmark.png'
 
 // Import all greeting images dynamically
 const greetingImages = import.meta.glob('./assets/greetings/*.{png,jpg,jpeg,svg}', { eager: true, as: 'url' })
 const greetingImagePaths = Object.values(greetingImages) as string[]
+
+// Sound Input Dock Component
+interface SoundInputDockProps {
+  onClose: () => void
+  onSubmit: (audioBlob: Blob) => void
+  onUploadFile: () => void
+}
+
+function SoundInputDock({ onClose, onSubmit, onUploadFile }: SoundInputDockProps) {
+  const recorderControls = useVoiceVisualizer()
+  const { recordedBlob, stopRecording } = recorderControls
+
+  // Auto-start recording when component mounts
+  useEffect(() => {
+    recorderControls.startRecording()
+  }, [])
+
+  // Handle recorded blob
+  useEffect(() => {
+    if (recordedBlob) {
+      onSubmit(recordedBlob)
+    }
+  }, [recordedBlob, onSubmit])
+
+  const handleSubmit = () => {
+    stopRecording()
+  }
+
+  const handleClose = () => {
+    stopRecording()
+    onClose()
+  }
+
+  return (
+    <motion.div
+      className="sound-input-dock"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ duration: 0.3 }}
+    >
+      {/* Plus Button */}
+      <motion.button
+        className="dock-button"
+        onClick={onUploadFile}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        title="Upload Audio File"
+      >
+        <PlusIcon size={24} weight="bold" />
+      </motion.button>
+
+      {/* Close Button */}
+      <motion.button
+        className="dock-button close"
+        onClick={handleClose}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        title="Cancel"
+      >
+        <XIcon size={24} weight="bold" />
+      </motion.button>
+
+      {/* Sound Wave Visualization */}
+      <div className="sound-visualizer-wrapper">
+        <VoiceVisualizer
+          controls={recorderControls}
+          height={40}
+          width="100%"
+          backgroundColor="transparent"
+          mainBarColor="#1170C5"
+          secondaryBarColor="#a0a0a0"
+          barWidth={2}
+          gap={2}
+          rounded={8}
+          isControlPanelShown={false}
+          isDefaultUIShown={false}
+          onlyRecording={true}
+        />
+      </div>
+
+      {/* Submit Button */}
+      <motion.button
+        className="dock-button submit"
+        onClick={handleSubmit}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        title="Submit Recording"
+      >
+        <ArrowFatUpIcon size={28} weight="bold" />
+      </motion.button>
+    </motion.div>
+  )
+}
 
 function App() {
   const [currentGreetingIndex] = useState(() =>
@@ -22,6 +121,7 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [extractedEvents, setExtractedEvents] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [isRecording, setIsRecording] = useState(false)
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -142,6 +242,10 @@ function App() {
 
   const handleAudioClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
+    setIsRecording(true)
+  }, [])
+
+  const handleAudioFileUpload = useCallback(() => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'audio/*,.mp3,.wav,.m4a'
@@ -151,9 +255,18 @@ function App() {
         const file = files[0]
         setUploadedFile(file)
         processFile(file)
+        setIsRecording(false)
       }
     }
     input.click()
+  }, [processFile])
+
+  const handleAudioSubmit = useCallback((audioBlob: Blob) => {
+    // Convert blob to file
+    const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' })
+    setUploadedFile(audioFile)
+    processFile(audioFile)
+    setIsRecording(false)
   }, [processFile])
 
   const handleEmailClick = useCallback((e: React.MouseEvent) => {
@@ -218,7 +331,13 @@ function App() {
           onDrop={handleDrop}
           onClick={handleDropAreaClick}
         >
-          {isProcessing ? (
+          {isRecording ? (
+            <SoundInputDock
+              onClose={() => setIsRecording(false)}
+              onSubmit={handleAudioSubmit}
+              onUploadFile={handleAudioFileUpload}
+            />
+          ) : isProcessing ? (
             <div className="processing-indicator">
               <p>Processing {uploadedFile?.name}...</p>
             </div>
@@ -241,54 +360,66 @@ function App() {
             </div>
           ) : (
             <div className="icon-row">
-              <motion.div
-                className="icon-circle small clickable"
-                initial={{ opacity: 0, x: 20, scale: 0.8 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                transition={{ duration: 0.3, ease: "easeOut", delay: 0.6 }}
-                onClick={handleImageClick}
-                title="Upload Image"
-              >
-                <ImagesIcon size={24} weight="regular" />
-              </motion.div>
-              <motion.div
-                className="icon-circle small clickable"
-                initial={{ opacity: 0, x: 10, scale: 0.8 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                transition={{ duration: 0.3, ease: "easeOut", delay: 0.7 }}
-                onClick={handleDocumentClick}
-                title="Upload Document"
-              >
-                <FileIcon size={24} weight="regular" />
-              </motion.div>
+              {!isDragging && (
+                <motion.div
+                  className="icon-circle small clickable"
+                  initial={{ opacity: 0, x: 20, scale: 0.8 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  transition={{ duration: 0.3, ease: "easeOut", delay: 0.6 }}
+                  onClick={handleImageClick}
+                  title="Upload Image"
+                >
+                  <ImagesIcon size={24} weight="regular" />
+                </motion.div>
+              )}
+              {!isDragging && (
+                <motion.div
+                  className="icon-circle small clickable"
+                  initial={{ opacity: 0, x: 10, scale: 0.8 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  transition={{ duration: 0.3, ease: "easeOut", delay: 0.7 }}
+                  onClick={handleDocumentClick}
+                  title="Upload Document"
+                >
+                  <FileIcon size={24} weight="regular" />
+                </motion.div>
+              )}
               <motion.div
                 className="icon-circle center"
                 initial={{ opacity: 0, scale: 0.5 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3, ease: "easeOut", delay: 0.5 }}
               >
-                <ArrowFatUpIcon size={32} weight="bold" />
+                {isDragging ? (
+                  <CloudArrowUpIcon size={40} weight="bold" />
+                ) : (
+                  <ArrowFatUpIcon size={32} weight="bold" />
+                )}
               </motion.div>
-              <motion.div
-                className="icon-circle small clickable"
-                initial={{ opacity: 0, x: -10, scale: 0.8 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                transition={{ duration: 0.3, ease: "easeOut", delay: 0.7 }}
-                onClick={handleAudioClick}
-                title="Upload Audio"
-              >
-                <MicrophoneIcon size={24} weight="regular" />
-              </motion.div>
-              <motion.div
-                className="icon-circle small clickable"
-                initial={{ opacity: 0, x: -20, scale: 0.8 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                transition={{ duration: 0.3, ease: "easeOut", delay: 0.6 }}
-                onClick={handleEmailClick}
-                title="Upload Email"
-              >
-                <EnvelopeIcon size={24} weight="regular" />
-              </motion.div>
+              {!isDragging && (
+                <motion.div
+                  className="icon-circle small clickable"
+                  initial={{ opacity: 0, x: -10, scale: 0.8 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  transition={{ duration: 0.3, ease: "easeOut", delay: 0.7 }}
+                  onClick={handleAudioClick}
+                  title="Record Audio"
+                >
+                  <MicrophoneIcon size={24} weight="regular" />
+                </motion.div>
+              )}
+              {!isDragging && (
+                <motion.div
+                  className="icon-circle small clickable"
+                  initial={{ opacity: 0, x: -20, scale: 0.8 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  transition={{ duration: 0.3, ease: "easeOut", delay: 0.6 }}
+                  onClick={handleEmailClick}
+                  title="Upload Email"
+                >
+                  <EnvelopeIcon size={24} weight="regular" />
+                </motion.div>
+              )}
             </div>
           )}
         </motion.div>
@@ -325,6 +456,10 @@ function App() {
           </motion.div>
         )}
       </div>
+
+      <footer className="footer">
+        <img src={wordmarkImage} alt="DropCal" className="wordmark" />
+      </footer>
     </div>
   )
 }
