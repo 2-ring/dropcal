@@ -42,6 +42,11 @@
   flex-shrink: 0;
 }
 
+.google-connected {
+  cursor: default;
+  pointer-events: none;
+}
+
 .auth-status {
   display: flex;
   align-items: center;

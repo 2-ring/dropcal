@@ -8,8 +8,7 @@ import time
 import functools
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
-import os
+from typing import Any, Callable, Optional
 
 
 # Create logs directory if it doesn't exist
@@ -179,8 +178,8 @@ def _write_detailed_log(
     error: Optional[str] = None
 ):
     """
-    Write detailed JSON log for agent execution.
-    Creates a separate JSON file for each agent execution for easy analysis.
+    Write detailed log for agent execution grouped by agent name.
+    Appends to agent-specific log file with structured formatting.
 
     Args:
         exec_id: Unique execution ID
@@ -193,29 +192,43 @@ def _write_detailed_log(
         error: Error message if failed
     """
     try:
-        log_entry = {
-            "execution_id": exec_id,
-            "agent_name": agent_name,
-            "timestamp": datetime.now().isoformat(),
-            "execution_time_seconds": round(execution_time, 3),
-            "success": success,
-            "input": {
-                "args": _safe_serialize(args),
-                "kwargs": _safe_serialize(kwargs)
-            }
-        }
+        # Create agent-specific log file
+        agent_log_file = LOGS_DIR / f"{agent_name}.log"
 
-        if success:
-            log_entry["output"] = _safe_serialize(result)
-        else:
-            log_entry["error"] = error
+        # Prepare log entry with structured formatting
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        separator = "=" * 80
 
-        # Write to JSON log file
-        json_log_file = LOGS_DIR / f"{exec_id}.json"
-        with open(json_log_file, 'w') as f:
-            json.dump(log_entry, f, indent=2, default=str)
+        with open(agent_log_file, 'a') as f:
+            f.write(f"\n{separator}\n")
+            f.write(f"EXECUTION ID: {exec_id}\n")
+            f.write(f"TIMESTAMP: {timestamp}\n")
+            f.write(f"STATUS: {'SUCCESS' if success else 'FAILED'}\n")
+            f.write(f"EXECUTION TIME: {execution_time:.3f}s\n")
+            f.write(f"{separator}\n\n")
 
-        agent_logger.debug(f"[{exec_id}] Detailed log written to {json_log_file}")
+            # Write input section
+            f.write("INPUT:\n")
+            f.write("-" * 80 + "\n")
+            if args:
+                f.write(f"Args: {_safe_serialize(args, max_length=5000)}\n")
+            if kwargs:
+                f.write(f"Kwargs: {_safe_serialize(kwargs, max_length=5000)}\n")
+            f.write("\n")
+
+            # Write output section
+            if success:
+                f.write("OUTPUT:\n")
+                f.write("-" * 80 + "\n")
+                f.write(f"{_safe_serialize(result, max_length=10000)}\n")
+            else:
+                f.write("ERROR:\n")
+                f.write("-" * 80 + "\n")
+                f.write(f"{error}\n")
+
+            f.write(f"\n{separator}\n\n")
+
+        agent_logger.debug(f"[{exec_id}] Detailed log appended to {agent_log_file}")
 
     except Exception as e:
         agent_logger.error(f"Failed to write detailed log for {exec_id}: {str(e)}")
