@@ -5,6 +5,18 @@ import './App.css'
 
 function App() {
   const [count, setCount] = useState(0)
+  const [message, setMessage] = useState('')
+
+  const fetchFromBackend = async () => {
+    try {
+      const response = await fetch('/api/hello')
+      const data = await response.json()
+      setMessage(data.message)
+    } catch (error) {
+      setMessage('Error connecting to backend')
+      console.error('Error:', error)
+    }
+  }
 
   return (
     <>
@@ -24,6 +36,12 @@ function App() {
         <p>
           Edit <code>src/App.tsx</code> and save to test HMR
         </p>
+      </div>
+      <div className="card">
+        <button onClick={fetchFromBackend}>
+          Test Backend Connection
+        </button>
+        {message && <p>{message}</p>}
       </div>
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
