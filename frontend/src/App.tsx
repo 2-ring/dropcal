@@ -16,7 +16,6 @@ function App() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [extractedEvents, setExtractedEvents] = useState<any[]>([])
-  const [error, setError] = useState<string | null>(null)
 
   const processFile = useCallback(async (file: File) => {
     // Prevent duplicate processing
@@ -39,7 +38,6 @@ function App() {
     }
 
     setIsProcessing(true)
-    setError(null)
     setExtractedEvents([])
 
     // Show loading toast
@@ -88,18 +86,16 @@ function App() {
 
       const extractResult = await extractResponse.json()
 
-      if (extractResult.had_event_info) {
+      if (extractResult.has_events) {
         setExtractedEvents(extractResult.events)
 
         // Success toast
         toast.success('Events Found!', {
           id: loadingToast,
-          description: `Found ${extractResult.num_events_found} event${extractResult.num_events_found !== 1 ? 's' : ''} in ${file.name}`,
+          description: `Found ${extractResult.num_events} event${extractResult.num_events !== 1 ? 's' : ''} in ${file.name}`,
           duration: 4000,
         })
       } else {
-        setError('No calendar events found in the input')
-
         // Info toast (not an error, just no events found)
         toast.info('No Events Found', {
           id: loadingToast,
@@ -118,8 +114,6 @@ function App() {
       } else if (err instanceof Error) {
         errorMessage = err.message
       }
-
-      setError(errorMessage)
 
       // Error toast with specific messaging
       toast.error(errorTitle, {
@@ -169,7 +163,6 @@ function App() {
     }
 
     setIsProcessing(true)
-    setError(null)
     setExtractedEvents([])
 
     // Show loading toast
@@ -197,18 +190,16 @@ function App() {
 
       const extractResult = await extractResponse.json()
 
-      if (extractResult.had_event_info) {
+      if (extractResult.has_events) {
         setExtractedEvents(extractResult.events)
 
         // Success toast
         toast.success('Events Found!', {
           id: loadingToast,
-          description: `Found ${extractResult.num_events_found} event${extractResult.num_events_found !== 1 ? 's' : ''}`,
+          description: `Found ${extractResult.num_events} event${extractResult.num_events !== 1 ? 's' : ''}`,
           duration: 4000,
         })
       } else {
-        setError('No calendar events found in the input')
-
         // Info toast (not an error, just no events found)
         toast.info('No Events Found', {
           id: loadingToast,
@@ -227,8 +218,6 @@ function App() {
       } else if (err instanceof Error) {
         errorMessage = err.message
       }
-
-      setError(errorMessage)
 
       // Error toast with specific messaging
       toast.error(errorTitle, {
@@ -252,13 +241,12 @@ function App() {
   const handleClearFile = useCallback(() => {
     setUploadedFile(null)
     setExtractedEvents([])
-    setError(null)
   }, [])
 
   return (
     <div className="app">
       <Toaster
-        position="top-right"
+        position="bottom-center"
         richColors
         closeButton
         toastOptions={{
@@ -290,17 +278,6 @@ function App() {
           onClearFile={handleClearFile}
         />
 
-        {/* Error Display */}
-        {error && (
-          <motion.div
-            className="error-message"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <p>{error}</p>
-          </motion.div>
-        )}
-
         {/* Extracted Events Display */}
         {extractedEvents.length > 0 && (
           <motion.div
@@ -311,12 +288,16 @@ function App() {
             <h2>Found {extractedEvents.length} Event{extractedEvents.length !== 1 ? 's' : ''}</h2>
             {extractedEvents.map((event, index) => (
               <div key={index} className="event-card">
-                <h3>{event.title}</h3>
-                {event.raw_date && <p><strong>Date:</strong> {event.raw_date}</p>}
-                {event.raw_time && <p><strong>Time:</strong> {event.raw_time}</p>}
-                {event.raw_duration && <p><strong>Duration:</strong> {event.raw_duration}</p>}
-                {event.location && <p><strong>Location:</strong> {event.location}</p>}
-                {event.description && <p><strong>Details:</strong> {event.description}</p>}
+                <h3>{event.description}</h3>
+                <p><strong>Confidence:</strong> {event.confidence}</p>
+                <div style={{ marginTop: '10px' }}>
+                  <strong>Raw Text:</strong>
+                  {event.raw_text.map((text: string, i: number) => (
+                    <p key={i} style={{ marginLeft: '10px', fontStyle: 'italic' }}>
+                      {text}
+                    </p>
+                  ))}
+                </div>
               </div>
             ))}
           </motion.div>

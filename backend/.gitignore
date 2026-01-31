@@ -8,3 +8,10 @@ __pycache__/
 .venv
 env/
 ENV/
+
+# Google Calendar OAuth credentials
+credentials.json
+token.json
+
+# Uploads folder
+uploads/
