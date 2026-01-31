@@ -46,23 +46,33 @@ input_processor_factory.register_processor(InputType.TEXT, text_processor)
 pdf_processor = PDFProcessor()
 input_processor_factory.register_processor(InputType.PDF, pdf_processor)
 
-# Pydantic models for structured extraction
-class ExtractedEvent(BaseModel):
-    """A single calendar event extracted from text"""
-    title: str = Field(description="Event title or name")
-    raw_date: Optional[str] = Field(default=None, description="Date information as written in the text (e.g., 'tomorrow', 'Jan 15', '1/15')")
-    raw_time: Optional[str] = Field(default=None, description="Time information as written in the text (e.g., '2pm', '14:00', 'afternoon')")
-    raw_duration: Optional[str] = Field(default=None, description="Duration information if mentioned (e.g., '2 hours', '30 min')")
-    location: Optional[str] = Field(default=None, description="Location or venue if mentioned")
-    description: Optional[str] = Field(default=None, description="Additional details or notes about the event")
+# Pydantic models for Agent 1: Event Identification
+class IdentifiedEvent(BaseModel):
+    """A single identified event with raw text and description"""
+    raw_text: List[str] = Field(
+        description="List of complete text chunks relevant to this event. Keep sentences/phrases intact. Can include multiple chunks if event info is spread across text. Chunks can repeat across events if shared context. Example: ['Team meeting tomorrow at 2pm in Conference Room B.', 'Bring the report.'] or ['Homework due Tuesdays at 9pm ET']"
+    )
+    description: str = Field(
+        description="Uniquely identifying description using ONLY explicit facts from raw_text. Must distinguish this event from others. Examples: 'Team meeting with Sarah (tomorrow 2pm, Conference Room B)' or 'MATH 0180 first midterm exam (90 minutes, February 25, 6:30pm)' or 'Weekly homework deadline for ENGN 0520 (Tuesdays 9pm ET)'. NOT just 'Meeting' or 'Exam' - be specific and comprehensive."
+    )
+    confidence: str = Field(
+        description="'definite' if certain this will happen, 'tentative' if uncertain (contains words like: maybe, possibly, might, perhaps, etc.)"
+    )
 
-class ExtractionResult(BaseModel):
-    """Result of extraction with all found events"""
-    events: List[ExtractedEvent] = Field(description="List of calendar events found in the input")
-    had_event_info: bool = Field(description="Whether any event-related information was found")
+class IdentificationResult(BaseModel):
+    """Result of event identification"""
+    events: List[IdentifiedEvent] = Field(
+        description="Every calendar event identified in the input. Count carefully - missing events is the biggest risk!"
+    )
+    num_events: int = Field(
+        description="Total count of events found. Must match length of events list."
+    )
+    has_events: bool = Field(
+        description="True if any events were found, False if no events at all"
+    )
 
-# Create structured output LLM for extraction
-extraction_llm = llm.with_structured_output(ExtractionResult)
+# Create structured output LLM for identification
+identification_llm = llm.with_structured_output(IdentificationResult)
 
 @app.route('/api/health', methods=['GET'])
 def health():
@@ -156,9 +166,9 @@ def process_audio():
 @app.route('/api/extract', methods=['POST'])
 def extract_events():
     """
-    Extraction Agent - Step 1 of the pipeline
-    Takes messy input and extracts ONLY calendar event information.
-    Handles both text and vision inputs (images, PDFs).
+    Agent 1: Event Identification
+    Identifies all calendar events and extracts relevant text for each.
+    Does NOT parse or structure - just identifies and groups by event.
     """
     data = request.get_json()
     raw_input = data.get('input', '')
@@ -167,28 +177,86 @@ def extract_events():
     # Check if this requires vision processing (images or PDF pages)
     requires_vision = metadata.get('requires_vision', False)
 
-    # System prompt for extraction
-    system_prompt = """You are an extraction agent. Your ONLY job is to find calendar event information in messy text or images.
+    # System prompt for event identification
+    system_prompt = """You are an event identification specialist. Your ONLY job is to find calendar events and extract all relevant text for each one.
 
-EXTRACT these things if present:
-- Event names/titles
-- Dates (in ANY format: "tomorrow", "Jan 15", "1/15/25", "next Monday", etc.)
-- Times (in ANY format: "2pm", "14:00", "afternoon", "2:30 PM", etc.)
-- Durations (if mentioned: "2 hours", "30 minutes", etc.)
-- Locations (venues, addresses, room numbers)
-- Descriptions (relevant event details)
+A calendar event is ANYTHING that happens at a specific time:
+- Meetings, appointments, classes, lectures
+- Deadlines (homework due, applications due, project submissions)
+- Exams, quizzes, tests, assessments
+- Recurring schedules (weekly meetings, daily standups, office hours)
+- Social events, parties, dinners, gatherings
+- Reminders with specific times
 
-IGNORE everything else:
-- Greetings, signatures, unrelated text
-- Email headers, forward markers (FW:, RE:)
-- Promotional content not related to events
-- Random URLs, social media handles
-- General conversation that isn't about scheduling
+YOUR TASK:
+1. Read the entire input carefully
+2. Identify EVERY distinct calendar event (count them!)
+3. For each event, extract ALL relevant text chunks
+4. Create a uniquely identifying description
+5. Mark if event is tentative (maybe, possibly, might, etc.)
 
-If you find NO event information at all, set had_event_info to false with an empty events list.
-If you find ANY event information (even partial), extract it exactly as written - don't clean or normalize yet.
+CRITICAL RULES FOR raw_text:
+- Extract complete sentences/phrases relevant to this event
+- Keep text chunks intact - don't break into tiny fragments
+- Include ALL context even if spread across multiple sentences
+- Text CAN repeat across events if it's relevant to multiple events
+- Example: "Team meeting tomorrow at 2pm. Bring your laptop." → ["Team meeting tomorrow at 2pm.", "Bring your laptop."]
 
-Extract multiple events if multiple are mentioned."""
+CRITICAL RULES FOR description:
+- Must UNIQUELY identify this event using ONLY explicit facts
+- NOT generic: "Meeting" or "Exam" or "Party"
+- MUST BE SPECIFIC: "Team standup meeting with engineering" or "MATH 0180 first midterm exam (90 min, Feb 25)" or "Birthday dinner for Sarah"
+- Include key distinguishing details: who, what type, when summary, where
+- If multiple similar events, descriptions MUST differentiate them
+
+EVENT SPLITTING:
+- "Meeting Monday and Wednesday" = 2 events
+- "Homework due every Tuesday" = 1 recurring event
+- "Midterms on Feb 25 and April 8" = 2 events
+
+IGNORE completely:
+- Course descriptions, prerequisites, grading policies
+- Academic integrity statements, textbook information
+- General contact info (unless it's office hours with times)
+- Promotional content, signatures, unrelated conversation
+
+CONFIDENCE:
+- "definite" = will definitely happen
+- "tentative" = maybe, possibly, might, perhaps, considering
+
+If you find NO events, return empty list with has_events=false.
+
+Examples:
+
+Input: "Team meeting tomorrow at 2pm in Conference Room B. Don't forget the report!"
+Output:
+Event 1:
+- raw_text: ["Team meeting tomorrow at 2pm in Conference Room B.", "Don't forget the report!"]
+- description: "Team meeting (tomorrow 2pm, Conference Room B)"
+- confidence: "definite"
+
+Input: "Homework due Tuesdays at 9pm. Midterm on March 15 at 6:30pm."
+Output:
+Event 1:
+- raw_text: ["Homework due Tuesdays at 9pm"]
+- description: "Weekly homework deadline (Tuesdays 9pm)"
+- confidence: "definite"
+Event 2:
+- raw_text: ["Midterm on March 15 at 6:30pm"]
+- description: "Midterm exam (March 15, 6:30pm)"
+- confidence: "definite"
+
+Input: "Maybe grab coffee next week? Or we could do lunch Friday?"
+Output:
+Event 1:
+- raw_text: ["Maybe grab coffee next week?"]
+- description: "Coffee meetup (next week)"
+- confidence: "tentative"
+Event 2:
+- raw_text: ["Or we could do lunch Friday?"]
+- description: "Lunch meetup (Friday)"
+- confidence: "tentative"
+"""
 
     try:
         if requires_vision:
@@ -219,10 +287,10 @@ Extract multiple events if multiple are mentioned."""
                         }
                     })
 
-            # Add the extraction instruction
+            # Add the identification instruction
             content.append({
                 "type": "text",
-                "text": "Extract all calendar event information from this image/document following the instructions above."
+                "text": "Identify all calendar events in this image/document following the instructions above. Extract complete text chunks for each event."
             })
 
             # Create messages for vision API
@@ -232,31 +300,31 @@ Extract multiple events if multiple are mentioned."""
             ]
 
             # Use structured output with vision
-            result = extraction_llm.invoke(messages)
+            result = identification_llm.invoke(messages)
 
         else:
-            # Text-only processing (original implementation)
+            # Text-only processing
             if not raw_input:
                 return jsonify({'error': 'No input provided'}), 400
 
-            extraction_prompt = ChatPromptTemplate.from_messages([
+            identification_prompt = ChatPromptTemplate.from_messages([
                 ("system", system_prompt),
                 ("human", "{input}")
             ])
 
-            # Run extraction
-            chain = extraction_prompt | extraction_llm
+            # Run identification
+            chain = identification_prompt | identification_llm
             result = chain.invoke({"input": raw_input})
 
         # Convert Pydantic model to dict for JSON response
         return jsonify({
-            'had_event_info': result.had_event_info,
-            'events': [event.model_dump() for event in result.events],
-            'num_events_found': len(result.events)
+            'has_events': result.has_events,
+            'num_events': result.num_events,
+            'events': [event.model_dump() for event in result.events]
         })
 
     except Exception as e:
-        return jsonify({'error': f'Extraction failed: {str(e)}'}), 500
+        return jsonify({'error': f'Event identification failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

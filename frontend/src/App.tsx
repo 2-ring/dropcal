@@ -11,6 +11,8 @@ import {
   CloudArrowUp as CloudArrowUpIcon
 } from '@phosphor-icons/react'
 import { useVoiceVisualizer, VoiceVisualizer } from 'react-voice-visualizer'
+import { Toaster, toast } from 'sonner'
+import { validateFile } from './utils/fileValidation'
 import './App.css'
 
 // Import all greeting images dynamically
@@ -140,9 +142,33 @@ function App() {
   }, [])
 
   const processFile = useCallback(async (file: File) => {
+    // Prevent duplicate processing
+    if (isProcessing) {
+      toast.warning('Already Processing', {
+        description: 'Please wait for the current file to finish processing.',
+        duration: 3000,
+      })
+      return
+    }
+
+    // Validate file before processing
+    const validation = validateFile(file)
+    if (!validation.valid) {
+      toast.error('Invalid File', {
+        description: validation.error,
+        duration: 5000,
+      })
+      return
+    }
+
     setIsProcessing(true)
     setError(null)
     setExtractedEvents([])
+
+    // Show loading toast
+    const loadingToast = toast.loading('Processing file...', {
+      description: `Analyzing ${file.name}`,
+    })
 
     try {
       // Step 1: Process the file (extract text or prepare for vision)
@@ -162,6 +188,11 @@ function App() {
       const processResult = await processResponse.json()
 
       // Step 2: Extract events from processed input
+      toast.loading('Extracting events...', {
+        id: loadingToast,
+        description: 'Analyzing calendar information',
+      })
+
       const extractResponse = await fetch('http://localhost:5000/api/extract', {
         method: 'POST',
         headers: {
@@ -182,16 +213,49 @@ function App() {
 
       if (extractResult.had_event_info) {
         setExtractedEvents(extractResult.events)
+
+        // Success toast
+        toast.success('Events Found!', {
+          id: loadingToast,
+          description: `Found ${extractResult.num_events_found} event${extractResult.num_events_found !== 1 ? 's' : ''} in ${file.name}`,
+          duration: 4000,
+        })
       } else {
         setError('No calendar events found in the input')
+
+        // Info toast (not an error, just no events found)
+        toast.info('No Events Found', {
+          id: loadingToast,
+          description: 'The file doesn\'t appear to contain any calendar events.',
+          duration: 4000,
+        })
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      let errorMessage = 'An error occurred'
+      let errorTitle = 'Processing Failed'
+
+      // Handle different error types
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        errorTitle = 'Connection Error'
+        errorMessage = 'Could not connect to the server. Make sure the backend is running on http://localhost:5000'
+      } else if (err instanceof Error) {
+        errorMessage = err.message
+      }
+
+      setError(errorMessage)
+
+      // Error toast with specific messaging
+      toast.error(errorTitle, {
+        id: loadingToast,
+        description: errorMessage,
+        duration: 6000,
+      })
+
       console.error('Processing error:', err)
     } finally {
       setIsProcessing(false)
     }
-  }, [])
+  }, [isProcessing])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -263,6 +327,17 @@ function App() {
   const handleAudioSubmit = useCallback((audioBlob: Blob) => {
     // Convert blob to file
     const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' })
+
+    // Check if recording is too short/empty
+    if (audioBlob.size < 1000) { // Less than 1KB
+      toast.error('Recording Too Short', {
+        description: 'Please record for at least a few seconds.',
+        duration: 4000,
+      })
+      setIsRecording(false)
+      return
+    }
+
     setUploadedFile(audioFile)
     processFile(audioFile)
     setIsRecording(false)
@@ -305,6 +380,16 @@ function App() {
 
   return (
     <div className="app">
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        toastOptions={{
+          style: {
+            fontFamily: 'Inter, system-ui, sans-serif',
+          },
+        }}
+      />
       <div className="content">
         <motion.div
           className="greeting-container"
