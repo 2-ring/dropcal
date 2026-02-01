@@ -132,45 +132,48 @@ export function EventConfirmation({ events, onConfirm, onCancel }: EventConfirma
         ))}
       </div>
 
-      {/* Chat input for requesting changes */}
-      <div className="event-confirmation-chat">
-        <input
-          type="text"
-          className="event-confirmation-chat-input"
-          placeholder="Request changes..."
-          value={changeRequest}
-          onChange={(e) => setChangeRequest(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-        <button
-          className="event-confirmation-chat-send"
-          onClick={handleSendRequest}
-          disabled={!changeRequest.trim()}
-        >
-          <SendIcon size={20} weight="fill" />
-        </button>
-      </div>
-
-      {(onConfirm || onCancel) && (
-        <div className="event-confirmation-actions">
-          {onCancel && (
-            <button
-              className="event-confirmation-button secondary"
-              onClick={onCancel}
-            >
-              Cancel
-            </button>
-          )}
-          {onConfirm && (
-            <button
-              className="event-confirmation-button primary"
-              onClick={onConfirm}
-            >
-              Add to Calendar
-            </button>
-          )}
+      {/* Sticky footer with chat and actions */}
+      <div className="event-confirmation-footer">
+        {/* Chat input for requesting changes */}
+        <div className="event-confirmation-chat">
+          <input
+            type="text"
+            className="event-confirmation-chat-input"
+            placeholder="Request changes..."
+            value={changeRequest}
+            onChange={(e) => setChangeRequest(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <button
+            className="event-confirmation-chat-send"
+            onClick={handleSendRequest}
+            disabled={!changeRequest.trim()}
+          >
+            <SendIcon size={20} weight="fill" />
+          </button>
         </div>
-      )}
+
+        {(onConfirm || onCancel) && (
+          <div className="event-confirmation-actions">
+            {onCancel && (
+              <button
+                className="event-confirmation-button secondary"
+                onClick={onCancel}
+              >
+                Cancel
+              </button>
+            )}
+            {onConfirm && (
+              <button
+                className="event-confirmation-button primary"
+                onClick={onConfirm}
+              >
+                Add to Calendar
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </motion.div>
   )
 }

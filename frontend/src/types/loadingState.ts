@@ -44,10 +44,10 @@ export const LOADING_MESSAGES = {
   EXTRACTING_EVENTS: { message: 'Extracting calendar events...', icon: SparkleIcon },
 
   // Fact extraction
-  EXTRACTING_FACTS: { message: 'Analyzing event details...', icon: MagnifyingGlassIcon },
+  EXTRACTING_FACTS: { message: 'Analyzing event details...', icon: ListBulletsIcon },
 
   // Calendar formatting
-  FORMATTING_CALENDAR: { message: 'Formatting for calendar...', icon: CheckCircleIcon },
+  FORMATTING_CALENDAR: { message: 'Formatting for calendar...', icon: NotePencilIcon },
 
   // Multi-event progress
   PROCESSING_EVENTS: (current: number, total: number) => ({
