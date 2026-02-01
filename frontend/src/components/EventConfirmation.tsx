@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { CalendarBlank as CalendarIcon, Equals as EqualsIcon, PencilSimple as EditIcon, PaperPlaneRight as SendIcon, X as XIcon, CheckFat as CheckIcon, ChatCircleDots as ChatIcon } from '@phosphor-icons/react'
 import type { CalendarEvent } from '../types/calendarEvent'
 import wordmarkImage from '../assets/Wordmark.png'
@@ -150,66 +150,126 @@ export function EventConfirmation({ events, onConfirm }: EventConfirmationProps)
         <div className="event-confirmation-footer">
           {/* Single row with cancel, chat input, and confirm buttons */}
           <div className="event-confirmation-footer-row">
-            {isChatExpanded ? (
-              <>
-                <button
-                  className="event-confirmation-icon-button cancel"
-                  onClick={() => setIsChatExpanded(false)}
-                  title="Close"
+            <AnimatePresence mode="wait">
+              {isChatExpanded ? (
+                <motion.div
+                  key="chat-expanded"
+                  className="event-confirmation-footer-content"
+                  initial={{
+                    rotateY: 90,
+                    scale: 0.8,
+                    opacity: 0
+                  }}
+                  animate={{
+                    rotateY: 0,
+                    scale: 1,
+                    opacity: 1
+                  }}
+                  exit={{
+                    rotateY: -90,
+                    scale: 0.8,
+                    opacity: 0
+                  }}
+                  transition={{
+                    duration: 0.4,
+                    ease: [0.34, 1.56, 0.64, 1]
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    flex: 1,
+                    transformStyle: 'preserve-3d'
+                  }}
                 >
-                  <XIcon size={20} weight="bold" />
-                </button>
-
-                <div className="event-confirmation-chat">
-                  <input
-                    type="text"
-                    className="event-confirmation-chat-input"
-                    placeholder="Request changes..."
-                    value={changeRequest}
-                    onChange={(e) => setChangeRequest(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    autoFocus
-                  />
                   <button
-                    className="event-confirmation-chat-send"
-                    onClick={handleSendRequest}
-                    disabled={!changeRequest.trim()}
+                    className="event-confirmation-icon-button cancel"
+                    onClick={() => setIsChatExpanded(false)}
+                    title="Close"
                   >
-                    <SendIcon size={20} weight="fill" />
+                    <XIcon size={20} weight="bold" />
                   </button>
-                </div>
 
-                {onConfirm && (
-                  <button
-                    className="event-confirmation-icon-button confirm"
-                    onClick={onConfirm}
-                    title="Add to Calendar"
-                  >
-                    <CheckIcon size={24} weight="bold" />
-                  </button>
-                )}
-              </>
-            ) : (
-              <>
-                <button
-                  className="event-confirmation-request-button"
-                  onClick={() => setIsChatExpanded(true)}
+                  <div className="event-confirmation-chat">
+                    <input
+                      type="text"
+                      className="event-confirmation-chat-input"
+                      placeholder="Request changes..."
+                      value={changeRequest}
+                      onChange={(e) => setChangeRequest(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      autoFocus
+                    />
+                    <button
+                      className="event-confirmation-chat-send"
+                      onClick={handleSendRequest}
+                      disabled={!changeRequest.trim()}
+                    >
+                      <SendIcon size={20} weight="fill" />
+                    </button>
+                  </div>
+
+                  {onConfirm && (
+                    <button
+                      className="event-confirmation-icon-button confirm"
+                      onClick={onConfirm}
+                      title="Add to Calendar"
+                    >
+                      <CheckIcon size={24} weight="bold" />
+                    </button>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="chat-collapsed"
+                  className="event-confirmation-footer-content"
+                  initial={{
+                    rotateY: -90,
+                    scale: 0.8,
+                    opacity: 0
+                  }}
+                  animate={{
+                    rotateY: 0,
+                    scale: 1,
+                    opacity: 1
+                  }}
+                  exit={{
+                    rotateY: 90,
+                    scale: 0.8,
+                    opacity: 0
+                  }}
+                  transition={{
+                    duration: 0.4,
+                    ease: [0.34, 1.56, 0.64, 1]
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    flex: 1,
+                    transformStyle: 'preserve-3d'
+                  }}
                 >
-                  <ChatIcon size={18} weight="bold" />
-                  <span>Request changes</span>
-                </button>
-
-                {onConfirm && (
                   <button
-                    className="event-confirmation-icon-button confirm"
-                    onClick={onConfirm}
-                    title="Add to Calendar"
+                    className="event-confirmation-request-button"
+                    onClick={() => setIsChatExpanded(true)}
                   >
-                    <CheckIcon size={24} weight="bold" />
+                    <ChatIcon size={18} weight="bold" />
+                    <span>Request changes</span>
                   </button>
-                )}
-              </>
-            )}
+
+                  {onConfirm && (
+                    <button
+                      className="event-confirmation-icon-button confirm"
+                      onClick={onConfirm}
+                      title="Add to Calendar"
+                    >
+                      <CheckIcon size={24} weight="bold" />
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
