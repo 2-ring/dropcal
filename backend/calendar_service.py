@@ -218,16 +218,20 @@ class CalendarService:
             print(f"An error occurred: {error}")
             return None
 
-    def list_events(self, max_results: int = 10, time_min: Optional[str] = None) -> List[Dict]:
+    def list_events(self, max_results: int = 10, time_min: Optional[str] = None, page_token: Optional[str] = None, return_full_response: bool = False) -> Dict:
         """
         List upcoming events from user's calendar.
 
         Args:
             max_results: Maximum number of events to return
             time_min: Lower bound for event start time (ISO format)
+            page_token: Token for pagination (from previous response's nextPageToken)
+            return_full_response: If True, returns full API response with pagination info.
+                                 If False, returns just the items list for backwards compatibility.
 
         Returns:
-            List of event dictionaries
+            If return_full_response=True: Full API response dict with 'items' and 'nextPageToken'
+            If return_full_response=False: List of event dictionaries (backwards compatible)
         """
         if not self.is_authenticated():
             if not self.refresh_credentials():
@@ -245,14 +249,19 @@ class CalendarService:
                 timeMin=time_min,
                 maxResults=max_results,
                 singleEvents=True,
-                orderBy='startTime'
+                orderBy='startTime',
+                pageToken=page_token
             ).execute()
 
-            return events_result.get('items', [])
+            # Return full response or just items based on flag
+            if return_full_response:
+                return events_result
+            else:
+                return events_result.get('items', [])
 
         except HttpError as error:
             print(f"An error occurred: {error}")
-            return []
+            return {} if return_full_response else []
 
     def check_conflicts(self, start_time: str, end_time: str) -> List[Dict]:
         """
@@ -284,6 +293,89 @@ class CalendarService:
             busy_periods = freebusy_result.get('calendars', {}).get('primary', {}).get('busy', [])
 
             return busy_periods
+
+        except HttpError as error:
+            print(f"An error occurred: {error}")
+            return []
+
+    def get_settings(self) -> Dict:
+        """
+        Get user's calendar settings and preferences.
+
+        Returns:
+            Dictionary with user settings including:
+            - timezone: User's default timezone
+            - dateFieldOrder: Date format preference
+            - timeFormat: 12hr vs 24hr preference
+            - weekStart: Which day starts the week
+            - defaultEventLength: Default event duration in minutes
+        """
+        if not self.is_authenticated():
+            if not self.refresh_credentials():
+                raise Exception("Not authenticated. Please authorize first.")
+
+        try:
+            service = build('calendar', 'v3', credentials=self.credentials)
+
+            settings_result = service.settings().list().execute()
+
+            # Convert list of settings to dictionary for easier access
+            settings_dict = {}
+            for setting in settings_result.get('items', []):
+                settings_dict[setting['id']] = setting['value']
+
+            return settings_dict
+
+        except HttpError as error:
+            print(f"An error occurred: {error}")
+            return {}
+
+    def get_colors(self) -> Dict:
+        """
+        Get color palette definitions.
+
+        Returns:
+            Dictionary with color definitions:
+            - event: Dict mapping colorId to color info (background, foreground)
+            - calendar: Dict mapping colorId to color info
+        """
+        if not self.is_authenticated():
+            if not self.refresh_credentials():
+                raise Exception("Not authenticated. Please authorize first.")
+
+        try:
+            service = build('calendar', 'v3', credentials=self.credentials)
+
+            colors_result = service.colors().get().execute()
+
+            return colors_result
+
+        except HttpError as error:
+            print(f"An error occurred: {error}")
+            return {}
+
+    def get_calendar_list(self) -> List[Dict]:
+        """
+        Get list of all calendars the user has access to.
+
+        Returns:
+            List of calendar dictionaries with info like:
+            - id: Calendar ID
+            - summary: Calendar name
+            - description: Calendar description
+            - backgroundColor: Calendar color
+            - primary: Whether this is the primary calendar
+        """
+        if not self.is_authenticated():
+            if not self.refresh_credentials():
+                raise Exception("Not authenticated. Please authorize first.")
+
+        try:
+            service = build('calendar', 'v3', credentials=self.credentials)
+
+            calendar_list_result = service.calendarList().list().execute()
+
+            return calendar_list_result.get('items', [])
 
         except HttpError as error:
             print(f"An error occurred: {error}")

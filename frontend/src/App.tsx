@@ -29,11 +29,14 @@ const greetingImagePaths = Object.values(greetingImages) as string[]
 
 type AppState = 'input' | 'loading' | 'review'
 
+// TESTING: Set to true to force loading state for design testing
+const FORCE_LOADING_STATE = true
+
 function App() {
   const [currentGreetingIndex] = useState(() =>
     Math.floor(Math.random() * greetingImagePaths.length)
   )
-  const [appState, setAppState] = useState<AppState>('input')
+  const [appState, setAppState] = useState<AppState>(FORCE_LOADING_STATE ? 'loading' : 'input')
 
   // Expose sessionCache to window for debugging
   useEffect(() => {
@@ -44,7 +47,15 @@ function App() {
   const [_extractedEvents, setExtractedEvents] = useState<any[]>([])
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
   const [_isCalendarAuthenticated, setIsCalendarAuthenticated] = useState(false)
-  const [loadingConfig, setLoadingConfig] = useState<LoadingStateConfig[]>([{ message: 'Processing...' }])
+  const [loadingConfig, setLoadingConfig] = useState<LoadingStateConfig[]>(
+    FORCE_LOADING_STATE
+      ? [
+          LOADING_MESSAGES.PROCESSING_FILE,
+          LOADING_MESSAGES.UNDERSTANDING_CONTEXT,
+          { ...LOADING_MESSAGES.EXTRACTING_EVENTS, message: 'Processing event...', count: '2/3' },
+        ]
+      : [{ message: 'Processing...' }]
+  )
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Session management state
@@ -704,8 +715,8 @@ function App() {
         }}
       />
       <div className={`content ${sidebarOpen ? 'with-sidebar' : ''}`}>
-        {/* Show greeting only in input and loading states */}
-        {(appState === 'input' || appState === 'loading') && (
+        {/* Show greeting only in input state */}
+        {appState === 'input' && (
           <motion.div
             className="greeting-container"
             initial={{ opacity: 0, y: 20 }}
@@ -720,8 +731,8 @@ function App() {
           </motion.div>
         )}
 
-        {/* Show MainInputArea only when in input or loading state */}
-        {(appState === 'input' || appState === 'loading') && (
+        {/* Show MainInputArea only when in input state */}
+        {appState === 'input' && (
           <MainInputArea
             uploadedFile={uploadedFile}
             isProcessing={isProcessing}
@@ -733,10 +744,13 @@ function App() {
           />
         )}
 
-        {/* Show EventConfirmation only when in review state */}
-        {appState === 'review' && calendarEvents.length > 0 && (
+        {/* Show EventConfirmation in both loading and review states */}
+        {(appState === 'loading' || appState === 'review') && (
           <EventConfirmation
             events={calendarEvents}
+            isLoading={appState === 'loading'}
+            loadingConfig={loadingConfig}
+            expectedEventCount={FORCE_LOADING_STATE ? 2 : _extractedEvents.length || 3}
             onConfirm={() => {
               // TODO: Implement add to calendar functionality
               toast.success('Adding to calendar...', {
@@ -747,8 +761,8 @@ function App() {
           />
         )}
 
-        {/* Google Calendar Authentication - only show in input and loading states */}
-        {(appState === 'input' || appState === 'loading') && (
+        {/* Google Calendar Authentication - only show in input state */}
+        {appState === 'input' && (
           <GoogleCalendarAuth onAuthChange={setIsCalendarAuthenticated} />
         )}
       </div>

@@ -16,6 +16,8 @@ export interface LoadingStateConfig {
   icon?: Icon
   /** Optional submessage for additional context */
   submessage?: string
+  /** Optional count display (e.g., "1/3") shown right-aligned */
+  count?: string
   /** Animation speed in milliseconds (default: 500) */
   animationSpeed?: number
 }

@@ -1,16 +1,22 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Equals as EqualsIcon, PencilSimple as EditIcon, PaperPlaneRight as SendIcon, X as XIcon, CheckFat as CheckIcon, ChatCircleDots as ChatIcon } from '@phosphor-icons/react'
+import Skeleton from 'react-loading-skeleton'
+import 'react-loading-skeleton/dist/skeleton.css'
 import type { CalendarEvent } from '../types/calendarEvent'
+import type { LoadingStateConfig } from '../types/loadingState'
 import wordmarkImage from '../assets/Wordmark.png'
 import './EventConfirmation.css'
 
 interface EventConfirmationProps {
   events: CalendarEvent[]
   onConfirm?: () => void
+  isLoading?: boolean
+  loadingConfig?: LoadingStateConfig[]
+  expectedEventCount?: number
 }
 
-export function EventConfirmation({ events, onConfirm }: EventConfirmationProps) {
+export function EventConfirmation({ events, onConfirm, isLoading = false, loadingConfig = [], expectedEventCount = 3 }: EventConfirmationProps) {
   const [changeRequest, setChangeRequest] = useState('')
   const [isChatExpanded, setIsChatExpanded] = useState(false)
 
@@ -105,157 +111,214 @@ export function EventConfirmation({ events, onConfirm }: EventConfirmationProps)
           <img src={wordmarkImage} alt="DropCal" className="header-wordmark" />
         </div>
         <div className="header-right">
-          <span>{events.length} {events.length === 1 ? 'event' : 'events'}</span>
+          {isLoading ? (
+            <Skeleton width={80} height={20} />
+          ) : (
+            <span>{events.length} {events.length === 1 ? 'event' : 'events'}</span>
+          )}
         </div>
       </div>
 
       {/* Scrollable Content */}
       <div className="event-confirmation-content">
         <div className="event-confirmation-list">
-          {events.map((event, index) => (
-            <motion.div
-              key={index}
-              className="event-confirmation-card"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-            >
-              <div className="event-confirmation-card-row">
-                <div className="event-confirmation-card-title">
-                  {event.summary}
+          {isLoading ? (
+            // Skeleton loading state - simple gray shimmer cards
+            Array.from({ length: expectedEventCount }).map((_, index) => (
+              <motion.div
+                key={`skeleton-${index}`}
+                className="event-confirmation-card skeleton-card"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+              >
+                <Skeleton height={28} borderRadius={8} style={{ marginBottom: '12px' }} />
+                <Skeleton height={20} width="60%" borderRadius={8} style={{ marginBottom: '12px' }} />
+                <Skeleton count={2} height={18} borderRadius={8} />
+              </motion.div>
+            ))
+          ) : (
+            // Actual events
+            events.map((event, index) => (
+              <motion.div
+                key={index}
+                className="event-confirmation-card"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+              >
+                <div className="event-confirmation-card-row">
+                  <div className="event-confirmation-card-title">
+                    {event.summary}
+                  </div>
+                  <EditIcon size={16} weight="regular" className="edit-icon" />
                 </div>
-                <EditIcon size={16} weight="regular" className="edit-icon" />
-              </div>
-              <div className="event-confirmation-card-row">
-                <div className="event-confirmation-card-date">
-                  {formatDate(event.start.dateTime, event.end.dateTime)}
+                <div className="event-confirmation-card-row">
+                  <div className="event-confirmation-card-date">
+                    {formatDate(event.start.dateTime, event.end.dateTime)}
+                  </div>
+                  <EditIcon size={14} weight="regular" className="edit-icon" />
                 </div>
-                <EditIcon size={14} weight="regular" className="edit-icon" />
-              </div>
-              <div className="event-confirmation-card-row">
-                <div className="event-confirmation-card-description">
-                  <EqualsIcon size={16} weight="bold" className="description-icon" />
-                  <span>{buildDescription(event)}</span>
+                <div className="event-confirmation-card-row">
+                  <div className="event-confirmation-card-description">
+                    <EqualsIcon size={16} weight="bold" className="description-icon" />
+                    <span>{buildDescription(event)}</span>
+                  </div>
+                  <EditIcon size={14} weight="regular" className="edit-icon" />
                 </div>
-                <EditIcon size={14} weight="regular" className="edit-icon" />
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            ))
+          )}
         </div>
       </div>
 
       {/* Fixed Footer with gradient overlay */}
       <div className="event-confirmation-footer-overlay">
         <div className="event-confirmation-footer">
-          {/* Single row with cancel, chat input, and confirm buttons */}
-          <div className="event-confirmation-footer-row">
-            <AnimatePresence mode="wait">
-              {isChatExpanded ? (
-                <motion.div
-                  key="chat-expanded"
-                  className="event-confirmation-footer-content"
-                  initial={{
-                    y: 20,
-                    scale: 0.95,
-                    opacity: 0
-                  }}
-                  animate={{
-                    y: 0,
-                    scale: 1,
-                    opacity: 1
-                  }}
-                  exit={{
-                    y: -20,
-                    scale: 0.95,
-                    opacity: 0
-                  }}
-                  transition={{
-                    duration: 0.3,
-                    ease: [0.22, 1, 0.36, 1]
-                  }}
-                >
-                  <button
-                    className="event-confirmation-icon-button cancel"
-                    onClick={() => setIsChatExpanded(false)}
-                    title="Close"
+          {isLoading ? (
+            /* Progress indicators during loading */
+            <div className="loading-progress-container">
+              <div className="loading-progress-steps">
+                {loadingConfig.map((config, index) => {
+                  const IconComponent = config.icon
+                  return (
+                    <motion.div
+                      key={index}
+                      className="loading-progress-step"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.1 }}
+                    >
+                      {IconComponent && (
+                        <div className="loading-progress-icon">
+                          <IconComponent size={20} weight="bold" />
+                        </div>
+                      )}
+                      <div className="loading-progress-text">
+                        <div className="loading-progress-message">{config.message}</div>
+                        {config.submessage && (
+                          <div className="loading-progress-submessage">{config.submessage}</div>
+                        )}
+                      </div>
+                      {config.count && (
+                        <div className="loading-progress-count">{config.count}</div>
+                      )}
+                    </motion.div>
+                  )
+                })}
+              </div>
+            </div>
+          ) : (
+            /* Single row with cancel, chat input, and confirm buttons */
+            <div className="event-confirmation-footer-row">
+              <AnimatePresence mode="wait">
+                {isChatExpanded ? (
+                  <motion.div
+                    key="chat-expanded"
+                    className="event-confirmation-footer-content"
+                    initial={{
+                      y: 20,
+                      scale: 0.95,
+                      opacity: 0
+                    }}
+                    animate={{
+                      y: 0,
+                      scale: 1,
+                      opacity: 1
+                    }}
+                    exit={{
+                      y: -20,
+                      scale: 0.95,
+                      opacity: 0
+                    }}
+                    transition={{
+                      duration: 0.3,
+                      ease: [0.22, 1, 0.36, 1]
+                    }}
                   >
-                    <XIcon size={20} weight="bold" />
-                  </button>
-
-                  <div className="event-confirmation-chat">
-                    <input
-                      type="text"
-                      className="event-confirmation-chat-input"
-                      placeholder="Request changes..."
-                      value={changeRequest}
-                      onChange={(e) => setChangeRequest(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      autoFocus
-                    />
                     <button
-                      className="event-confirmation-chat-send"
-                      onClick={handleSendRequest}
-                      disabled={!changeRequest.trim()}
+                      className="event-confirmation-icon-button cancel"
+                      onClick={() => setIsChatExpanded(false)}
+                      title="Close"
                     >
-                      <SendIcon size={20} weight="fill" />
+                      <XIcon size={20} weight="bold" />
                     </button>
-                  </div>
 
-                  {onConfirm && (
-                    <button
-                      className="event-confirmation-icon-button confirm"
-                      onClick={onConfirm}
-                      title="Add to Calendar"
-                    >
-                      <CheckIcon size={24} weight="bold" />
-                    </button>
-                  )}
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="chat-collapsed"
-                  className="event-confirmation-footer-content"
-                  initial={{
-                    y: 20,
-                    scale: 0.95,
-                    opacity: 0
-                  }}
-                  animate={{
-                    y: 0,
-                    scale: 1,
-                    opacity: 1
-                  }}
-                  exit={{
-                    y: -20,
-                    scale: 0.95,
-                    opacity: 0
-                  }}
-                  transition={{
-                    duration: 0.3,
-                    ease: [0.22, 1, 0.36, 1]
-                  }}
-                >
-                  <button
-                    className="event-confirmation-request-button"
-                    onClick={() => setIsChatExpanded(true)}
+                    <div className="event-confirmation-chat">
+                      <input
+                        type="text"
+                        className="event-confirmation-chat-input"
+                        placeholder="Request changes..."
+                        value={changeRequest}
+                        onChange={(e) => setChangeRequest(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        autoFocus
+                      />
+                      <button
+                        className="event-confirmation-chat-send"
+                        onClick={handleSendRequest}
+                        disabled={!changeRequest.trim()}
+                      >
+                        <SendIcon size={20} weight="fill" />
+                      </button>
+                    </div>
+
+                    {onConfirm && (
+                      <button
+                        className="event-confirmation-icon-button confirm"
+                        onClick={onConfirm}
+                        title="Add to Calendar"
+                      >
+                        <CheckIcon size={24} weight="bold" />
+                      </button>
+                    )}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="chat-collapsed"
+                    className="event-confirmation-footer-content"
+                    initial={{
+                      y: 20,
+                      scale: 0.95,
+                      opacity: 0
+                    }}
+                    animate={{
+                      y: 0,
+                      scale: 1,
+                      opacity: 1
+                    }}
+                    exit={{
+                      y: -20,
+                      scale: 0.95,
+                      opacity: 0
+                    }}
+                    transition={{
+                      duration: 0.3,
+                      ease: [0.22, 1, 0.36, 1]
+                    }}
                   >
-                    <ChatIcon size={18} weight="bold" />
-                    <span>Request changes</span>
-                  </button>
-
-                  {onConfirm && (
                     <button
-                      className="event-confirmation-icon-button confirm"
-                      onClick={onConfirm}
-                      title="Add to Calendar"
+                      className="event-confirmation-request-button"
+                      onClick={() => setIsChatExpanded(true)}
                     >
-                      <CheckIcon size={24} weight="bold" />
+                      <ChatIcon size={18} weight="bold" />
+                      <span>Request changes</span>
                     </button>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+
+                    {onConfirm && (
+                      <button
+                        className="event-confirmation-icon-button confirm"
+                        onClick={onConfirm}
+                        title="Add to Calendar"
+                      >
+                        <CheckIcon size={24} weight="bold" />
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>
