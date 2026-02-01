@@ -9,14 +9,14 @@ import wordmarkImage from '../assets/Wordmark.png'
 import './EventConfirmation.css'
 
 interface EventConfirmationProps {
-  events: CalendarEvent[]
+  events: (CalendarEvent | null)[]
   onConfirm?: () => void
   isLoading?: boolean
   loadingConfig?: LoadingStateConfig[]
   expectedEventCount?: number
 }
 
-export function EventConfirmation({ events, onConfirm, isLoading = false, loadingConfig = [], expectedEventCount = 3 }: EventConfirmationProps) {
+export function EventConfirmation({ events, onConfirm, isLoading = false, loadingConfig = [], expectedEventCount }: EventConfirmationProps) {
   const [changeRequest, setChangeRequest] = useState('')
   const [isChatExpanded, setIsChatExpanded] = useState(false)
 
@@ -111,10 +111,10 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
           <img src={wordmarkImage} alt="DropCal" className="header-wordmark" />
         </div>
         <div className="header-right">
-          {isLoading ? (
+          {isLoading && expectedEventCount === undefined ? (
             <Skeleton width={80} height={20} />
           ) : (
-            <span>{events.length} {events.length === 1 ? 'event' : 'events'}</span>
+            <span>{isLoading ? expectedEventCount : events.filter(e => e !== null).length} {(isLoading ? expectedEventCount : events.filter(e => e !== null).length) === 1 ? 'event' : 'events'}</span>
           )}
         </div>
       </div>
@@ -123,23 +123,61 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
       <div className="event-confirmation-content">
         <div className="event-confirmation-list">
           {isLoading ? (
-            // Skeleton loading state - simple gray shimmer cards
-            Array.from({ length: expectedEventCount }).map((_, index) => (
-              <motion.div
-                key={`skeleton-${index}`}
-                className="event-confirmation-card skeleton-card"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-              >
-                <Skeleton height={28} borderRadius={8} style={{ marginBottom: '12px' }} />
-                <Skeleton height={20} width="60%" borderRadius={8} style={{ marginBottom: '12px' }} />
-                <Skeleton count={2} height={18} borderRadius={8} />
-              </motion.div>
-            ))
+            // Streaming state - show skeleton for null events, actual cards for completed events
+            Array.from({ length: expectedEventCount || 3 }).map((_, index) => {
+              const event = events[index]
+
+              if (event) {
+                // Event is complete - show actual card
+                return (
+                  <motion.div
+                    key={`event-${index}`}
+                    className="event-confirmation-card"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                  >
+                    <div className="event-confirmation-card-row">
+                      <div className="event-confirmation-card-title">
+                        {event.summary}
+                      </div>
+                      <EditIcon size={16} weight="regular" className="edit-icon" />
+                    </div>
+                    <div className="event-confirmation-card-row">
+                      <div className="event-confirmation-card-date">
+                        {formatDate(event.start.dateTime, event.end.dateTime)}
+                      </div>
+                      <EditIcon size={14} weight="regular" className="edit-icon" />
+                    </div>
+                    <div className="event-confirmation-card-row">
+                      <div className="event-confirmation-card-description">
+                        <EqualsIcon size={16} weight="bold" className="description-icon" />
+                        <span>{buildDescription(event)}</span>
+                      </div>
+                      <EditIcon size={14} weight="regular" className="edit-icon" />
+                    </div>
+                  </motion.div>
+                )
+              } else {
+                // Event not yet complete - show skeleton
+                return (
+                  <motion.div
+                    key={`skeleton-${index}`}
+                    className="event-confirmation-card skeleton-card"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                  >
+                    <Skeleton height={28} borderRadius={8} style={{ marginBottom: '12px' }} />
+                    <Skeleton height={20} width="60%" borderRadius={8} style={{ marginBottom: '12px' }} />
+                    <Skeleton count={2} height={18} borderRadius={8} />
+                  </motion.div>
+                )
+              }
+            })
           ) : (
-            // Actual events
-            events.map((event, index) => (
+            // Complete state - show only actual events (filter out nulls)
+            events.filter((event): event is CalendarEvent => event !== null).map((event, index) => (
               <motion.div
                 key={index}
                 className="event-confirmation-card"
@@ -195,7 +233,7 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
                         </div>
                       )}
                       <div className="loading-progress-text">
-                        <div className="loading-progress-message">{config.message}</div>
+                        <div className="loading-progress-message" style={{ fontStyle: 'italic' }}>{config.message}</div>
                         {config.submessage && (
                           <div className="loading-progress-submessage">{config.submessage}</div>
                         )}

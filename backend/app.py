@@ -15,6 +15,8 @@ from processors.text_processor import TextFileProcessor
 from processors.pdf_processor import PDFProcessor
 from calendar_service import CalendarService
 from logging_utils import log_agent_execution, app_logger
+from personalization_service import PersonalizationService
+from user_preferences import UserPreferences
 
 load_dotenv()
 
@@ -31,6 +33,9 @@ llm = ChatAnthropic(model="claude-sonnet-4-5-20250929", api_key=os.getenv("ANTHR
 
 # Initialize Google Calendar service
 calendar_service = CalendarService()
+
+# Initialize Personalization service
+personalization_service = PersonalizationService()
 
 # Initialize input processor factory and register all processors
 input_processor_factory = InputProcessorFactory()
@@ -311,6 +316,102 @@ def run_fact_extraction(raw_text_list: List[str], description: str, system_promp
         "description": description,
         "text": combined_text
     })
+
+    return result
+
+
+@log_agent_execution("Agent5_PreferenceApplication")
+def run_preference_application(facts: dict, user_preferences: UserPreferences, system_prompt: str):
+    """
+    Agent 5: Preference Application - Wrapped with logging.
+    Applies user's learned preferences to extracted facts.
+    Enhances facts with personalization before calendar formatting.
+    """
+    if not facts:
+        raise ValueError("No facts provided for preference application")
+
+    if not user_preferences:
+        app_logger.info("No user preferences available, returning facts unchanged")
+        return facts
+
+    # Build preference context for LLM from discovered patterns
+    def format_patterns(pattern_list):
+        """Format a list of DiscoveredPattern objects for LLM"""
+        if not pattern_list:
+            return "  (No patterns discovered yet)"
+        formatted = []
+        for i, p in enumerate(pattern_list, 1):
+            freq_str = f" [{p.frequency}]" if p.frequency else ""
+            formatted.append(f"  {i}. {p.pattern}{freq_str}")
+            if p.examples:
+                formatted.append(f"     Examples: {', '.join(p.examples[:2])}")
+        return "\n".join(formatted)
+
+    preferences_context = f"""
+USER PREFERENCES (Learned from {user_preferences.total_events_analyzed} historical events)
+
+TITLE FORMATTING PATTERNS:
+{format_patterns(user_preferences.title_formatting.patterns)}
+
+DESCRIPTION FORMATTING PATTERNS:
+{format_patterns(user_preferences.description_formatting.patterns)}
+
+COLOR USAGE PATTERNS:
+{format_patterns(user_preferences.color_usage.patterns)}
+
+LOCATION FORMATTING PATTERNS:
+{format_patterns(user_preferences.location_formatting.patterns)}
+
+DURATION PATTERNS:
+{format_patterns(user_preferences.duration_patterns.patterns)}
+
+TIMING PATTERNS:
+{format_patterns(user_preferences.timing_patterns.patterns)}
+
+CALENDAR USAGE PATTERNS:"""
+
+    # Add calendar usage info
+    if user_preferences.calendar_usage.calendars:
+        for cal in user_preferences.calendar_usage.calendars:
+            primary_str = " (PRIMARY)" if cal.is_primary else ""
+            preferences_context += f"\n\n  Calendar: {cal.calendar_name}{primary_str}"
+            preferences_context += f"\n  Event types: {', '.join(cal.event_types) if cal.event_types else 'Various'}"
+            if cal.usage_patterns:
+                preferences_context += "\n  Usage patterns:"
+                for pattern in cal.usage_patterns:
+                    freq_str = f" [{pattern.frequency}]" if pattern.frequency else ""
+                    preferences_context += f"\n    - {pattern.pattern}{freq_str}"
+    else:
+        preferences_context += "\n  (No calendar usage patterns discovered yet)"
+
+    preferences_context += f"""
+
+CONTEXTUAL PATTERNS (When X, do Y):
+{format_patterns(user_preferences.contextual_patterns.patterns)}
+
+GENERAL OBSERVATIONS:
+"""
+    if user_preferences.general_observations:
+        for obs in user_preferences.general_observations:
+            preferences_context += f"\n  - {obs}"
+    else:
+        preferences_context += "\n  (None yet)"
+
+    preferences_context += f"""
+
+USER SETTINGS:
+- Timezone: {user_preferences.timezone}
+- Default event length: {user_preferences.default_event_length} minutes
+"""
+
+    preference_prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", f"{preferences_context}\n\nEvent facts to enhance:\n{facts}\n\nApply user preferences to these facts.")
+    ])
+
+    # Run preference application
+    chain = preference_prompt | fact_extraction_llm  # Reuse fact extraction schema
+    result = chain.invoke({"facts": str(facts)})
 
     return result
 
@@ -1099,6 +1200,146 @@ def list_calendar_events():
 
     except Exception as e:
         return jsonify({'error': f'Failed to list events: {str(e)}'}), 500
+
+# ============================================================================
+# Personalization Endpoints
+# ============================================================================
+
+@app.route('/api/personalization/apply', methods=['POST'])
+def apply_preferences_endpoint():
+    """
+    Agent 5: Apply user preferences to extracted facts.
+
+    Expects JSON body:
+    {
+        "facts": {...},  # Extracted facts from Agent 2
+        "user_id": "default"  # Optional user ID
+    }
+
+    Returns enhanced facts with user preferences applied.
+    """
+    try:
+        data = request.get_json()
+        facts = data.get('facts')
+        user_id = data.get('user_id', 'default')
+
+        if not facts:
+            return jsonify({'error': 'No facts provided'}), 400
+
+        # Load user preferences
+        preferences = personalization_service.load_preferences(user_id)
+
+        if not preferences:
+            # No preferences, return facts unchanged
+            app_logger.info(f"No preferences for user {user_id}, returning facts unchanged")
+            return jsonify({
+                'enhanced_facts': facts,
+                'preferences_applied': False,
+                'message': 'No user preferences found. Run analysis first.'
+            })
+
+        # System prompt for Agent 5
+        system_prompt = """You are a personalization specialist. Your job is to enhance extracted event facts by applying the user's learned preferences and patterns.
+
+YOUR TASK:
+Take the raw extracted facts and enhance them according to user preferences:
+
+1. **Title Enhancement**:
+   - Apply user's preferred capitalization style
+   - Apply common abbreviations they use
+   - Add prefixes if they commonly use them
+   - Format course codes in their style
+
+2. **Description Enhancement**:
+   - Structure the description in their preferred format
+   - Use their bullet point style if applicable
+   - Add section headers if they use them
+   - Place URLs according to their preference
+
+3. **Color Assignment**:
+   - Infer appropriate colorId based on event type and their color mappings
+   - Use default color if no specific mapping found
+
+4. **Duration Inference**:
+   - If duration not specified, infer from their typical durations for this event type
+   - Use their default event length as fallback
+
+5. **Location Formatting**:
+   - Format virtual meeting locations in their style
+   - Use their common location names if applicable
+
+IMPORTANT:
+- Keep all original facts intact
+- Only ADD or ENHANCE, never remove information
+- If user has no preference for something, leave it as-is
+- Return the facts in the same ExtractedFacts format
+
+Return enhanced facts ready for calendar formatting.
+"""
+
+        # Apply preferences using Agent 5
+        enhanced_facts = run_preference_application(facts, preferences, system_prompt)
+
+        return jsonify({
+            'enhanced_facts': enhanced_facts.model_dump(),
+            'preferences_applied': True,
+            'user_id': user_id,
+            'events_analyzed': preferences.total_events_analyzed
+        })
+
+    except Exception as e:
+        app_logger.error(f"Preference application failed: {str(e)}")
+        return jsonify({'error': f'Preference application failed: {str(e)}'}), 500
+
+
+@app.route('/api/personalization/preferences/<user_id>', methods=['GET'])
+def get_preferences(user_id):
+    """
+    Get user's saved preferences.
+
+    Returns user preferences if they exist.
+    """
+    try:
+        preferences = personalization_service.load_preferences(user_id)
+
+        if not preferences:
+            return jsonify({
+                'exists': False,
+                'message': f'No preferences found for user {user_id}'
+            }), 404
+
+        return jsonify({
+            'exists': True,
+            'preferences': preferences.model_dump(),
+            'last_analyzed': preferences.last_analyzed,
+            'events_analyzed': preferences.total_events_analyzed
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to get preferences: {str(e)}'}), 500
+
+
+@app.route('/api/personalization/preferences/<user_id>', methods=['DELETE'])
+def delete_preferences(user_id):
+    """
+    Delete user's preferences.
+    """
+    try:
+        success = personalization_service.delete_preferences(user_id)
+
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'Preferences deleted for user {user_id}'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'No preferences to delete for user {user_id}'
+            }), 404
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to delete preferences: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

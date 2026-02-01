@@ -234,7 +234,7 @@
   font-size: 0.9375rem;
   font-weight: 500;
   color: #1a1a1a;
-  font-style: italic;
+  font-style: italic !important;
 }
 
 .loading-progress-submessage {

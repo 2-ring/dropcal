@@ -29,14 +29,11 @@ const greetingImagePaths = Object.values(greetingImages) as string[]
 
 type AppState = 'input' | 'loading' | 'review'
 
-// TESTING: Set to true to force loading state for design testing
-const FORCE_LOADING_STATE = true
-
 function App() {
   const [currentGreetingIndex] = useState(() =>
     Math.floor(Math.random() * greetingImagePaths.length)
   )
-  const [appState, setAppState] = useState<AppState>(FORCE_LOADING_STATE ? 'loading' : 'input')
+  const [appState, setAppState] = useState<AppState>('input')
 
   // Expose sessionCache to window for debugging
   useEffect(() => {
@@ -45,18 +42,11 @@ function App() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [_extractedEvents, setExtractedEvents] = useState<any[]>([])
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
+  const [calendarEvents, setCalendarEvents] = useState<(CalendarEvent | null)[]>([])
   const [_isCalendarAuthenticated, setIsCalendarAuthenticated] = useState(false)
-  const [loadingConfig, setLoadingConfig] = useState<LoadingStateConfig[]>(
-    FORCE_LOADING_STATE
-      ? [
-          LOADING_MESSAGES.PROCESSING_FILE,
-          LOADING_MESSAGES.UNDERSTANDING_CONTEXT,
-          { ...LOADING_MESSAGES.EXTRACTING_EVENTS, message: 'Processing event...', count: '2/3' },
-        ]
-      : [{ message: 'Processing...' }]
-  )
+  const [loadingConfig, setLoadingConfig] = useState<LoadingStateConfig[]>([{ message: 'Processing...' }])
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [expectedEventCount, setExpectedEventCount] = useState<number | undefined>(undefined)
 
   // Session management state
   const [currentSession, setCurrentSession] = useState<Session | null>(null)
@@ -90,6 +80,7 @@ function App() {
     setIsProcessing(true)
     setAppState('loading')
     setExtractedEvents([])
+    setExpectedEventCount(undefined)
     setLoadingConfig([LOADING_MESSAGES.READING_FILE])
 
     // CREATE NEW SESSION
@@ -210,6 +201,11 @@ function App() {
       const extractResult = await extractResponse.json()
       const extractDuration = Date.now() - extractStart
 
+      // Immediately set expected event count to update UI
+      if (extractResult.num_events) {
+        setExpectedEventCount(extractResult.num_events)
+      }
+
       // TRACK AGENT OUTPUT
       session = addAgentOutput(
         session,
@@ -226,102 +222,105 @@ function App() {
       if (extractResult.has_events) {
         setExtractedEvents(extractResult.events)
 
-        // Step 3: Process each event through fact extraction and calendar formatting
-        const formattedEvents = []
+        // Step 3: Process all events in parallel through fact extraction and calendar formatting
         const totalEvents = extractResult.events.length
+        setLoadingConfig([{
+          message: `Processing ${totalEvents} ${totalEvents === 1 ? 'event' : 'events'}...`,
+          icon: LOADING_MESSAGES.EXTRACTING_FACTS.icon
+        }])
+        session = updateProgress(session, {
+          stage: 'extracting_facts',
+          currentEvent: 0,
+          totalEvents,
+        })
+        setCurrentSession(session)
 
-        for (let i = 0; i < extractResult.events.length; i++) {
-          const event = extractResult.events[i]
+        // Initialize calendar events array with nulls for streaming
+        const streamingEvents: (CalendarEvent | null)[] = Array(totalEvents).fill(null)
+        setCalendarEvents(streamingEvents)
+
+        // Process all events in parallel, updating UI as each completes
+        const eventPromises = extractResult.events.map(async (event: any, i: number) => {
           const eventNum = i + 1
 
-          // Show progress for multi-event processing
-          setLoadingConfig([LOADING_MESSAGES.PROCESSING_EVENTS(eventNum, totalEvents)])
-          session = updateProgress(session, {
-            stage: 'extracting_facts',
-            currentEvent: eventNum,
-            totalEvents,
-          })
-          setCurrentSession(session)
+          try {
+            // Extract facts
+            const factsStart = Date.now()
+            const factsResponse = await fetch('http://localhost:5000/api/extract-facts', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                raw_text: event.raw_text,
+                description: event.description,
+              }),
+            })
 
-          // Extract facts
-          setLoadingConfig([{
-            message: `Analyzing event (${eventNum}/${totalEvents})...`,
-            icon: LOADING_MESSAGES.EXTRACTING_FACTS.icon
-          }])
+            if (!factsResponse.ok) {
+              throw new Error('Failed to extract facts')
+            }
 
-          const factsStart = Date.now()
-          const factsResponse = await fetch('http://localhost:5000/api/extract-facts', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              raw_text: event.raw_text,
-              description: event.description,
-            }),
-          })
+            const facts = await factsResponse.json()
+            const factsDuration = Date.now() - factsStart
 
-          if (!factsResponse.ok) {
-            throw new Error('Failed to extract facts')
+            // TRACK AGENT OUTPUT
+            session = addAgentOutput(
+              session,
+              `FactExtraction_Event${eventNum}`,
+              { raw_text: event.raw_text, description: event.description },
+              facts,
+              true,
+              factsDuration
+            )
+            setCurrentSession(session)
+            sessionCache.save(session)
+
+            // Format for calendar
+            const calendarStart = Date.now()
+            const calendarResponse = await fetch('http://localhost:5000/api/format-calendar', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ facts }),
+            })
+
+            if (!calendarResponse.ok) {
+              throw new Error('Failed to format calendar event')
+            }
+
+            const calendarEvent = await calendarResponse.json()
+            const calendarDuration = Date.now() - calendarStart
+
+            // TRACK AGENT OUTPUT
+            session = addAgentOutput(
+              session,
+              `CalendarFormatting_Event${eventNum}`,
+              { facts },
+              calendarEvent,
+              true,
+              calendarDuration
+            )
+            setCurrentSession(session)
+            sessionCache.save(session)
+
+            // Stream this event to UI immediately
+            setCalendarEvents(prev => {
+              const updated = [...prev]
+              updated[i] = calendarEvent
+              return updated
+            })
+
+            return calendarEvent
+          } catch (error) {
+            console.error(`Error processing event ${eventNum}:`, error)
+            throw error
           }
+        })
 
-          const facts = await factsResponse.json()
-          const factsDuration = Date.now() - factsStart
-
-          // TRACK AGENT OUTPUT
-          session = addAgentOutput(
-            session,
-            `FactExtraction_Event${eventNum}`,
-            { raw_text: event.raw_text, description: event.description },
-            facts,
-            true,
-            factsDuration
-          )
-          setCurrentSession(session)
-          sessionCache.save(session)
-
-          // Format for calendar
-          setLoadingConfig([{
-            message: `Formatting event (${eventNum}/${totalEvents})...`,
-            icon: LOADING_MESSAGES.FORMATTING_CALENDAR.icon
-          }])
-          session = updateProgress(session, {
-            stage: 'formatting_calendar',
-            currentEvent: eventNum,
-            totalEvents,
-          })
-          setCurrentSession(session)
-
-          const calendarStart = Date.now()
-          const calendarResponse = await fetch('http://localhost:5000/api/format-calendar', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ facts }),
-          })
-
-          if (!calendarResponse.ok) {
-            throw new Error('Failed to format calendar event')
-          }
-
-          const calendarEvent = await calendarResponse.json()
-          const calendarDuration = Date.now() - calendarStart
-
-          // TRACK AGENT OUTPUT
-          session = addAgentOutput(
-            session,
-            `CalendarFormatting_Event${eventNum}`,
-            { facts },
-            calendarEvent,
-            true,
-            calendarDuration
-          )
-          setCurrentSession(session)
-          sessionCache.save(session)
-
-          formattedEvents.push(calendarEvent)
-        }
+        // Wait for all events to complete
+        const formattedEvents = await Promise.all(eventPromises)
 
         // Complete session
         session = setSessionCalendarEvents(session, formattedEvents)
@@ -329,7 +328,6 @@ function App() {
         setCurrentSession(session)
         sessionCache.save(session)
 
-        setCalendarEvents(formattedEvents)
         setAppState('review')
       } else {
         // Complete session as cancelled (no events)
@@ -410,10 +408,12 @@ function App() {
     setIsProcessing(true)
     setAppState('loading')
     setExtractedEvents([])
+    setExpectedEventCount(undefined)
     setLoadingConfig([LOADING_MESSAGES.PROCESSING_TEXT])
 
-    // CREATE NEW SESSION
-    let session = createSession('text', text, {
+    // CREATE NEW SESSION with short title (max 50 chars, truncated with ellipsis)
+    const title = text.length > 50 ? text.substring(0, 50).trim() + '...' : text.trim()
+    let session = createSession('text', title, {
       textLength: text.length,
       timestamp: new Date(),
     })
@@ -490,6 +490,11 @@ function App() {
       const extractResult = await extractResponse.json()
       const extractDuration = Date.now() - extractStart
 
+      // Immediately set expected event count to update UI
+      if (extractResult.num_events) {
+        setExpectedEventCount(extractResult.num_events)
+      }
+
       // TRACK AGENT OUTPUT
       session = addAgentOutput(
         session,
@@ -506,102 +511,105 @@ function App() {
       if (extractResult.has_events) {
         setExtractedEvents(extractResult.events)
 
-        // Process each event through fact extraction and calendar formatting
-        const formattedEvents = []
+        // Process all events in parallel through fact extraction and calendar formatting
         const totalEvents = extractResult.events.length
+        setLoadingConfig([{
+          message: `Processing ${totalEvents} ${totalEvents === 1 ? 'event' : 'events'}...`,
+          icon: LOADING_MESSAGES.EXTRACTING_FACTS.icon
+        }])
+        session = updateProgress(session, {
+          stage: 'extracting_facts',
+          currentEvent: 0,
+          totalEvents,
+        })
+        setCurrentSession(session)
 
-        for (let i = 0; i < extractResult.events.length; i++) {
-          const event = extractResult.events[i]
+        // Initialize calendar events array with nulls for streaming
+        const streamingEvents: (CalendarEvent | null)[] = Array(totalEvents).fill(null)
+        setCalendarEvents(streamingEvents)
+
+        // Process all events in parallel, updating UI as each completes
+        const eventPromises = extractResult.events.map(async (event: any, i: number) => {
           const eventNum = i + 1
 
-          // Show progress for multi-event processing
-          setLoadingConfig([LOADING_MESSAGES.PROCESSING_EVENTS(eventNum, totalEvents)])
-          session = updateProgress(session, {
-            stage: 'extracting_facts',
-            currentEvent: eventNum,
-            totalEvents,
-          })
-          setCurrentSession(session)
+          try {
+            // Extract facts
+            const factsStart = Date.now()
+            const factsResponse = await fetch('http://localhost:5000/api/extract-facts', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                raw_text: event.raw_text,
+                description: event.description,
+              }),
+            })
 
-          // Extract facts
-          setLoadingConfig([{
-            message: `Analyzing event (${eventNum}/${totalEvents})...`,
-            icon: LOADING_MESSAGES.EXTRACTING_FACTS.icon
-          }])
+            if (!factsResponse.ok) {
+              throw new Error('Failed to extract facts')
+            }
 
-          const factsStart = Date.now()
-          const factsResponse = await fetch('http://localhost:5000/api/extract-facts', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              raw_text: event.raw_text,
-              description: event.description,
-            }),
-          })
+            const facts = await factsResponse.json()
+            const factsDuration = Date.now() - factsStart
 
-          if (!factsResponse.ok) {
-            throw new Error('Failed to extract facts')
+            // TRACK AGENT OUTPUT
+            session = addAgentOutput(
+              session,
+              `FactExtraction_Event${eventNum}`,
+              { raw_text: event.raw_text, description: event.description },
+              facts,
+              true,
+              factsDuration
+            )
+            setCurrentSession(session)
+            sessionCache.save(session)
+
+            // Format for calendar
+            const calendarStart = Date.now()
+            const calendarResponse = await fetch('http://localhost:5000/api/format-calendar', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ facts }),
+            })
+
+            if (!calendarResponse.ok) {
+              throw new Error('Failed to format calendar event')
+            }
+
+            const calendarEvent = await calendarResponse.json()
+            const calendarDuration = Date.now() - calendarStart
+
+            // TRACK AGENT OUTPUT
+            session = addAgentOutput(
+              session,
+              `CalendarFormatting_Event${eventNum}`,
+              { facts },
+              calendarEvent,
+              true,
+              calendarDuration
+            )
+            setCurrentSession(session)
+            sessionCache.save(session)
+
+            // Stream this event to UI immediately
+            setCalendarEvents(prev => {
+              const updated = [...prev]
+              updated[i] = calendarEvent
+              return updated
+            })
+
+            return calendarEvent
+          } catch (error) {
+            console.error(`Error processing event ${eventNum}:`, error)
+            throw error
           }
+        })
 
-          const facts = await factsResponse.json()
-          const factsDuration = Date.now() - factsStart
-
-          // TRACK AGENT OUTPUT
-          session = addAgentOutput(
-            session,
-            `FactExtraction_Event${eventNum}`,
-            { raw_text: event.raw_text, description: event.description },
-            facts,
-            true,
-            factsDuration
-          )
-          setCurrentSession(session)
-          sessionCache.save(session)
-
-          // Format for calendar
-          setLoadingConfig([{
-            message: `Formatting event (${eventNum}/${totalEvents})...`,
-            icon: LOADING_MESSAGES.FORMATTING_CALENDAR.icon
-          }])
-          session = updateProgress(session, {
-            stage: 'formatting_calendar',
-            currentEvent: eventNum,
-            totalEvents,
-          })
-          setCurrentSession(session)
-
-          const calendarStart = Date.now()
-          const calendarResponse = await fetch('http://localhost:5000/api/format-calendar', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ facts }),
-          })
-
-          if (!calendarResponse.ok) {
-            throw new Error('Failed to format calendar event')
-          }
-
-          const calendarEvent = await calendarResponse.json()
-          const calendarDuration = Date.now() - calendarStart
-
-          // TRACK AGENT OUTPUT
-          session = addAgentOutput(
-            session,
-            `CalendarFormatting_Event${eventNum}`,
-            { facts },
-            calendarEvent,
-            true,
-            calendarDuration
-          )
-          setCurrentSession(session)
-          sessionCache.save(session)
-
-          formattedEvents.push(calendarEvent)
-        }
+        // Wait for all events to complete
+        const formattedEvents = await Promise.all(eventPromises)
 
         // Complete session
         session = setSessionCalendarEvents(session, formattedEvents)
@@ -609,7 +617,6 @@ function App() {
         setCurrentSession(session)
         sessionCache.save(session)
 
-        setCalendarEvents(formattedEvents)
         setAppState('review')
       } else {
         // Complete session as cancelled (no events)
@@ -750,7 +757,7 @@ function App() {
             events={calendarEvents}
             isLoading={appState === 'loading'}
             loadingConfig={loadingConfig}
-            expectedEventCount={FORCE_LOADING_STATE ? 2 : _extractedEvents.length || 3}
+            expectedEventCount={expectedEventCount}
             onConfirm={() => {
               // TODO: Implement add to calendar functionality
               toast.success('Adding to calendar...', {
