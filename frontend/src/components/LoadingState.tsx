@@ -70,48 +70,6 @@ export function LoadingState({ config, isLoading }: LoadingStateProps) {
   return (
     <div className="loading-state-container">
       <div className="loading-state-content">
-        {/* Animated dots indicator */}
-        <div className="loading-dots">
-          <motion.div
-            className="loading-dot"
-            animate={{
-              scale: [1, 1.3, 1],
-              opacity: [0.5, 1, 0.5],
-            }}
-            transition={{
-              duration: 1.2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
-          <motion.div
-            className="loading-dot"
-            animate={{
-              scale: [1, 1.3, 1],
-              opacity: [0.5, 1, 0.5],
-            }}
-            transition={{
-              duration: 1.2,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 0.2,
-            }}
-          />
-          <motion.div
-            className="loading-dot"
-            animate={{
-              scale: [1, 1.3, 1],
-              opacity: [0.5, 1, 0.5],
-            }}
-            transition={{
-              duration: 1.2,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 0.4,
-            }}
-          />
-        </div>
-
         {/* Main message with flip animation */}
         <div className="loading-message-wrapper">
           <AnimatePresence mode="wait">
@@ -147,7 +105,7 @@ export function LoadingState({ config, isLoading }: LoadingStateProps) {
                 >
                   {(() => {
                     const IconComponent = currentIcon
-                    return <IconComponent size={28} weight="regular" />
+                    return <IconComponent size={28} weight="bold" />
                   })()}
                 </motion.span>
               )}

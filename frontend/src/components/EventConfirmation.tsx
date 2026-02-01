@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { CalendarBlank as CalendarIcon, Equals as EqualsIcon } from '@phosphor-icons/react'
+import { CalendarBlank as CalendarIcon, Equals as EqualsIcon, PencilSimple as EditIcon, PaperPlaneRight as SendIcon } from '@phosphor-icons/react'
 import type { CalendarEvent } from '../types/calendarEvent'
 import './EventConfirmation.css'
 
@@ -10,6 +11,23 @@ interface EventConfirmationProps {
 }
 
 export function EventConfirmation({ events, onConfirm, onCancel }: EventConfirmationProps) {
+  const [changeRequest, setChangeRequest] = useState('')
+
+  const handleSendRequest = () => {
+    if (changeRequest.trim()) {
+      // TODO: Implement change request functionality
+      console.log('Change request:', changeRequest)
+      setChangeRequest('')
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSendRequest()
+    }
+  }
+
   const formatDate = (dateTime: string, endDateTime?: string): string => {
     const start = new Date(dateTime)
     const options: Intl.DateTimeFormatOptions = {
@@ -91,18 +109,46 @@ export function EventConfirmation({ events, onConfirm, onCancel }: EventConfirma
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.1 }}
           >
-            <div className="event-confirmation-card-title">
-              {event.summary}
+            <div className="event-confirmation-card-row">
+              <div className="event-confirmation-card-title">
+                {event.summary}
+              </div>
+              <EditIcon size={16} weight="regular" className="edit-icon" />
             </div>
-            <div className="event-confirmation-card-date">
-              {formatDate(event.start.dateTime, event.end.dateTime)}
+            <div className="event-confirmation-card-row">
+              <div className="event-confirmation-card-date">
+                {formatDate(event.start.dateTime, event.end.dateTime)}
+              </div>
+              <EditIcon size={14} weight="regular" className="edit-icon" />
             </div>
-            <div className="event-confirmation-card-description">
-              <EqualsIcon size={16} weight="bold" className="description-icon" />
-              <span>{buildDescription(event)}</span>
+            <div className="event-confirmation-card-row">
+              <div className="event-confirmation-card-description">
+                <EqualsIcon size={16} weight="bold" className="description-icon" />
+                <span>{buildDescription(event)}</span>
+              </div>
+              <EditIcon size={14} weight="regular" className="edit-icon" />
             </div>
           </motion.div>
         ))}
+      </div>
+
+      {/* Chat input for requesting changes */}
+      <div className="event-confirmation-chat">
+        <input
+          type="text"
+          className="event-confirmation-chat-input"
+          placeholder="Request changes..."
+          value={changeRequest}
+          onChange={(e) => setChangeRequest(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <button
+          className="event-confirmation-chat-send"
+          onClick={handleSendRequest}
+          disabled={!changeRequest.trim()}
+        >
+          <SendIcon size={20} weight="fill" />
+        </button>
       </div>
 
       {(onConfirm || onCancel) && (

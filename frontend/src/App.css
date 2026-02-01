@@ -17,6 +17,13 @@
   gap: 0;
   flex: 1;
   overflow-y: auto;
+  transition: all 0.3s ease;
+  margin-left: 0;
+}
+
+.content.with-sidebar {
+  margin-left: 280px;
+  width: calc(100% - 280px);
 }
 
 .greeting-container {
@@ -28,6 +35,13 @@
 
 .greeting-image {
   max-width: 600px;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.wordmark-image {
+  max-width: 300px;
   width: 100%;
   height: auto;
   object-fit: contain;
@@ -425,6 +439,10 @@
 @media (max-width: 768px) {
   .greeting-image {
     max-width: 90%;
+  }
+
+  .wordmark-image {
+    max-width: 70%;
   }
 
   .drop-area {

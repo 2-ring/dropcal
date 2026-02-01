@@ -38,14 +38,18 @@ export function MainInputArea({
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    setIsDragging(true)
-  }, [])
+    if (!isProcessing) {
+      setIsDragging(true)
+    }
+  }, [isProcessing])
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    setIsDragging(false)
-  }, [])
+    if (!isProcessing) {
+      setIsDragging(false)
+    }
+  }, [isProcessing])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -55,13 +59,16 @@ export function MainInputArea({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
+
+    if (isProcessing) return
+
     setIsDragging(false)
 
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
       onFileUpload(files[0])
     }
-  }, [onFileUpload])
+  }, [onFileUpload, isProcessing])
 
   const handleImageClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -126,6 +133,8 @@ export function MainInputArea({
   }, [onTextSubmit])
 
   const handleDropAreaClick = useCallback((e: React.MouseEvent) => {
+    if (isProcessing) return
+
     // Only trigger file picker if clicking on the drop area background, not on buttons
     const target = e.target as HTMLElement
     if (target.classList.contains('drop-area') || target.classList.contains('icon-row')) {
@@ -140,19 +149,20 @@ export function MainInputArea({
       }
       input.click()
     }
-  }, [onFileUpload])
+  }, [onFileUpload, isProcessing])
 
   return (
     <motion.div
-      className={`drop-area ${isDragging ? 'dragging' : ''}`}
+      className={`drop-area ${isDragging ? 'dragging' : ''} ${isProcessing ? 'processing' : ''}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-      onClick={handleDropAreaClick}
+      onDragEnter={!isProcessing ? handleDragEnter : undefined}
+      onDragLeave={!isProcessing ? handleDragLeave : undefined}
+      onDragOver={!isProcessing ? handleDragOver : undefined}
+      onDrop={!isProcessing ? handleDrop : undefined}
+      onClick={!isProcessing ? handleDropAreaClick : undefined}
+      style={{ pointerEvents: isProcessing ? 'none' : 'auto' }}
     >
       {isRecording ? (
         <AudioInput

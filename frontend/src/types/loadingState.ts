@@ -1,13 +1,12 @@
 import type { Icon } from '@phosphor-icons/react'
 import {
   FileText as FileTextIcon,
-  MagnifyingGlass as MagnifyingGlassIcon,
   Database as DatabaseIcon,
   Article as ArticleIcon,
   CalendarBlank as CalendarIcon,
-  CheckCircle as CheckCircleIcon,
   Sparkle as SparkleIcon,
-  Clock as ClockIcon,
+  ListBullets as ListBulletsIcon,
+  NotePencil as NotePencilIcon,
 } from '@phosphor-icons/react'
 
 export interface LoadingStateConfig {
@@ -32,20 +31,27 @@ export interface LoadingPhase {
   delay?: number
 }
 
-export const LOADING_PHASES = {
-  FILE_PROCESSING: [
-    { message: 'Reading file...', icon: FileTextIcon, delay: 0 },
-    { message: 'Analyzing content...', icon: MagnifyingGlassIcon, delay: 1500 },
-    { message: 'Extracting information...', icon: DatabaseIcon, delay: 3000 },
-  ],
-  TEXT_PROCESSING: [
-    { message: 'Processing text...', icon: ArticleIcon, delay: 0 },
-    { message: 'Analyzing calendar information...', icon: CalendarIcon, delay: 1500 },
-    { message: 'Extracting events...', icon: SparkleIcon, delay: 3000 },
-  ],
-  EXTRACTING: [
-    { message: 'Finding events...', icon: MagnifyingGlassIcon, delay: 0 },
-    { message: 'Parsing dates and times...', icon: ClockIcon, delay: 1500 },
-    { message: 'Validating event details...', icon: CheckCircleIcon, delay: 3000 },
-  ],
+// Single-message loading states that reflect actual API calls
+export const LOADING_MESSAGES = {
+  // File processing
+  READING_FILE: { message: 'Reading file...', icon: FileTextIcon },
+  PROCESSING_FILE: { message: 'Processing file content...', icon: DatabaseIcon },
+
+  // Text processing
+  PROCESSING_TEXT: { message: 'Processing text...', icon: ArticleIcon },
+
+  // Event extraction
+  EXTRACTING_EVENTS: { message: 'Extracting calendar events...', icon: SparkleIcon },
+
+  // Fact extraction
+  EXTRACTING_FACTS: { message: 'Analyzing event details...', icon: MagnifyingGlassIcon },
+
+  // Calendar formatting
+  FORMATTING_CALENDAR: { message: 'Formatting for calendar...', icon: CheckCircleIcon },
+
+  // Multi-event progress
+  PROCESSING_EVENTS: (current: number, total: number) => ({
+    message: `Processing event ${current} of ${total}...`,
+    icon: CalendarIcon,
+  }),
 } as const

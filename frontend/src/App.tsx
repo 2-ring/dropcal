@@ -5,25 +5,33 @@ import { validateFile } from './utils/fileValidation'
 import { MainInputArea } from './input/main-area'
 import { GoogleCalendarAuth } from './components/GoogleCalendarAuth'
 import { EventConfirmation } from './components/EventConfirmation'
-import type { LoadingPhase } from './types/loadingState'
+import { Sidebar } from './components/Sidebar'
 import type { CalendarEvent } from './types/calendarEvent'
-import { LOADING_PHASES } from './types/loadingState'
+import type { LoadingStateConfig } from './types/loadingState'
+import { LOADING_MESSAGES } from './types/loadingState'
 import './App.css'
 
 // Import all greeting images dynamically
 const greetingImages = import.meta.glob('./assets/greetings/*.{png,jpg,jpeg,svg}', { eager: true, as: 'url' })
 const greetingImagePaths = Object.values(greetingImages) as string[]
 
+// Import wordmark for review state
+import wordmarkImage from './assets/Wordmark.png'
+
+type AppState = 'input' | 'loading' | 'review'
+
 function App() {
   const [currentGreetingIndex] = useState(() =>
     Math.floor(Math.random() * greetingImagePaths.length)
   )
+  const [appState, setAppState] = useState<AppState>('input')
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [extractedEvents, setExtractedEvents] = useState<any[]>([])
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
   const [isCalendarAuthenticated, setIsCalendarAuthenticated] = useState(false)
-  const [loadingConfig, setLoadingConfig] = useState<LoadingPhase[]>([{ message: 'Processing...' }])
+  const [loadingConfig, setLoadingConfig] = useState<LoadingStateConfig[]>([{ message: 'Processing...' }])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const processFile = useCallback(async (file: File) => {
     // Prevent duplicate processing
@@ -46,14 +54,16 @@ function App() {
     }
 
     setIsProcessing(true)
+    setAppState('loading')
     setExtractedEvents([])
-    setLoadingConfig([...LOADING_PHASES.FILE_PROCESSING])
+    setLoadingConfig([LOADING_MESSAGES.READING_FILE])
 
     try {
       // Step 1: Process the file (extract text or prepare for vision)
       const formData = new FormData()
       formData.append('file', file)
 
+      setLoadingConfig([LOADING_MESSAGES.PROCESSING_FILE])
       const processResponse = await fetch('http://localhost:5000/api/process', {
         method: 'POST',
         body: formData,
@@ -67,7 +77,7 @@ function App() {
       const processResult = await processResponse.json()
 
       // Step 2: Extract events from processed input
-      setLoadingConfig([...LOADING_PHASES.EXTRACTING])
+      setLoadingConfig([LOADING_MESSAGES.EXTRACTING_EVENTS])
 
       const extractResponse = await fetch('http://localhost:5000/api/extract', {
         method: 'POST',
@@ -91,11 +101,22 @@ function App() {
         setExtractedEvents(extractResult.events)
 
         // Step 3: Process each event through fact extraction and calendar formatting
-        setLoadingConfig([{ message: 'Formatting calendar events...' }])
-
         const formattedEvents = []
-        for (const event of extractResult.events) {
+        const totalEvents = extractResult.events.length
+
+        for (let i = 0; i < extractResult.events.length; i++) {
+          const event = extractResult.events[i]
+          const eventNum = i + 1
+
+          // Show progress for multi-event processing
+          setLoadingConfig([LOADING_MESSAGES.PROCESSING_EVENTS(eventNum, totalEvents)])
+
           // Extract facts
+          setLoadingConfig([{
+            message: `Analyzing event (${eventNum}/${totalEvents})...`,
+            icon: LOADING_MESSAGES.EXTRACTING_FACTS.icon
+          }])
+
           const factsResponse = await fetch('http://localhost:5000/api/extract-facts', {
             method: 'POST',
             headers: {
@@ -114,6 +135,11 @@ function App() {
           const facts = await factsResponse.json()
 
           // Format for calendar
+          setLoadingConfig([{
+            message: `Formatting event (${eventNum}/${totalEvents})...`,
+            icon: LOADING_MESSAGES.FORMATTING_CALENDAR.icon
+          }])
+
           const calendarResponse = await fetch('http://localhost:5000/api/format-calendar', {
             method: 'POST',
             headers: {
@@ -131,6 +157,7 @@ function App() {
         }
 
         setCalendarEvents(formattedEvents)
+        setAppState('review')
 
         // Success toast
         toast.success('Events Found!', {
@@ -143,6 +170,8 @@ function App() {
           description: 'The file doesn\'t appear to contain any calendar events.',
           duration: 4000,
         })
+        setUploadedFile(null)
+        setAppState('input')
       }
     } catch (err) {
       let errorMessage = 'An error occurred'
@@ -163,6 +192,8 @@ function App() {
       })
 
       console.error('Processing error:', err)
+      setUploadedFile(null)
+      setAppState('input')
     } finally {
       setIsProcessing(false)
     }
@@ -170,7 +201,7 @@ function App() {
 
   // Wrapper for file upload
   const handleFileUpload = useCallback((file: File) => {
-    setUploadedFile(file)
+    // Don't show the file in the input area, go straight to processing
     processFile(file)
   }, [processFile])
 
@@ -188,7 +219,7 @@ function App() {
       return
     }
 
-    setUploadedFile(audioFile)
+    // Don't show the file in the input area, go straight to processing
     processFile(audioFile)
   }, [processFile])
 
@@ -203,11 +234,13 @@ function App() {
     }
 
     setIsProcessing(true)
+    setAppState('loading')
     setExtractedEvents([])
-    setLoadingConfig([...LOADING_PHASES.TEXT_PROCESSING])
+    setLoadingConfig([LOADING_MESSAGES.PROCESSING_TEXT])
 
     try {
       // Extract events from text input
+      setLoadingConfig([LOADING_MESSAGES.EXTRACTING_EVENTS])
       const extractResponse = await fetch('http://localhost:5000/api/extract', {
         method: 'POST',
         headers: {
@@ -230,11 +263,22 @@ function App() {
         setExtractedEvents(extractResult.events)
 
         // Process each event through fact extraction and calendar formatting
-        setLoadingConfig([{ message: 'Formatting calendar events...' }])
-
         const formattedEvents = []
-        for (const event of extractResult.events) {
+        const totalEvents = extractResult.events.length
+
+        for (let i = 0; i < extractResult.events.length; i++) {
+          const event = extractResult.events[i]
+          const eventNum = i + 1
+
+          // Show progress for multi-event processing
+          setLoadingConfig([LOADING_MESSAGES.PROCESSING_EVENTS(eventNum, totalEvents)])
+
           // Extract facts
+          setLoadingConfig([{
+            message: `Analyzing event (${eventNum}/${totalEvents})...`,
+            icon: LOADING_MESSAGES.EXTRACTING_FACTS.icon
+          }])
+
           const factsResponse = await fetch('http://localhost:5000/api/extract-facts', {
             method: 'POST',
             headers: {
@@ -253,6 +297,11 @@ function App() {
           const facts = await factsResponse.json()
 
           // Format for calendar
+          setLoadingConfig([{
+            message: `Formatting event (${eventNum}/${totalEvents})...`,
+            icon: LOADING_MESSAGES.FORMATTING_CALENDAR.icon
+          }])
+
           const calendarResponse = await fetch('http://localhost:5000/api/format-calendar', {
             method: 'POST',
             headers: {
@@ -270,6 +319,7 @@ function App() {
         }
 
         setCalendarEvents(formattedEvents)
+        setAppState('review')
 
         // Success toast
         toast.success('Events Found!', {
@@ -282,6 +332,8 @@ function App() {
           description: 'The text doesn\'t appear to contain any calendar events.',
           duration: 4000,
         })
+        setUploadedFile(null)
+        setAppState('input')
       }
     } catch (err) {
       let errorMessage = 'An error occurred'
@@ -302,6 +354,8 @@ function App() {
       })
 
       console.error('Processing error:', err)
+      setUploadedFile(null)
+      setAppState('input')
     } finally {
       setIsProcessing(false)
     }
@@ -317,10 +371,20 @@ function App() {
     setUploadedFile(null)
     setExtractedEvents([])
     setCalendarEvents([])
+    setAppState('input')
+  }, [])
+
+  // Handler for canceling event review
+  const handleCancelReview = useCallback(() => {
+    setCalendarEvents([])
+    setExtractedEvents([])
+    setUploadedFile(null)
+    setAppState('input')
   }, [])
 
   return (
     <div className="app">
+      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       <Toaster
         position="bottom-center"
         richColors
@@ -331,32 +395,54 @@ function App() {
           },
         }}
       />
-      <div className="content">
-        <motion.div
-          className="greeting-container"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-        >
-          <img
-            src={greetingImagePaths[currentGreetingIndex]}
-            alt="Greeting"
-            className="greeting-image"
+      <div className={`content ${sidebarOpen ? 'with-sidebar' : ''}`}>
+        {/* Show greeting only in input and loading states */}
+        {(appState === 'input' || appState === 'loading') && (
+          <motion.div
+            className="greeting-container"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          >
+            <img
+              src={greetingImagePaths[currentGreetingIndex]}
+              alt="Greeting"
+              className="greeting-image"
+            />
+          </motion.div>
+        )}
+
+        {/* Show wordmark in review state */}
+        {appState === 'review' && (
+          <motion.div
+            className="greeting-container"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          >
+            <img
+              src={wordmarkImage}
+              alt="DropCal"
+              className="wordmark-image"
+            />
+          </motion.div>
+        )}
+
+        {/* Show MainInputArea only when in input or loading state */}
+        {(appState === 'input' || appState === 'loading') && (
+          <MainInputArea
+            uploadedFile={uploadedFile}
+            isProcessing={isProcessing}
+            loadingConfig={loadingConfig}
+            onFileUpload={handleFileUpload}
+            onAudioSubmit={handleAudioSubmit}
+            onTextSubmit={handleTextSubmit}
+            onClearFile={handleClearFile}
           />
-        </motion.div>
+        )}
 
-        <MainInputArea
-          uploadedFile={uploadedFile}
-          isProcessing={isProcessing}
-          loadingConfig={loadingConfig}
-          onFileUpload={handleFileUpload}
-          onAudioSubmit={handleAudioSubmit}
-          onTextSubmit={handleTextSubmit}
-          onClearFile={handleClearFile}
-        />
-
-        {/* Calendar Events Display */}
-        {calendarEvents.length > 0 && (
+        {/* Show EventConfirmation only when in review state */}
+        {appState === 'review' && calendarEvents.length > 0 && (
           <EventConfirmation
             events={calendarEvents}
             onConfirm={() => {
@@ -366,15 +452,14 @@ function App() {
                 duration: 3000,
               })
             }}
-            onCancel={() => {
-              setCalendarEvents([])
-              setExtractedEvents([])
-            }}
+            onCancel={handleCancelReview}
           />
         )}
 
-        {/* Google Calendar Authentication */}
-        <GoogleCalendarAuth onAuthChange={setIsCalendarAuthenticated} />
+        {/* Google Calendar Authentication - only show in input and loading states */}
+        {(appState === 'input' || appState === 'loading') && (
+          <GoogleCalendarAuth onAuthChange={setIsCalendarAuthenticated} />
+        )}
       </div>
     </div>
   )
