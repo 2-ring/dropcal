@@ -15,6 +15,10 @@ from calendar.service import CalendarService
 from preferences.service import PersonalizationService
 from preferences.models import UserPreferences
 
+# Database and Storage imports
+from database.models import User, Session as DBSession
+from storage.file_handler import FileStorage
+
 # Import agent modules
 from extraction.agents.context import ContextUnderstandingAgent
 from extraction.agents.identification import EventIdentificationAgent
@@ -338,6 +342,160 @@ def delete_preferences(user_id):
 
     except Exception as e:
         return jsonify({'error': f'Failed to delete preferences: {str(e)}'}), 500
+
+
+# ============================================================================
+# Database-backed Session Management Endpoints
+# ============================================================================
+
+@app.route('/api/sessions', methods=['POST'])
+def create_text_session():
+    """
+    Create a new session with text input.
+
+    Expects JSON body:
+    {
+        "text": "Meeting tomorrow at 2pm",
+        "user_id": "optional-user-id"  # For now, defaults to "temp-user-id"
+    }
+
+    Returns the created session object.
+    """
+    try:
+        data = request.json
+
+        # TODO: Get user_id from auth token (for now, use placeholder)
+        user_id = data.get('user_id', 'temp-user-id')
+        input_text = data.get('text')
+
+        if not input_text:
+            return jsonify({'error': 'No text provided'}), 400
+
+        # Create session in database
+        session = DBSession.create(
+            user_id=user_id,
+            input_type='text',
+            input_content=input_text
+        )
+
+        # TODO: Trigger AI processing pipeline (will be done in Agent 5)
+
+        return jsonify({
+            'success': True,
+            'session': session
+        }), 201
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to create session: {str(e)}'}), 500
+
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file_endpoint():
+    """
+    Upload an image or audio file and create a session.
+
+    Expects multipart/form-data with:
+    - file: The file to upload
+    - type: 'image' or 'audio'
+    - user_id: Optional user ID (defaults to "temp-user-id")
+
+    Returns the created session object with file path.
+    """
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+
+        file = request.files['file']
+        file_type = request.form.get('type', 'image')  # 'image' or 'audio'
+
+        # TODO: Get user_id from auth token
+        user_id = request.form.get('user_id', 'temp-user-id')
+
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+
+        # Validate file type
+        if not FileStorage.validate_file_type(file.content_type, file_type):
+            return jsonify({
+                'error': f'Invalid file type. Expected {file_type}, got {file.content_type}'
+            }), 400
+
+        # Upload to Supabase Storage
+        file_path = FileStorage.upload_file(
+            file=file,
+            filename=file.filename,
+            user_id=user_id,
+            file_type=file_type
+        )
+
+        # Create session in database
+        session = DBSession.create(
+            user_id=user_id,
+            input_type=file_type,
+            input_content=file_path
+        )
+
+        # TODO: Trigger AI processing pipeline (will be done in Agent 5)
+
+        return jsonify({
+            'success': True,
+            'session': session,
+            'file_path': file_path
+        }), 201
+
+    except Exception as e:
+        return jsonify({'error': f'File upload failed: {str(e)}'}), 500
+
+
+@app.route('/api/sessions/<session_id>', methods=['GET'])
+def get_session_by_id(session_id):
+    """
+    Get a session by ID.
+
+    Returns the session object if found, 404 otherwise.
+    """
+    try:
+        session = DBSession.get_by_id(session_id)
+
+        if not session:
+            return jsonify({'error': 'Session not found'}), 404
+
+        return jsonify({
+            'success': True,
+            'session': session
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to get session: {str(e)}'}), 500
+
+
+@app.route('/api/sessions', methods=['GET'])
+def get_user_sessions():
+    """
+    Get all sessions for a user.
+
+    Query parameters:
+    - user_id: User's ID (defaults to "temp-user-id")
+    - limit: Maximum number of sessions to return (default 50)
+
+    Returns list of sessions ordered by created_at desc.
+    """
+    try:
+        # TODO: Get user_id from auth token
+        user_id = request.args.get('user_id', 'temp-user-id')
+        limit = int(request.args.get('limit', 50))
+
+        sessions = DBSession.get_by_user(user_id, limit=limit)
+
+        return jsonify({
+            'success': True,
+            'count': len(sessions),
+            'sessions': sessions
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to get sessions: {str(e)}'}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

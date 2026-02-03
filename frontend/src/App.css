@@ -498,8 +498,14 @@
     height: 65px;
   }
 
-  /* Mobile view: content takes full width, no sidebar margin */
-  .content.mobile-view {
+  /* Mobile: content always takes full width (no sidebar margin) */
+  .content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Mobile: sidebar becomes an overlay when open (handled in Menu.css) */
+  .content.with-sidebar {
     margin-left: 0 !important;
     width: 100% !important;
   }

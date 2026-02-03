@@ -19,7 +19,6 @@ import {
   sessionCache,
   useSessionHistory,
 } from './sessions'
-import { useIsMobile } from './hooks/useIsMobile'
 import './App.css'
 
 // Import all greeting images dynamically
@@ -27,15 +26,12 @@ const greetingImages = import.meta.glob('./assets/greetings/*.{png,jpg,jpeg,svg}
 const greetingImagePaths = Object.values(greetingImages) as string[]
 
 type AppState = 'input' | 'loading' | 'review'
-type MobileView = 'sidebar' | 'main'
 
 function App() {
   const [currentGreetingIndex] = useState(() =>
     Math.floor(Math.random() * greetingImagePaths.length)
   )
   const [appState, setAppState] = useState<AppState>('input')
-  const isMobile = useIsMobile()
-  const [mobileView, setMobileView] = useState<MobileView>('main')
 
   // Expose sessionCache to window for debugging
   useEffect(() => {
@@ -49,16 +45,10 @@ function App() {
   const [loadingConfig, setLoadingConfig] = useState<LoadingStateConfig[]>([{ message: 'Processing...' }])
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // Handle sidebar toggle differently for mobile vs desktop
+  // Toggle sidebar open/closed (CSS handles mobile overlay vs desktop side-by-side)
   const handleSidebarToggle = useCallback(() => {
-    if (isMobile) {
-      // On mobile, switch between views
-      setMobileView(prev => prev === 'sidebar' ? 'main' : 'sidebar')
-    } else {
-      // On desktop, just toggle sidebar open/closed
-      setSidebarOpen(prev => !prev)
-    }
-  }, [isMobile])
+    setSidebarOpen(prev => !prev)
+  }, [])
   const [expectedEventCount, setExpectedEventCount] = useState<number | undefined>(undefined)
   const [feedbackMessage, setFeedbackMessage] = useState<string>('')
 
@@ -689,12 +679,10 @@ function App() {
         setAppState('input')
       }
 
-      // On mobile, switch back to main view after selecting a session
-      if (isMobile) {
-        setMobileView('main')
-      }
+      // Close sidebar on mobile after selecting a session (CSS handles mobile behavior)
+      setSidebarOpen(false)
     }
-  }, [isMobile])
+  }, [])
 
   // New session handler
   const handleNewSession = useCallback(() => {
@@ -703,20 +691,14 @@ function App() {
     setExtractedEvents([])
     setUploadedFile(null)
     setAppState('input')
-    // On mobile, switch back to main view when starting new session
-    if (isMobile) {
-      setMobileView('main')
-    }
-  }, [isMobile])
-
-  // Determine sidebar visibility based on mobile/desktop
-  const isSidebarVisible = isMobile ? mobileView === 'sidebar' : sidebarOpen
-  const isMainVisible = isMobile ? mobileView === 'main' : true
+    // Close sidebar on mobile when starting new session
+    setSidebarOpen(false)
+  }, [])
 
   return (
     <div className="app">
       <Menu
-        isOpen={isSidebarVisible}
+        isOpen={sidebarOpen}
         onToggle={handleSidebarToggle}
         sessions={sessionHistory.map(toSessionListItem)}
         currentSessionId={currentSession?.id}
@@ -733,8 +715,7 @@ function App() {
           },
         }}
       />
-      {isMainVisible && (
-        <div className={`content ${sidebarOpen ? 'with-sidebar' : ''} ${isMobile ? 'mobile-view' : ''}`}>
+      <div className={`content ${sidebarOpen ? 'with-sidebar' : ''}`}>
           <Workspace
             appState={appState}
             uploadedFile={uploadedFile}
@@ -759,7 +740,6 @@ function App() {
             onAuthChange={setIsCalendarAuthenticated}
           />
         </div>
-      )}
     </div>
   )
 }
