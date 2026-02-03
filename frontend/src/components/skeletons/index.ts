@@ -75,6 +75,10 @@ export {
   SkeletonTable,
   SkeletonGrid
 } from './SkeletonList'
+export {
+  SkeletonSessionItem,
+  SkeletonSessionGroup
+} from './SkeletonSessionItem'
 
 // Hooks
 export {

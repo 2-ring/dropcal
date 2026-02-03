@@ -226,7 +226,7 @@ export function useIncrementalLoading(
     }
 
     let currentCount = 0
-    const timers: NodeJS.Timeout[] = []
+    const timers: ReturnType<typeof setTimeout>[] = []
 
     for (let i = 0; i < totalCount; i++) {
       const timer = setTimeout(() => {

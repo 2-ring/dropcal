@@ -17,7 +17,7 @@
  * <LoadingSpinner light />
  */
 
-import { CSSProperties } from 'react'
+import type { CSSProperties } from 'react'
 import type { LoadingSpinnerProps } from './types'
 import './skeleton.css'
 
@@ -39,7 +39,6 @@ export function LoadingSpinner({
 
   // Default colors
   const defaultColor = light ? '#ffffff' : '#333333'
-  const borderColor = color || defaultColor
   const borderTopColor = color || defaultColor
   const borderOtherColor = light
     ? 'rgba(255, 255, 255, 0.3)'

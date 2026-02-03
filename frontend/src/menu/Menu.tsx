@@ -2,6 +2,7 @@ import { PlusCircle, SidebarSimple as SidebarIcon, CalendarBlank, ArrowSquareOut
 import type { SessionListItem } from '../sessions'
 import type { InputType } from '../sessions'
 import { Account } from './Account'
+import { SkeletonSessionGroup } from '../components/skeletons'
 import './Menu.css'
 import logoImage from '../assets/Logo.png'
 import wordmarkImage from '../assets/Wordmark.png'
@@ -13,6 +14,8 @@ interface MenuProps {
   currentSessionId?: string
   onSessionClick: (sessionId: string) => void
   onNewSession: () => void
+  /** Whether sessions are currently loading */
+  isLoadingSessions?: boolean
 }
 
 export function Menu({
@@ -22,6 +25,7 @@ export function Menu({
   currentSessionId,
   onSessionClick,
   onNewSession,
+  isLoadingSessions = false,
 }: MenuProps) {
   // Get icon for input type (matches input area icons)
   const getInputIcon = (inputType: InputType) => {
@@ -102,7 +106,13 @@ export function Menu({
           </button>
 
           <div className="chat-history">
-            {groupedSessions.length === 0 ? (
+            {isLoadingSessions ? (
+              // Loading state - show skeleton groups
+              <>
+                <SkeletonSessionGroup count={3} showLabel />
+                <SkeletonSessionGroup count={2} showLabel />
+              </>
+            ) : groupedSessions.length === 0 ? (
               <div className="empty-state">
                 <p>No sessions yet</p>
                 <p className="empty-state-hint">Drop files or text to get started</p>

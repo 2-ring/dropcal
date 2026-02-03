@@ -21,7 +21,7 @@
  * </SkeletonWrapper>
  */
 
-import { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { SkeletonTheme } from 'react-loading-skeleton'
 import type { SkeletonThemeConfig } from './types'
 import 'react-loading-skeleton/dist/skeleton.css'

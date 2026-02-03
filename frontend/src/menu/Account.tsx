@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { User as UserIcon } from '@phosphor-icons/react';
 import { useAuth } from '../auth/AuthContext';
 import { SettingsPopup } from './SettingsPopup';
+import { LoadingSpinnerContainer } from '../components/skeletons';
 import './Account.css';
 
 export function Account() {
@@ -17,9 +18,7 @@ export function Account() {
   if (loading) {
     return (
       <div className="account-container">
-        <div className="account-loading">
-          <div className="loading-spinner"></div>
-        </div>
+        <LoadingSpinnerContainer size="small" minHeight={44} />
       </div>
     );
   }
