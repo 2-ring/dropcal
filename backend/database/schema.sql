@@ -35,7 +35,7 @@ CREATE TABLE sessions (
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
 
   -- Input data
-  input_type VARCHAR(50) NOT NULL CHECK (input_type IN ('text', 'image', 'audio', 'email')),
+  input_type VARCHAR(50) NOT NULL CHECK (input_type IN ('text', 'image', 'audio', 'email', 'pdf')),
   input_content TEXT NOT NULL, -- Original text or file path
 
   -- Processing results (JSONB for flexibility)
