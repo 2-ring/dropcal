@@ -33,6 +33,9 @@ from extraction.models import ExtractedFacts
 # Import route blueprints
 from calendar import calendar_bp
 
+# Import auth middleware
+from auth.middleware import require_auth
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -246,14 +249,16 @@ def edit_event():
 # ============================================================================
 
 @app.route('/api/personalization/apply', methods=['POST'])
+@require_auth
 def apply_preferences_endpoint():
     """
     Agent 5: Apply user preferences to extracted facts.
 
+    Requires authentication. User ID is extracted from JWT token.
+
     Expects JSON body:
     {
-        "facts": {...},  # Extracted facts from Agent 2
-        "user_id": "default"  # Optional user ID
+        "facts": {...}  # Extracted facts from Agent 2
     }
 
     Returns enhanced facts with user preferences applied.
@@ -261,7 +266,9 @@ def apply_preferences_endpoint():
     try:
         data = request.get_json()
         facts_dict = data.get('facts')
-        user_id = data.get('user_id', 'default')
+
+        # Get user_id from auth middleware (set by @require_auth)
+        user_id = request.user_id
 
         if not facts_dict:
             return jsonify({'error': 'No facts provided'}), 400
@@ -294,14 +301,20 @@ def apply_preferences_endpoint():
         return jsonify({'error': f'Preference application failed: {str(e)}'}), 500
 
 
-@app.route('/api/personalization/preferences/<user_id>', methods=['GET'])
-def get_preferences(user_id):
+@app.route('/api/personalization/preferences', methods=['GET'])
+@require_auth
+def get_preferences():
     """
-    Get user's saved preferences.
+    Get the authenticated user's saved preferences.
+
+    Requires authentication. User ID is extracted from JWT token.
 
     Returns user preferences if they exist.
     """
     try:
+        # Get user_id from auth middleware (set by @require_auth)
+        user_id = request.user_id
+
         preferences = personalization_service.load_preferences(user_id)
 
         if not preferences:
@@ -321,12 +334,18 @@ def get_preferences(user_id):
         return jsonify({'error': f'Failed to get preferences: {str(e)}'}), 500
 
 
-@app.route('/api/personalization/preferences/<user_id>', methods=['DELETE'])
-def delete_preferences(user_id):
+@app.route('/api/personalization/preferences', methods=['DELETE'])
+@require_auth
+def delete_preferences():
     """
-    Delete user's preferences.
+    Delete the authenticated user's preferences.
+
+    Requires authentication. User ID is extracted from JWT token.
     """
     try:
+        # Get user_id from auth middleware (set by @require_auth)
+        user_id = request.user_id
+
         success = personalization_service.delete_preferences(user_id)
 
         if success:
@@ -349,14 +368,16 @@ def delete_preferences(user_id):
 # ============================================================================
 
 @app.route('/api/sessions', methods=['POST'])
+@require_auth
 def create_text_session():
     """
     Create a new session with text input.
 
+    Requires authentication. User ID is extracted from JWT token.
+
     Expects JSON body:
     {
-        "text": "Meeting tomorrow at 2pm",
-        "user_id": "optional-user-id"  # For now, defaults to "temp-user-id"
+        "text": "Meeting tomorrow at 2pm"
     }
 
     Returns the created session object.
@@ -364,8 +385,8 @@ def create_text_session():
     try:
         data = request.json
 
-        # TODO: Get user_id from auth token (for now, use placeholder)
-        user_id = data.get('user_id', 'temp-user-id')
+        # Get user_id from auth middleware (set by @require_auth)
+        user_id = request.user_id
         input_text = data.get('text')
 
         if not input_text:
@@ -390,14 +411,16 @@ def create_text_session():
 
 
 @app.route('/api/upload', methods=['POST'])
+@require_auth
 def upload_file_endpoint():
     """
     Upload an image or audio file and create a session.
 
+    Requires authentication. User ID is extracted from JWT token.
+
     Expects multipart/form-data with:
     - file: The file to upload
     - type: 'image' or 'audio'
-    - user_id: Optional user ID (defaults to "temp-user-id")
 
     Returns the created session object with file path.
     """
@@ -408,8 +431,8 @@ def upload_file_endpoint():
         file = request.files['file']
         file_type = request.form.get('type', 'image')  # 'image' or 'audio'
 
-        # TODO: Get user_id from auth token
-        user_id = request.form.get('user_id', 'temp-user-id')
+        # Get user_id from auth middleware (set by @require_auth)
+        user_id = request.user_id
 
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
@@ -448,17 +471,25 @@ def upload_file_endpoint():
 
 
 @app.route('/api/sessions/<session_id>', methods=['GET'])
+@require_auth
 def get_session_by_id(session_id):
     """
     Get a session by ID.
 
+    Requires authentication. Only returns sessions owned by the authenticated user.
+
     Returns the session object if found, 404 otherwise.
     """
     try:
+        user_id = request.user_id
         session = DBSession.get_by_id(session_id)
 
         if not session:
             return jsonify({'error': 'Session not found'}), 404
+
+        # Verify session belongs to user
+        if session.get('user_id') != user_id:
+            return jsonify({'error': 'Unauthorized'}), 403
 
         return jsonify({
             'success': True,
@@ -470,19 +501,21 @@ def get_session_by_id(session_id):
 
 
 @app.route('/api/sessions', methods=['GET'])
+@require_auth
 def get_user_sessions():
     """
-    Get all sessions for a user.
+    Get all sessions for the authenticated user.
+
+    Requires authentication. User ID is extracted from JWT token.
 
     Query parameters:
-    - user_id: User's ID (defaults to "temp-user-id")
     - limit: Maximum number of sessions to return (default 50)
 
     Returns list of sessions ordered by created_at desc.
     """
     try:
-        # TODO: Get user_id from auth token
-        user_id = request.args.get('user_id', 'temp-user-id')
+        # Get user_id from auth middleware (set by @require_auth)
+        user_id = request.user_id
         limit = int(request.args.get('limit', 50))
 
         sessions = DBSession.get_by_user(user_id, limit=limit)

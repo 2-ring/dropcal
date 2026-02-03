@@ -4,6 +4,7 @@ import type { InputType } from '../sessions'
 import './Menu.css'
 import logoImage from '../assets/Logo.png'
 import wordmarkImage from '../assets/Wordmark.png'
+import { LoginButton } from '../auth/LoginButton'
 
 interface MenuProps {
   isOpen: boolean
@@ -131,6 +132,10 @@ export function Menu({
                 </div>
               ))
             )}
+          </div>
+
+          <div className="sidebar-footer">
+            <LoginButton />
           </div>
         </div>
       </div>
