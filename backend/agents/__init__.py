@@ -1,19 +1,29 @@
 """
 DropCal Agent Pipeline - Multi-Agent Event Extraction System
+
+Organized by functionality:
+- core/: Main extraction pipeline (Agents 0-3)
+- modification: Event editing (Agent 4)
+- preferences: Personalization (Agent 5)
 """
 
-from .agent_0_context import ContextUnderstandingAgent
-from .agent_1_identification import EventIdentificationAgent
-from .agent_2_extraction import FactExtractionAgent
-from .agent_3_formatting import CalendarFormattingAgent
-from .agent_4_modification import EventModificationAgent
-from .agent_5_preferences import PreferenceApplicationAgent
+from .core import (
+    ContextUnderstandingAgent,
+    EventIdentificationAgent,
+    FactExtractionAgent,
+    CalendarFormattingAgent
+)
+from .modification import EventModificationAgent
+from .preferences import PreferenceApplicationAgent
 
 __all__ = [
+    # Core pipeline agents
     "ContextUnderstandingAgent",
     "EventIdentificationAgent",
     "FactExtractionAgent",
     "CalendarFormattingAgent",
+
+    # Specialized agents
     "EventModificationAgent",
     "PreferenceApplicationAgent",
 ]

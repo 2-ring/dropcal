@@ -1,14 +1,14 @@
 """
-Agent 3: Calendar Formatting
-Takes extracted facts and normalizes them into Google Calendar API format.
+Calendar Formatting Agent (Agent 3)
+Formats extracted facts into Google Calendar API format.
 """
 
 from datetime import datetime
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
-from .base import BaseAgent
-from models.agent_models import CalendarEvent, ExtractedFacts
+from ..base import BaseAgent
+from models.agent_models import ExtractedFacts, CalendarEvent
 from logging_utils import log_agent_execution
 
 

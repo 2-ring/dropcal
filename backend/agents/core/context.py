@@ -1,13 +1,13 @@
 """
-Agent 0: Context Understanding & Intent Analysis
-Analyzes input to understand user intent, context, and generate session title.
+Context Understanding & Intent Analysis Agent (Agent 0)
+First agent in the pipeline - understands user intent and provides guidance.
 """
 
 from typing import Dict, Any
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
-from .base import BaseAgent
+from ..base import BaseAgent
 from models.agent_models import ContextResult
 from logging_utils import log_agent_execution
 

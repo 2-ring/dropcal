@@ -1,6 +1,6 @@
 """
-Agent 4: Event Modification
-Takes an existing calendar event and applies natural language edits.
+Event Modification Agent
+Modifies existing calendar events based on natural language instructions.
 """
 
 from typing import Dict, Any

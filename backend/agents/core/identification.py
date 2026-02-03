@@ -1,13 +1,13 @@
 """
-Agent 1: Event Identification
-Identifies all calendar events and extracts relevant text for each.
+Event Identification Agent (Agent 1)
+Identifies distinct calendar events in the input.
 """
 
 from typing import Dict, Any, Optional
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
-from .base import BaseAgent
+from ..base import BaseAgent
 from models.agent_models import IdentificationResult
 from logging_utils import log_agent_execution
 

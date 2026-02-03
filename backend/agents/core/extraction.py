@@ -1,13 +1,13 @@
 """
-Agent 2: Semantic Fact Extraction
-Extracts labeled semantic facts from event text.
+Semantic Fact Extraction Agent (Agent 2)
+Extracts structured facts from identified event text.
 """
 
 from typing import List
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
-from .base import BaseAgent
+from ..base import BaseAgent
 from models.agent_models import ExtractedFacts
 from logging_utils import log_agent_execution
 
