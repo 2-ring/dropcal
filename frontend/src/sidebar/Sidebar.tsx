@@ -1,5 +1,6 @@
-import { PlusCircle, Sidebar as SidebarIcon, CalendarBlank, ArrowSquareOut } from '@phosphor-icons/react'
+import { PlusCircle, Sidebar as SidebarIcon, CalendarBlank, ArrowSquareOut, Images, Files, Pen, Microphone } from '@phosphor-icons/react'
 import type { SessionListItem } from '../types/session'
+import type { InputType } from '../types/session'
 import './Sidebar.css'
 import logoImage from '../assets/Logo.png'
 import wordmarkImage from '../assets/Wordmark.png'
@@ -21,6 +22,22 @@ export function Sidebar({
   onSessionClick,
   onNewSession,
 }: SidebarProps) {
+  // Get icon for input type (matches input area icons)
+  const getInputIcon = (inputType: InputType) => {
+    switch (inputType) {
+      case 'image':
+        return Images
+      case 'document':
+        return Files
+      case 'audio':
+        return Microphone
+      case 'text':
+        return Pen
+      default:
+        return Files
+    }
+  }
+
   // Group sessions by time period
   const groupSessionsByTime = (sessions: SessionListItem[]) => {
     const now = new Date()
@@ -94,20 +111,24 @@ export function Sidebar({
                 groupedSessions.map(([period, periodSessions]) => (
                   <div key={period} className="chat-group">
                     <div className="chat-group-label">{period}</div>
-                    {periodSessions.map((session) => (
-                      <div
-                        key={session.id}
-                        className={`chat-entry ${
-                          session.id === currentSessionId ? 'active' : ''
-                        } ${session.status === 'error' ? 'error' : ''}`}
-                        onClick={() => onSessionClick(session.id)}
-                      >
-                        <span className="chat-entry-title">{session.title}</span>
-                        {session.eventCount > 0 && (
-                          <span className="event-count-badge">{session.eventCount}</span>
-                        )}
-                      </div>
-                    ))}
+                    {periodSessions.map((session) => {
+                      const InputIcon = getInputIcon(session.inputType)
+                      return (
+                        <div
+                          key={session.id}
+                          className={`chat-entry ${
+                            session.id === currentSessionId ? 'active' : ''
+                          } ${session.status === 'error' ? 'error' : ''}`}
+                          onClick={() => onSessionClick(session.id)}
+                        >
+                          <InputIcon size={16} weight="regular" className="chat-entry-icon" />
+                          <span className="chat-entry-title">{session.title}</span>
+                          {session.eventCount > 0 && (
+                            <span className="event-count-badge">{session.eventCount}</span>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 ))
               )}

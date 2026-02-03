@@ -223,12 +223,26 @@
   gap: 0.5rem;
 }
 
+.chat-entry-icon {
+  flex-shrink: 0;
+  color: #666;
+  transition: color 0.15s ease;
+}
+
 .chat-entry:hover {
   background-color: #e8e8e8;
 }
 
+.chat-entry:hover .chat-entry-icon {
+  color: #333;
+}
+
 .chat-entry.active {
   background-color: #e8e8e8;
+}
+
+.chat-entry.active .chat-entry-icon {
+  color: #333;
 }
 
 .chat-entry.active:hover {

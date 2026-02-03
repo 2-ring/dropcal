@@ -2,7 +2,7 @@ import type { CalendarEvent, IdentifiedEvent } from './calendarEvent'
 import type { ContextResult } from './context'
 
 // Input types - captures what the user submitted
-export type InputType = 'file' | 'text' | 'audio'
+export type InputType = 'image' | 'document' | 'text' | 'audio'
 
 export interface InputMetadata {
   fileName?: string
@@ -86,4 +86,5 @@ export interface SessionListItem {
   timestamp: Date
   eventCount: number
   status: Session['status']
+  inputType: InputType // Type of data uploaded (file, text, audio)
 }

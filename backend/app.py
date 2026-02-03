@@ -37,6 +37,43 @@ calendar_service = CalendarService()
 # Initialize Personalization service
 personalization_service = PersonalizationService()
 
+def resolve_calendar_name_to_id(calendar_name: str, calendar_service: CalendarService) -> Optional[str]:
+    """
+    Resolve human-readable calendar name to Google Calendar ID.
+
+    Args:
+        calendar_name: Name like "Classes", "UAPPLY", "Default", "Primary"
+        calendar_service: CalendarService instance
+
+    Returns:
+        Calendar ID if found, None if not found (caller defaults to 'primary')
+    """
+    try:
+        # Handle special case: "Default" or "Primary" → 'primary'
+        if calendar_name.lower() in ['default', 'primary']:
+            app_logger.info(f"Calendar '{calendar_name}' resolved to 'primary'")
+            return 'primary'
+
+        # Get user's calendar list
+        calendars = calendar_service.get_calendar_list()
+
+        # Find matching calendar (case-insensitive)
+        for cal in calendars:
+            cal_name = cal.get('summary', '')
+            cal_id = cal.get('id', '')
+
+            if cal_name.lower() == calendar_name.lower():
+                app_logger.info(f"Matched calendar '{calendar_name}' to ID: {cal_id}")
+                return cal_id
+
+        # Calendar not found
+        app_logger.warning(f"Calendar '{calendar_name}' not found. Will use primary as fallback.")
+        return None
+
+    except Exception as e:
+        app_logger.error(f"Error resolving calendar name '{calendar_name}': {e}")
+        return None
+
 # Initialize input processor factory and register all processors
 input_processor_factory = InputProcessorFactory()
 
@@ -79,7 +116,7 @@ class IntentAnalysis(BaseModel):
 
 class ContextResult(BaseModel):
     """Complete context understanding output"""
-    title: str = Field(description="Smart session title that captures what this is and what the user wants. Examples: 'CS101 Spring 2026 - Assignment Deadlines', 'Tech Talk on AI Safety - Feb 15', 'Weekly Team Schedule'")
+    title: str = Field(description="Short session title (3 words max, aim for 2). Just the essential name, no dates or descriptions. Examples: 'CS101 Deadlines', 'AI Safety Talk', 'Team Schedule', 'Shabbat Dinner', 'MATH180 Exams'")
     user_context: UserContext = Field(description="User's role and context")
     intent_analysis: IntentAnalysis = Field(description="Deep analysis of user intent and goals")
 
@@ -133,6 +170,10 @@ class ExtractedFacts(BaseModel):
     notes: Optional[str] = Field(default=None, description="Additional notes or context: 'bring laptop', 'closed-book', etc.")
     people: Optional[List[str]] = Field(default=None, description="People mentioned: ['Sarah', 'John'], etc.")
     recurrence: RecurrenceInfo = Field(description="Recurrence pattern information")
+    calendar: Optional[str] = Field(
+        default=None,
+        description="Calendar name where this event should be created. Examples: 'Classes', 'Work', 'UAPPLY', 'Default'. If None, will use primary calendar. Based on learned calendar usage patterns."
+    )
 
 # Create structured output LLM for fact extraction
 fact_extraction_llm = llm.with_structured_output(ExtractedFacts)
@@ -404,9 +445,78 @@ USER SETTINGS:
 - Default event length: {user_preferences.default_event_length} minutes
 """
 
+    # Build few-shot examples dynamically from user's patterns
+    few_shot_examples = """
+EXAMPLES OF PATTERN APPLICATION (Learn from these):
+
+EXAMPLE 1 - Calendar Selection Based on Content:
+Input fact: {{"summary": "UAPPLY team meeting", "start": "2024-03-15T14:00:00"}}
+Step 1 - Identify applicable patterns:
+  ✓ Calendar usage: Events with "UAPPLY" → UAPPLY calendar
+Step 2 - Reasoning: Event title contains "UAPPLY", matches organizational pattern
+Step 3 - Apply patterns:
+Enhanced fact: {{"summary": "UAPPLY team meeting", "start": "2024-03-15T14:00:00", "calendar": "UAPPLY"}}
+
+EXAMPLE 2 - Academic Event to Primary:
+Input fact: {{"summary": "MATH 0540 office hours", "start": "2024-03-15T15:00:00"}}
+Step 1 - Identify applicable patterns:
+  ✓ Title format: Office hours use "COURSE OH" format
+  ✓ Calendar: Primary calendar used for ALL academic events
+Step 2 - Reasoning: Office hours is academic, user's primary holds all academics
+Step 3 - Apply patterns:
+Enhanced fact: {{"summary": "MATH 0540 OH", "start": "2024-03-15T15:00:00", "calendar": "Default"}}
+
+EXAMPLE 3 - No Specific Pattern:
+Input fact: {{"summary": "dentist appointment", "start": "2024-03-16T10:00:00"}}
+Step 1 - Identify applicable patterns: None match
+Step 2 - Reasoning: Personal appointment, no specialized calendar, use primary
+Step 3 - Apply patterns:
+Enhanced fact: {{"summary": "dentist appointment", "start": "2024-03-16T10:00:00", "calendar": "Default"}}
+
+EXAMPLE 4 - Multiple Patterns Applied:
+Input fact: {{"summary": "CS class", "start": "2024-03-17T09:00:00", "duration_minutes": 50}}
+Step 1 - Identify applicable patterns:
+  ✓ Title format: Class titles include course code
+  ✓ Duration: Lectures are typically 50 minutes (already correct)
+  ✓ Calendar: Academic classes go to Classes calendar
+  ✓ Color: Academic events use color ID 2
+Step 2 - Reasoning: Matches multiple academic event patterns
+Step 3 - Apply patterns:
+Enhanced fact: {{"summary": "CS 0200 Lecture", "start": "2024-03-17T09:00:00", "duration_minutes": 50, "calendar": "Classes", "colorId": "2"}}
+
+---"""
+
     preference_prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
-        ("human", f"{preferences_context}\n\nEvent facts to enhance:\n{facts}\n\nApply user preferences to these facts.")
+        ("human", f"""{preferences_context}
+
+{few_shot_examples}
+
+YOUR TASK - Apply these same techniques to the following event facts:
+
+{facts}
+
+INSTRUCTIONS:
+For EACH fact in the input, follow this exact process:
+1. Identify which patterns apply (if any) - be specific
+2. Explain your reasoning - why do these patterns match?
+3. Apply the patterns to enhance the fact - show the enhanced version
+
+IMPORTANT:
+- Only apply patterns that clearly match - don't force patterns that don't fit
+- If no patterns apply, keep the fact as-is and use default calendar
+- Preserve all original information while adding enhancements
+- Be consistent with the user's discovered patterns
+
+IMPORTANT - CALENDAR SELECTION:
+- Analyze event content (title, type, location) and match against calendar usage patterns
+- Use the calendar_name from patterns (e.g., "UAPPLY", "Classes", "Work", "Default")
+- If a pattern clearly matches with high confidence, assign that calendar
+- If no pattern matches or confidence is low, set calendar to "Default" (primary)
+- Only use high-confidence calendar patterns
+- Always include the calendar field in your response, even if it's "Default"
+
+Provide enhanced facts:""")
     ])
 
     # Run preference application
@@ -583,11 +693,12 @@ You are NOT extracting events yet - you're analyzing the macro-level task and pr
 YOUR TASK:
 Analyze the input and provide:
 
-1. **title**: A smart session title (50 chars or less) that captures:
-   - What this content is (syllabus, flyer, email, schedule, etc.)
-   - Key identifying info (course name, event name, etc.)
-   - Context about scope ("15 Deadlines", "Single Event", etc.)
-   - Examples: "CS101 Spring 2026 - Assignment Deadlines", "AI Safety Talk Flyer - Feb 15", "Weekly Team Schedule - 4 Meetings"
+1. **title**: A minimal session title (3 words MAX, aim for 2):
+   - Just the essential name/identifier - NO dates, NO descriptions, NO counts
+   - Keep it as SHORT as possible while being descriptive
+   - Examples: "CS101 Deadlines", "AI Safety Talk", "Team Schedule", "Shabbat Dinner", "MATH180 Exams"
+   - NOT: "CS101 Spring 2026 - Assignment Deadlines" (too long!)
+   - NOT: "AI Safety Talk Flyer - Feb 15" (too long!)
 
 2. **user_context**: Who is the user and what's the context?
    - role: student, professional, organizer, attendee, etc.
@@ -855,10 +966,11 @@ CRITICAL RULES:
    - "March 15" → is_recurring=false
 
 4. For title:
-   - Extract the core event name
-   - Keep it concise but descriptive
+   - Extract the core event name - aim for 2-3 words MAX
+   - Keep it SHORT and descriptive - this is a title, not a description
    - "Team meeting with Sarah" → title="Team meeting"
-   - "MATH 0180 midterm exam" → title="MATH 0180 midterm exam"
+   - "MATH 0180 midterm exam" → title="MATH 0180 Midterm"
+   - "Shabbat dinner tomorrow at 7pm" → title="Shabbat Dinner"
 
 Examples:
 
@@ -1262,6 +1374,18 @@ def create_calendar_event():
         if 'start' not in event_data or 'end' not in event_data:
             return jsonify({'error': 'Event start and end times are required'}), 400
 
+        # Extract calendar assignment if present (not part of Google API format)
+        calendar_name = event_data.pop('calendar', None)
+
+        # Resolve calendar name to calendar ID
+        calendar_id = None
+        if calendar_name:
+            calendar_id = resolve_calendar_name_to_id(calendar_name, calendar_service)
+            if calendar_id:
+                app_logger.info(f"Resolved calendar '{calendar_name}' to ID: {calendar_id}")
+            else:
+                app_logger.info(f"Calendar '{calendar_name}' not resolved, using primary")
+
         # Format attendees if provided (convert list of strings to list of dicts)
         if 'attendees' in event_data and event_data['attendees']:
             attendees_list = event_data['attendees']
@@ -1270,8 +1394,8 @@ def create_calendar_event():
                 if isinstance(attendees_list[0], str):
                     event_data['attendees'] = [{'email': email} for email in attendees_list]
 
-        # Create event in Google Calendar
-        created_event = calendar_service.create_event(event_data)
+        # Create event in Google Calendar with optional calendar_id
+        created_event = calendar_service.create_event(event_data, calendar_id=calendar_id)
 
         if created_event:
             return jsonify({
@@ -1284,7 +1408,8 @@ def create_calendar_event():
                     'end': created_event.get('end'),
                     'htmlLink': created_event.get('htmlLink'),
                     'location': created_event.get('location'),
-                    'description': created_event.get('description')
+                    'description': created_event.get('description'),
+                    'calendar': calendar_name or 'Primary'
                 }
             })
         else:
@@ -1374,6 +1499,34 @@ def list_calendar_events():
 
     except Exception as e:
         return jsonify({'error': f'Failed to list events: {str(e)}'}), 500
+
+@app.route('/api/calendar/list-calendars', methods=['GET'])
+def list_calendars():
+    """
+    List all calendars the user has access to with their colors.
+
+    Returns list of calendars with id, summary (name), backgroundColor, etc.
+    """
+    try:
+        # Check authentication status
+        if not calendar_service.is_authenticated():
+            return jsonify({
+                'error': 'Not authenticated with Google Calendar',
+                'authenticated': False,
+                'authorization_url': '/api/oauth/authorize'
+            }), 401
+
+        # Get calendar list
+        calendars = calendar_service.get_calendar_list()
+
+        return jsonify({
+            'success': True,
+            'count': len(calendars),
+            'calendars': calendars
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to list calendars: {str(e)}'}), 500
 
 # ============================================================================
 # Personalization Endpoints

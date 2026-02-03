@@ -178,7 +178,7 @@ class CalendarService:
                 return False
         return False
 
-    def create_event(self, event_data: Dict) -> Optional[Dict]:
+    def create_event(self, event_data: Dict, calendar_id: Optional[str] = None) -> Optional[Dict]:
         """
         Create a new event in the user's Google Calendar.
 
@@ -193,6 +193,8 @@ class CalendarService:
                     'recurrence': ['RRULE:FREQ=WEEKLY;BYDAY=MO'],
                     'attendees': [{'email': 'person@example.com'}]
                 }
+            calendar_id: Optional calendar ID. If None, uses 'primary'.
+                        Can be 'primary' or actual calendar ID from get_calendar_list()
 
         Returns:
             Created event data from Google Calendar API, or None if failed
@@ -202,20 +204,24 @@ class CalendarService:
             if not self.refresh_credentials():
                 raise Exception("Not authenticated. Please authorize first.")
 
+        # Default to primary if not specified
+        if calendar_id is None:
+            calendar_id = 'primary'
+
         try:
             # Build Calendar API service
             service = build('calendar', 'v3', credentials=self.credentials)
 
-            # Create event
+            # Create event on specified calendar
             event = service.events().insert(
-                calendarId='primary',
+                calendarId=calendar_id,
                 body=event_data
             ).execute()
 
             return event
 
         except HttpError as error:
-            print(f"An error occurred: {error}")
+            print(f"An error occurred creating event on calendar {calendar_id}: {error}")
             return None
 
     def list_events(self, max_results: int = 10, time_min: Optional[str] = None, page_token: Optional[str] = None, return_full_response: bool = False, calendar_id: str = 'primary') -> Dict:

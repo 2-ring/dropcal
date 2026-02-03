@@ -11,6 +11,7 @@ export interface CalendarEvent {
   description?: string
   recurrence?: string[]
   attendees?: string[]
+  calendar?: string
 }
 
 export interface IdentifiedEvent {

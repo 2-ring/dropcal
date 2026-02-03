@@ -21,6 +21,7 @@ import {
   toSessionListItem,
   sessionCache,
 } from './utils/sessionManager'
+import { useSessionHistory } from './hooks/useSessionHistory'
 import './App.css'
 
 // Import all greeting images dynamically
@@ -51,12 +52,9 @@ function App() {
 
   // Session management state
   const [currentSession, setCurrentSession] = useState<Session | null>(null)
-  const [sessionHistory, setSessionHistory] = useState<Session[]>([])
 
-  // Sync session history from cache
-  useEffect(() => {
-    setSessionHistory(sessionCache.getAll())
-  }, [currentSession])
+  // Auto-sync session history using observer pattern
+  const sessionHistory = useSessionHistory()
 
   const processFile = useCallback(async (file: File) => {
     // Prevent duplicate processing

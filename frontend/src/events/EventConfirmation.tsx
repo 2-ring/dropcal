@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Equals as EqualsIcon, PencilSimple as EditIcon, PaperPlaneRight as SendIcon, X as XIcon, CheckFat as CheckIcon, ChatCircleDots as ChatIcon } from '@phosphor-icons/react'
+import { Equals as EqualsIcon, PencilSimple as EditIcon, PaperPlaneRight as SendIcon, X as XIcon, CheckFat as CheckIcon, ChatCircleDots as ChatIcon, Calendar as CalendarIcon } from '@phosphor-icons/react'
 import Skeleton from 'react-loading-skeleton'
 import 'react-loading-skeleton/dist/skeleton.css'
 import { toast } from 'sonner'
@@ -8,6 +8,14 @@ import type { CalendarEvent } from '../types/calendarEvent'
 import type { LoadingStateConfig } from '../types/loadingState'
 import wordmarkImage from '../assets/Wordmark.png'
 import './EventConfirmation.css'
+
+interface GoogleCalendar {
+  id: string
+  summary: string
+  backgroundColor: string
+  foregroundColor?: string
+  primary?: boolean
+}
 
 interface EventConfirmationProps {
   events: (CalendarEvent | null)[]
@@ -23,7 +31,24 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
   const [editingField, setEditingField] = useState<{ eventIndex: number; field: 'summary' | 'date' | 'description' } | null>(null)
   const [editedEvents, setEditedEvents] = useState<(CalendarEvent | null)[]>(events)
   const [isProcessingEdit, setIsProcessingEdit] = useState(false)
+  const [calendars, setCalendars] = useState<GoogleCalendar[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Fetch calendar list on mount
+  useEffect(() => {
+    const fetchCalendars = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/calendar/list-calendars')
+        if (response.ok) {
+          const data = await response.json()
+          setCalendars(data.calendars || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch calendars:', error)
+      }
+    }
+    fetchCalendars()
+  }, [])
 
   // Sync editedEvents with events prop
   useEffect(() => {
@@ -212,6 +237,34 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
     return parts.join('. ')
   }
 
+  const getCalendarColor = (calendarName: string | undefined): string => {
+    if (!calendarName || calendarName === 'Primary' || calendarName === 'Default') {
+      // Default color for primary calendar (Google Calendar blue)
+      return '#1170C5'
+    }
+
+    // Find matching calendar by name (case-insensitive)
+    const calendar = calendars.find(cal =>
+      cal.summary.toLowerCase() === calendarName.toLowerCase()
+    )
+
+    return calendar?.backgroundColor || '#1170C5'
+  }
+
+  const getTextColor = (backgroundColor: string): string => {
+    // Convert hex to RGB
+    const hex = backgroundColor.replace('#', '')
+    const r = parseInt(hex.substr(0, 2), 16)
+    const g = parseInt(hex.substr(2, 2), 16)
+    const b = parseInt(hex.substr(4, 2), 16)
+
+    // Calculate brightness using the luminance formula
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000
+
+    // Return black for light backgrounds, white for dark backgrounds
+    return brightness > 155 ? '#000000' : '#FFFFFF'
+  }
+
   return (
     <motion.div
       className="event-confirmation"
@@ -328,6 +381,20 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
                         </div>
                       </div>
                     </div>
+                    {editedEvent.calendar && (
+                      <div className="event-confirmation-card-row">
+                        <div
+                          className="event-calendar-badge"
+                          style={{
+                            backgroundColor: getCalendarColor(editedEvent.calendar),
+                            color: getTextColor(getCalendarColor(editedEvent.calendar))
+                          }}
+                        >
+                          <CalendarIcon size={14} weight="fill" />
+                          <span>{editedEvent.calendar}</span>
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 )
               } else {
@@ -430,6 +497,20 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
                     </div>
                   </div>
                 </div>
+                {event.calendar && (
+                  <div className="event-confirmation-card-row">
+                    <div
+                      className="event-calendar-badge"
+                      style={{
+                        backgroundColor: getCalendarColor(event.calendar),
+                        color: getTextColor(getCalendarColor(event.calendar))
+                      }}
+                    >
+                      <CalendarIcon size={14} weight="fill" />
+                      <span>{event.calendar}</span>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             ))
           )}

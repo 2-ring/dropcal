@@ -195,6 +195,23 @@
   margin-top: 0.125rem;
 }
 
+/* Calendar Badge */
+.event-calendar-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: 0.25rem;
+}
+
+.event-calendar-badge svg {
+  flex-shrink: 0;
+}
+
 .edit-icon:hover {
   opacity: 1;
   color: #7C8FFF;
