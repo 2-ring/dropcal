@@ -17,6 +17,11 @@ frontend/.vite/
 frontend/dist-ssr/
 *.local
 
+# Root level npm artifacts (from accidental installs)
+/node_modules/
+/package.json
+/package-lock.json
+
 # IDE
 .vscode/
 .idea/
