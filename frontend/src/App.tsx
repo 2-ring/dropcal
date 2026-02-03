@@ -3,10 +3,10 @@ import { Toaster, toast } from 'sonner'
 import { validateFile } from './workspace/input/validation'
 import { Workspace } from './workspace/Workspace'
 import { Menu } from './menu/Menu'
-import type { CalendarEvent } from './types/calendarEvent'
-import type { LoadingStateConfig } from './types/loadingState'
-import { LOADING_MESSAGES } from './types/loadingState'
-import type { Session } from './types/session'
+import type { CalendarEvent } from './workspace/events/types'
+import type { LoadingStateConfig } from './workspace/events/types'
+import { LOADING_MESSAGES } from './workspace/events/types'
+import type { Session } from './sessions'
 import {
   createSession,
   addAgentOutput,
@@ -17,7 +17,7 @@ import {
   completeSession,
   toSessionListItem,
   sessionCache,
-} from './menu/sessionManager'
+} from './sessions'
 import { useSessionHistory } from './hooks/useSessionHistory'
 import { useIsMobile } from './hooks/useIsMobile'
 import './App.css'

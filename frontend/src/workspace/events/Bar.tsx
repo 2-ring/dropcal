@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { X as XIcon, CheckFat as CheckIcon, ChatCircleDots as ChatIcon, PaperPlaneRight as SendIcon } from '@phosphor-icons/react'
 import Skeleton from 'react-loading-skeleton'
-import type { LoadingStateConfig } from '../../types/loadingState'
+import type { LoadingStateConfig } from './types'
 
 // ============================================================================
 // TOP BAR

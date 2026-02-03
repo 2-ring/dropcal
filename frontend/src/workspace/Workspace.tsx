@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion'
 import { InputWorkspace } from './input'
 import { EventsWorkspace } from './events/EventsWorkspace'
-import { GoogleCalendarAuth } from './shared/GoogleCalendarAuth'
-import type { CalendarEvent } from '../types/calendarEvent'
-import type { LoadingStateConfig } from '../types/loadingState'
+import { GoogleCalendar as GoogleCalendarAuth } from '../auth'
+import type { CalendarEvent } from './events/types'
+import type { LoadingStateConfig } from './events/types'
 
 type AppState = 'input' | 'loading' | 'review'
 

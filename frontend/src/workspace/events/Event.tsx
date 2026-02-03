@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { Equals as EqualsIcon, PencilSimple as EditIcon, Calendar as CalendarIcon } from '@phosphor-icons/react'
 import Skeleton from 'react-loading-skeleton'
-import type { CalendarEvent } from '../../types/calendarEvent'
+import type { CalendarEvent } from './types'
 
 interface EventProps {
   event: CalendarEvent | null
