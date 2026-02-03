@@ -22,6 +22,7 @@ import {
   sessionCache,
 } from './utils/sessionManager'
 import { useSessionHistory } from './hooks/useSessionHistory'
+import { useIsMobile } from './hooks/useIsMobile'
 import './App.css'
 
 // Import all greeting images dynamically
@@ -29,12 +30,15 @@ const greetingImages = import.meta.glob('./assets/greetings/*.{png,jpg,jpeg,svg}
 const greetingImagePaths = Object.values(greetingImages) as string[]
 
 type AppState = 'input' | 'loading' | 'review'
+type MobileView = 'sidebar' | 'main'
 
 function App() {
   const [currentGreetingIndex] = useState(() =>
     Math.floor(Math.random() * greetingImagePaths.length)
   )
   const [appState, setAppState] = useState<AppState>('input')
+  const isMobile = useIsMobile()
+  const [mobileView, setMobileView] = useState<MobileView>('main')
 
   // Expose sessionCache to window for debugging
   useEffect(() => {
@@ -47,6 +51,17 @@ function App() {
   const [_isCalendarAuthenticated, setIsCalendarAuthenticated] = useState(false)
   const [loadingConfig, setLoadingConfig] = useState<LoadingStateConfig[]>([{ message: 'Processing...' }])
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Handle sidebar toggle differently for mobile vs desktop
+  const handleSidebarToggle = useCallback(() => {
+    if (isMobile) {
+      // On mobile, switch between views
+      setMobileView(prev => prev === 'sidebar' ? 'main' : 'sidebar')
+    } else {
+      // On desktop, just toggle sidebar open/closed
+      setSidebarOpen(prev => !prev)
+    }
+  }, [isMobile])
   const [expectedEventCount, setExpectedEventCount] = useState<number | undefined>(undefined)
   const [feedbackMessage, setFeedbackMessage] = useState<string>('')
 
@@ -676,8 +691,13 @@ function App() {
       } else {
         setAppState('input')
       }
+
+      // On mobile, switch back to main view after selecting a session
+      if (isMobile) {
+        setMobileView('main')
+      }
     }
-  }, [])
+  }, [isMobile])
 
   // New session handler
   const handleNewSession = useCallback(() => {
@@ -686,13 +706,21 @@ function App() {
     setExtractedEvents([])
     setUploadedFile(null)
     setAppState('input')
-  }, [])
+    // On mobile, switch back to main view when starting new session
+    if (isMobile) {
+      setMobileView('main')
+    }
+  }, [isMobile])
+
+  // Determine sidebar visibility based on mobile/desktop
+  const isSidebarVisible = isMobile ? mobileView === 'sidebar' : sidebarOpen
+  const isMainVisible = isMobile ? mobileView === 'main' : true
 
   return (
     <div className="app">
       <Sidebar
-        isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        isOpen={isSidebarVisible}
+        onToggle={handleSidebarToggle}
         sessions={sessionHistory.map(toSessionListItem)}
         currentSessionId={currentSession?.id}
         onSessionClick={handleSessionClick}
@@ -708,7 +736,8 @@ function App() {
           },
         }}
       />
-      <div className={`content ${sidebarOpen ? 'with-sidebar' : ''}`}>
+      {isMainVisible && (
+      <div className={`content ${sidebarOpen ? 'with-sidebar' : ''} ${isMobile ? 'mobile-view' : ''}`}>
         {/* Show greeting only in input state */}
         {appState === 'input' && (
           <motion.div
@@ -762,6 +791,7 @@ function App() {
           <GoogleCalendarAuth onAuthChange={setIsCalendarAuthenticated} />
         )}
       </div>
+      )}
     </div>
   )
 }

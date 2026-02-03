@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
-from models.user_preferences import (
+from preferences.models import (
     UserPreferences,
     TitleFormattingPatterns,
     DescriptionFormattingPatterns,

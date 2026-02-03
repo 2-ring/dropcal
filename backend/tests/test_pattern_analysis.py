@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 
-from services.calendar_service import CalendarService
+from calendar.service import CalendarService
 from services.data_collection_service import DataCollectionService
 from services.pattern_analysis_service import PatternAnalysisService
 from services.personalization_service import PersonalizationService

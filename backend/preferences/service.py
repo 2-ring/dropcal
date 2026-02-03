@@ -7,7 +7,7 @@ import os
 import json
 from typing import Optional
 from datetime import datetime
-from models.user_preferences import UserPreferences
+from preferences.models import UserPreferences
 from utils.logging_utils import app_logger
 
 

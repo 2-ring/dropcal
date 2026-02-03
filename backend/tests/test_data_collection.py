@@ -7,7 +7,7 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from services.calendar_service import CalendarService
+from calendar.service import CalendarService
 from services.data_collection_service import DataCollectionService
 import json
 

@@ -496,4 +496,10 @@
   .wordmark {
     height: 65px;
   }
+
+  /* Mobile view: content takes full width, no sidebar margin */
+  .content.mobile-view {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
 }

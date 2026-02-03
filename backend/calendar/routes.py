@@ -6,7 +6,7 @@ Handles OAuth, event creation, conflict checking, and calendar operations.
 from flask import Blueprint, jsonify, request, redirect
 from typing import Optional
 
-from services.calendar_service import CalendarService
+from calendar.service import CalendarService
 from utils.logging_utils import app_logger
 
 # Create blueprint

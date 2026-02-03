@@ -11,7 +11,7 @@ from backend.processors.audio import AudioProcessor
 from backend.processors.image import ImageProcessor
 from backend.processors.text import TextFileProcessor
 from backend.processors.pdf import PDFProcessor
-from services.calendar_service import CalendarService
+from calendar.service import CalendarService
 from utils.logging_utils import app_logger
 from services.personalization_service import PersonalizationService
 from models.user_preferences import UserPreferences
@@ -30,7 +30,7 @@ from agents import (
 from models import ExtractedFacts
 
 # Import route blueprints
-from routes import calendar_bp
+from calendar import calendar_bp
 
 load_dotenv()
 

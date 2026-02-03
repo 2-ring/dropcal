@@ -323,7 +323,8 @@
 @media (max-width: 768px) {
   .sidebar.open {
     width: 100%;
-    max-width: 280px;
+    max-width: 100%;
+    z-index: 2000;
   }
 
   .floating-logo {
