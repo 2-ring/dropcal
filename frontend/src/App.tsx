@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Toaster, toast } from 'sonner'
-import { validateFile } from './workspace/input/Validation'
+import { validateFile } from './workspace/input/validation'
 import { Workspace } from './workspace/Workspace'
 import { Menu } from './menu/Menu'
 import type { CalendarEvent } from './types/calendarEvent'

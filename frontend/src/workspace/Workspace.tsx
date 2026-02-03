@@ -72,7 +72,6 @@ export function Workspace({
         <InputWorkspace
           uploadedFile={uploadedFile}
           isProcessing={isProcessing}
-          loadingConfig={loadingConfig}
           feedbackMessage={feedbackMessage}
           onFileUpload={onFileUpload}
           onAudioSubmit={onAudioSubmit}

@@ -1,16 +1,13 @@
 import { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { ButtonMenu } from './content/buttons/ButtonMenu'
+import { ButtonMenu } from './content/ButtonMenu'
 import { Audio } from './content/Audio'
 import { Text } from './content/Text'
 import { Feedback } from './content/Feedback'
-import { LoadingState } from '../shared/LoadingState'
-import type { LoadingStateConfig, LoadingPhase } from '../../types/loadingState'
 
 interface DropAreaProps {
   uploadedFile: File | null
   isProcessing: boolean
-  loadingConfig?: LoadingStateConfig | LoadingPhase[]
   feedbackMessage?: string
   onFileUpload: (file: File) => void
   onAudioSubmit: (audioBlob: Blob) => void
@@ -22,7 +19,6 @@ interface DropAreaProps {
 export function DropArea({
   uploadedFile,
   isProcessing,
-  loadingConfig,
   feedbackMessage,
   onFileUpload,
   onAudioSubmit,
@@ -178,11 +174,6 @@ export function DropArea({
         <Feedback
           message={feedbackMessage}
           onClose={() => onClearFeedback?.()}
-        />
-      ) : isProcessing ? (
-        <LoadingState
-          config={loadingConfig || { message: 'Processing...' }}
-          isLoading={isProcessing}
         />
       ) : uploadedFile ? (
         <div className="file-info">
