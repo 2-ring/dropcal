@@ -12,8 +12,8 @@ from langchain_anthropic import ChatAnthropic
 
 from calendar.service import CalendarService
 from services.data_collection_service import DataCollectionService
-from services.pattern_analysis_service import PatternAnalysisService
-from services.personalization_service import PersonalizationService
+from preferences.analysis import PatternAnalysisService
+from preferences.service import PersonalizationService
 
 load_dotenv()
 

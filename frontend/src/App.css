@@ -17,8 +17,9 @@
   gap: 0;
   flex: 1;
   overflow-y: auto;
-  transition: all 0.3s ease;
+  transition: margin-left 0.3s ease, width 0.3s ease;
   margin-left: 0;
+  will-change: margin-left, width;
 }
 
 .content.with-sidebar {

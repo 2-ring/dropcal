@@ -7,7 +7,7 @@ from typing import List
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
-from ..base import BaseAgent
+from utils.base_agent import BaseAgent
 from models.agent_models import ExtractedFacts
 from utils.logging_utils import log_agent_execution
 

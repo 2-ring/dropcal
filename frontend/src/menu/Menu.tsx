@@ -85,64 +85,62 @@ export function Sidebar({
           </button>
         </div>
 
-        {isOpen && (
-          <>
-            <button className="new-chat-button" onClick={onNewSession}>
-              <PlusCircle size={16} weight="bold" />
-              <span>New events</span>
-            </button>
+        <div className="sidebar-content">
+          <button className="new-chat-button" onClick={onNewSession}>
+            <PlusCircle size={16} weight="bold" />
+            <span>New events</span>
+          </button>
 
-            <button
-              className="view-calendar-button"
-              onClick={() => window.open('https://calendar.google.com', '_blank')?.focus()}
-            >
-              <CalendarBlank size={16} weight="bold" />
-              <span>View calendar</span>
-              <ArrowSquareOut size={14} weight="regular" />
-            </button>
+          <button
+            className="view-calendar-button"
+            onClick={() => window.open('https://calendar.google.com', '_blank')?.focus()}
+          >
+            <CalendarBlank size={16} weight="bold" />
+            <span>View calendar</span>
+            <ArrowSquareOut size={14} weight="regular" />
+          </button>
 
-            <div className="chat-history">
-              {groupedSessions.length === 0 ? (
-                <div className="empty-state">
-                  <p>No sessions yet</p>
-                  <p className="empty-state-hint">Drop files or text to get started</p>
+          <div className="chat-history">
+            {groupedSessions.length === 0 ? (
+              <div className="empty-state">
+                <p>No sessions yet</p>
+                <p className="empty-state-hint">Drop files or text to get started</p>
+              </div>
+            ) : (
+              groupedSessions.map(([period, periodSessions]) => (
+                <div key={period} className="chat-group">
+                  <div className="chat-group-label">{period}</div>
+                  {periodSessions.map((session) => {
+                    const InputIcon = getInputIcon(session.inputType)
+                    return (
+                      <div
+                        key={session.id}
+                        className={`chat-entry ${
+                          session.id === currentSessionId ? 'active' : ''
+                        } ${session.status === 'error' ? 'error' : ''}`}
+                        onClick={() => onSessionClick(session.id)}
+                      >
+                        <InputIcon size={16} weight="regular" className="chat-entry-icon" />
+                        <span className="chat-entry-title">{session.title}</span>
+                        {session.eventCount > 0 && (
+                          <span className="event-count-badge">{session.eventCount}</span>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
-              ) : (
-                groupedSessions.map(([period, periodSessions]) => (
-                  <div key={period} className="chat-group">
-                    <div className="chat-group-label">{period}</div>
-                    {periodSessions.map((session) => {
-                      const InputIcon = getInputIcon(session.inputType)
-                      return (
-                        <div
-                          key={session.id}
-                          className={`chat-entry ${
-                            session.id === currentSessionId ? 'active' : ''
-                          } ${session.status === 'error' ? 'error' : ''}`}
-                          onClick={() => onSessionClick(session.id)}
-                        >
-                          <InputIcon size={16} weight="regular" className="chat-entry-icon" />
-                          <span className="chat-entry-title">{session.title}</span>
-                          {session.eventCount > 0 && (
-                            <span className="event-count-badge">{session.eventCount}</span>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))
-              )}
-            </div>
-          </>
-        )}
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Logo and dock when sidebar is closed */}
-      {!isOpen && (
-        <>
-          <button className="floating-logo" onClick={onToggle} title="DropCal">
-            <img src={logoImage} alt="DropCal" className="floating-logo-icon" />
-          </button>
+      {/* Logo and dock */}
+      <>
+        <button className="floating-logo" onClick={onToggle} title="DropCal">
+          <img src={logoImage} alt="DropCal" className="floating-logo-icon" />
+        </button>
+        {!isOpen && (
           <div className="sidebar-dock">
             <button className="dock-icon-button" onClick={onToggle} title="Expand sidebar">
               <SidebarIcon size={20} weight="regular" />
@@ -151,8 +149,8 @@ export function Sidebar({
               <PlusCircle size={20} weight="regular" />
             </button>
           </div>
-        </>
-      )}
+        )}
+      </>
     </>
   )
 }

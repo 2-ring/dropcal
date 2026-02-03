@@ -6,9 +6,9 @@ Applies user's learned preferences to extracted facts.
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
-from .base import BaseAgent
+from utils.base_agent import BaseAgent
 from models.agent_models import ExtractedFacts
-from models.user_preferences import UserPreferences
+from preferences.models import UserPreferences
 from utils.logging_utils import log_agent_execution, app_logger
 
 

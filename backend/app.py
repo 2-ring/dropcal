@@ -13,18 +13,16 @@ from backend.processors.text import TextFileProcessor
 from backend.processors.pdf import PDFProcessor
 from calendar.service import CalendarService
 from utils.logging_utils import app_logger
-from services.personalization_service import PersonalizationService
-from models.user_preferences import UserPreferences
+from preferences.service import PersonalizationService
+from preferences.models import UserPreferences
 
 # Import agent modules
-from agents import (
-    ContextUnderstandingAgent,
-    EventIdentificationAgent,
-    FactExtractionAgent,
-    CalendarFormattingAgent,
-    EventModificationAgent,
-    PreferenceApplicationAgent
-)
+from extraction.agents.context import ContextUnderstandingAgent
+from extraction.agents.identification import EventIdentificationAgent
+from extraction.agents.facts import FactExtractionAgent
+from extraction.agents.formatting import CalendarFormattingAgent
+from modification.agent import EventModificationAgent
+from preferences.agent import PreferenceApplicationAgent
 
 # Import models
 from models import ExtractedFacts
