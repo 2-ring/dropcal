@@ -182,6 +182,93 @@ export async function healthCheck(): Promise<{ status: string; message: string }
 }
 
 // ============================================================================
+// Authentication & User Profile
+// ============================================================================
+
+/**
+ * Sync user profile from Supabase Auth to backend.
+ * Creates account if first time, updates auth_providers if returning user.
+ * Should be called immediately after successful sign-in.
+ */
+export async function syncUserProfile(): Promise<{
+  success: boolean;
+  user: {
+    id: string;
+    email: string;
+    display_name: string | null;
+    photo_url: string | null;
+    auth_providers: any[];
+    calendar_connections: any[];
+  };
+  is_new_user: boolean;
+  provider: string;
+  message: string;
+}> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_URL}/api/auth/sync-profile`, {
+    method: 'POST',
+    headers,
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Get the current user's profile.
+ */
+export async function getUserProfile(): Promise<{
+  success: boolean;
+  user: {
+    id: string;
+    email: string;
+    display_name: string | null;
+    photo_url: string | null;
+    auth_providers: any[];
+    calendar_connections: any[];
+    preferences: any;
+    created_at: string;
+    updated_at: string;
+  };
+}> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_URL}/api/auth/profile`, {
+    method: 'GET',
+    headers,
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Update the current user's profile.
+ */
+export async function updateUserProfile(updates: {
+  display_name?: string;
+  photo_url?: string;
+}): Promise<{
+  success: boolean;
+  user: {
+    id: string;
+    email: string;
+    display_name: string | null;
+    photo_url: string | null;
+  };
+  message: string;
+}> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_URL}/api/auth/profile`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(updates),
+  });
+
+  return handleResponse(response);
+}
+
+// ============================================================================
 // Google Calendar Integration
 // ============================================================================
 

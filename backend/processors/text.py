@@ -7,10 +7,7 @@ import os
 from pathlib import Path
 from typing import Set
 
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from processors.factory import BaseInputProcessor, ProcessingResult, InputType
+from .factory import BaseInputProcessor, ProcessingResult, InputType
 
 
 class TextFileProcessor(BaseInputProcessor):

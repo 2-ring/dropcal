@@ -137,6 +137,180 @@ class User:
         response = supabase.table("users").update(data).eq("id", user_id).execute()
         return response.data[0]
 
+    @staticmethod
+    def create_or_update_from_provider(
+        user_id: str,
+        provider: str,
+        provider_id: str,
+        email: str,
+        display_name: Optional[str] = None,
+        photo_url: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Create or update user from auth provider (e.g., Google sign-in).
+        Adds provider to auth_providers array if not already present.
+
+        Args:
+            user_id: Supabase auth user ID
+            provider: Provider name (e.g., 'google', 'github')
+            provider_id: Provider's user ID
+            email: User's email from provider
+            display_name: User's display name (optional)
+            photo_url: URL to user's profile photo (optional)
+
+        Returns:
+            Dict containing the created/updated user data
+        """
+        supabase = get_supabase()
+
+        # Check if user exists
+        existing_user = User.get_by_id(user_id)
+
+        provider_data = {
+            "provider": provider,
+            "provider_id": provider_id,
+            "email": email,
+            "linked_at": datetime.utcnow().isoformat()
+        }
+
+        if existing_user:
+            # User exists - add provider if not already present
+            auth_providers = existing_user.get('auth_providers', [])
+
+            # Check if provider already exists
+            provider_exists = any(
+                p.get('provider') == provider and p.get('provider_id') == provider_id
+                for p in auth_providers
+            )
+
+            if not provider_exists:
+                auth_providers.append(provider_data)
+                supabase.table("users").update({
+                    "auth_providers": auth_providers
+                }).eq("id", user_id).execute()
+
+            return existing_user
+        else:
+            # Create new user
+            data = {
+                "id": user_id,  # Use Supabase auth ID as primary key
+                "email": email,
+                "display_name": display_name,
+                "photo_url": photo_url,
+                "auth_providers": [provider_data]
+            }
+            response = supabase.table("users").insert(data).execute()
+            return response.data[0]
+
+    @staticmethod
+    def add_calendar_connection(
+        user_id: str,
+        provider: str,
+        connection_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Add a calendar connection to user's calendar_connections array.
+
+        Args:
+            user_id: User's UUID
+            provider: Calendar provider name (e.g., 'google_calendar', 'outlook')
+            connection_data: Dict with provider-specific data (calendar_id, etc.)
+
+        Returns:
+            Dict containing updated user data
+        """
+        supabase = get_supabase()
+
+        user = User.get_by_id(user_id)
+        if not user:
+            raise ValueError(f"User {user_id} not found")
+
+        calendar_connections = user.get('calendar_connections', [])
+
+        # Add timestamp
+        connection_entry = {
+            "provider": provider,
+            **connection_data,
+            "linked_at": datetime.utcnow().isoformat()
+        }
+
+        # Check if connection already exists (update if so)
+        existing_idx = None
+        for idx, conn in enumerate(calendar_connections):
+            if conn.get('provider') == provider:
+                existing_idx = idx
+                break
+
+        if existing_idx is not None:
+            calendar_connections[existing_idx] = connection_entry
+        else:
+            calendar_connections.append(connection_entry)
+
+        response = supabase.table("users").update({
+            "calendar_connections": calendar_connections
+        }).eq("id", user_id).execute()
+
+        return response.data[0]
+
+    @staticmethod
+    def get_calendar_connection(
+        user_id: str,
+        provider: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get a specific calendar connection for a user.
+
+        Args:
+            user_id: User's UUID
+            provider: Calendar provider name (e.g., 'google_calendar')
+
+        Returns:
+            Calendar connection dict if found, None otherwise
+        """
+        user = User.get_by_id(user_id)
+        if not user:
+            return None
+
+        calendar_connections = user.get('calendar_connections', [])
+        for conn in calendar_connections:
+            if conn.get('provider') == provider:
+                return conn
+
+        return None
+
+    @staticmethod
+    def remove_calendar_connection(
+        user_id: str,
+        provider: str
+    ) -> Dict[str, Any]:
+        """
+        Remove a calendar connection from user's calendar_connections array.
+
+        Args:
+            user_id: User's UUID
+            provider: Calendar provider name to remove
+
+        Returns:
+            Dict containing updated user data
+        """
+        supabase = get_supabase()
+
+        user = User.get_by_id(user_id)
+        if not user:
+            raise ValueError(f"User {user_id} not found")
+
+        calendar_connections = user.get('calendar_connections', [])
+        calendar_connections = [
+            conn for conn in calendar_connections
+            if conn.get('provider') != provider
+        ]
+
+        response = supabase.table("users").update({
+            "calendar_connections": calendar_connections
+        }).eq("id", user_id).execute()
+
+        return response.data[0]
+
 
 class Session:
     """Session model for database operations."""

@@ -4,15 +4,11 @@ Converts audio files to text using OpenAI Whisper API
 """
 
 import os
-import sys
 from pathlib import Path
 from typing import Set, Optional
 from openai import OpenAI
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from processors.factory import BaseInputProcessor, ProcessingResult, InputType
+from .factory import BaseInputProcessor, ProcessingResult, InputType
 
 
 class AudioProcessor(BaseInputProcessor):

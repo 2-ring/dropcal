@@ -8,10 +8,10 @@ from werkzeug.utils import secure_filename
 from typing import Optional
 
 from processors.factory import InputProcessorFactory, InputType
-from backend.processors.audio import AudioProcessor
-from backend.processors.image import ImageProcessor
-from backend.processors.text import TextFileProcessor
-from backend.processors.pdf import PDFProcessor
+from processors.audio import AudioProcessor
+from processors.image import ImageProcessor
+from processors.text import TextFileProcessor
+from processors.pdf import PDFProcessor
 from calendar.service import CalendarService
 from preferences.service import PersonalizationService
 from preferences.models import UserPreferences
@@ -33,6 +33,7 @@ from extraction.models import ExtractedFacts
 
 # Import route blueprints
 from calendar import calendar_bp
+from auth.routes import auth_bp
 
 # Import auth middleware
 from auth.middleware import require_auth
@@ -46,6 +47,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Register blueprints
+app.register_blueprint(auth_bp)
 app.register_blueprint(calendar_bp)
 
 # Configure upload folder
