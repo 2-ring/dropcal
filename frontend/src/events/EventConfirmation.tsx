@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import type { CalendarEvent } from '../types/calendarEvent'
 import type { LoadingStateConfig } from '../types/loadingState'
 import wordmarkImage from '../assets/Wordmark.png'
+import './EventConfirmation.css'
 
 interface GoogleCalendar {
   id: string
@@ -266,20 +267,20 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
 
   return (
     <motion.div
-      className="w-full max-w-[800px] mx-auto flex flex-col h-full relative"
+      className="event-confirmation"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
     >
       {/* Fixed Header */}
-      <div className="flex items-center justify-between h-12 px-5 bg-white/98 backdrop-blur-[20px] text-[#333] text-sm font-medium tracking-[0.01em] fixed top-4 left-1/2 -translate-x-1/2 w-full max-w-[800px] z-30 shadow-[0_2px_12px_rgba(0,0,0,0.08),0_4px_24px_rgba(0,0,0,0.06)] border border-black/10 rounded-[32px] transition-all duration-300 ease-[ease] overflow-hidden">
-        <div className="flex items-center gap-2 flex-1">
+      <div className="event-confirmation-header">
+        <div className="header-left">
           <span>Google Calendar</span>
         </div>
-        <div className="flex items-center justify-center flex-1">
-          <img src={wordmarkImage} alt="DropCal" className="h-14 w-auto object-contain transition-opacity duration-300 ease-[ease]" />
+        <div className="header-center">
+          <img src={wordmarkImage} alt="DropCal" className="header-wordmark" />
         </div>
-        <div className="flex items-center justify-end flex-1 text-sm text-[#666]">
+        <div className="header-right">
           {isLoading && expectedEventCount === undefined ? (
             <Skeleton width={80} height={20} />
           ) : (
@@ -289,8 +290,8 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden pt-16 pb-56 scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="flex flex-col gap-4 px-4">
+      <div className="event-confirmation-content">
+        <div className="event-confirmation-list">
           {isLoading ? (
             // Streaming state - show skeleton for null events, actual cards for completed events
             Array.from({ length: expectedEventCount || 3 }).map((_, index) => {
@@ -302,94 +303,94 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
                 return (
                   <motion.div
                     key={`event-${index}`}
-                    className="p-6 transition-all duration-200 ease-[ease] flex flex-col gap-2 bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.08),0_4px_16px_rgba(0,0,0,0.04)] border border-black/[0.06] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1),0_8px_24px_rgba(0,0,0,0.06)] hover:-translate-y-0.5"
+                    className="event-confirmation-card"
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.4, ease: "easeOut" }}
                   >
-                    <div className="flex items-start relative flex-1 min-w-0">
-                      <div className="inline-flex items-center gap-2 py-1 px-2 -my-1 -mx-2 rounded-md transition-colors duration-200 ease-[ease] flex-1 min-w-0 cursor-pointer hover:bg-[rgba(124,143,255,0.06)] [&:hover_.edit-icon]:opacity-100 [&:hover_.edit-icon]:text-[#7C8FFF]" onClick={(e) => handleEditClick(index, 'summary', e)}>
+                    <div className="event-confirmation-card-row">
+                      <div className="editable-content-wrapper" onClick={(e) => handleEditClick(index, 'summary', e)}>
                         {editingField?.eventIndex === index && editingField?.field === 'summary' ? (
                           <input
                             ref={inputRef}
                             type="text"
-                            className="flex-1 border-none outline-none bg-transparent p-0 m-0 font-inherit caret-[#7C8FFF] min-w-0 text-lg font-semibold text-[#1a1a1a] leading-[1.4]"
+                            className="event-confirmation-card-title editable-input"
                             value={editedEvent.summary}
                             onChange={(e) => handleEditChange(index, 'summary', e.target.value)}
                             onBlur={handleEditBlur}
                             onKeyDown={handleEditKeyDown}
                           />
                         ) : (
-                          <div className="text-lg font-semibold text-[#1a1a1a] leading-[1.4] flex-1 min-w-0">
+                          <div className="event-confirmation-card-title">
                             {editedEvent.summary}
                           </div>
                         )}
                         <EditIcon
                           size={16}
                           weight="regular"
-                          className="edit-icon flex-shrink-0 text-[#999] cursor-pointer opacity-0 transition-[opacity,color] duration-200 ease-[ease] mt-0.5 hover:opacity-100 hover:text-[#7C8FFF]"
+                          className="edit-icon"
                         />
                       </div>
                     </div>
-                    <div className="flex items-start relative flex-1 min-w-0">
-                      <div className="inline-flex items-center gap-2 py-1 px-2 -my-1 -mx-2 rounded-md transition-colors duration-200 ease-[ease] flex-1 min-w-0 cursor-pointer hover:bg-[rgba(124,143,255,0.06)] [&:hover_.edit-icon]:opacity-100 [&:hover_.edit-icon]:text-[#7C8FFF]" onClick={(e) => handleEditClick(index, 'date', e)}>
+                    <div className="event-confirmation-card-row">
+                      <div className="editable-content-wrapper" onClick={(e) => handleEditClick(index, 'date', e)}>
                         {editingField?.eventIndex === index && editingField?.field === 'date' ? (
                           <input
                             ref={inputRef}
                             type="text"
-                            className="flex-1 border-none outline-none bg-transparent p-0 m-0 font-inherit caret-[#7C8FFF] min-w-0 text-sm text-[#666] font-normal"
+                            className="event-confirmation-card-date editable-input"
                             value={formatDate(editedEvent.start.dateTime, editedEvent.end.dateTime)}
                             onChange={(e) => handleEditChange(index, 'date', e.target.value)}
                             onBlur={handleEditBlur}
                             onKeyDown={handleEditKeyDown}
                           />
                         ) : (
-                          <div className="text-sm text-[#666] font-normal flex-1 min-w-0">
+                          <div className="event-confirmation-card-date">
                             {formatDate(editedEvent.start.dateTime, editedEvent.end.dateTime)}
                           </div>
                         )}
                         <EditIcon
                           size={14}
                           weight="regular"
-                          className="edit-icon flex-shrink-0 text-[#999] cursor-pointer opacity-0 transition-[opacity,color] duration-200 ease-[ease] mt-0.5 hover:opacity-100 hover:text-[#7C8FFF]"
+                          className="edit-icon"
                         />
                       </div>
                     </div>
-                    <div className="flex items-start relative flex-1 min-w-0">
-                      <div className="flex items-start gap-3 text-[0.9375rem] text-[#333] leading-[1.6] flex-1 min-w-0">
-                        <EqualsIcon size={16} weight="bold" className="flex-shrink-0 mt-0.5 text-[#999]" />
-                        <div className="inline-flex items-center gap-2 py-1 px-2 -my-1 -ml-2 rounded-md transition-colors duration-200 ease-[ease] flex-1 min-w-0 cursor-pointer hover:bg-[rgba(124,143,255,0.06)] [&:hover_.edit-icon]:opacity-100 [&:hover_.edit-icon]:text-[#7C8FFF]" onClick={(e) => handleEditClick(index, 'description', e)}>
+                    <div className="event-confirmation-card-row">
+                      <div className="event-confirmation-card-description">
+                        <EqualsIcon size={16} weight="bold" className="description-icon" />
+                        <div className="editable-content-wrapper" onClick={(e) => handleEditClick(index, 'description', e)}>
                           {editingField?.eventIndex === index && editingField?.field === 'description' ? (
                             <input
                               ref={inputRef}
                               type="text"
-                              className="flex-1 border-none outline-none bg-transparent p-0 m-0 font-inherit caret-[#7C8FFF] min-w-0 text-[0.9375rem] text-[#333] leading-[1.6]"
+                              className="editable-input description-input"
                               value={buildDescription(editedEvent)}
                               onChange={(e) => handleEditChange(index, 'description', e.target.value)}
                               onBlur={handleEditBlur}
                               onKeyDown={handleEditKeyDown}
                             />
                           ) : (
-                            <span className="flex-1 min-w-0">{buildDescription(editedEvent)}</span>
+                            <span>{buildDescription(editedEvent)}</span>
                           )}
                           <EditIcon
                             size={14}
                             weight="regular"
-                            className="edit-icon flex-shrink-0 text-[#999] cursor-pointer opacity-0 transition-[opacity,color] duration-200 ease-[ease] mt-0.5 hover:opacity-100 hover:text-[#7C8FFF]"
+                            className="edit-icon"
                           />
                         </div>
                       </div>
                     </div>
                     {editedEvent.calendar && (
-                      <div className="flex items-start relative flex-1 min-w-0">
+                      <div className="event-confirmation-card-row">
                         <div
-                          className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-[0.8125rem] font-medium shadow-[0_2px_4px_rgba(0,0,0,0.1)] mt-1"
+                          className="event-calendar-badge"
                           style={{
                             backgroundColor: getCalendarColor(editedEvent.calendar),
                             color: getTextColor(getCalendarColor(editedEvent.calendar))
                           }}
                         >
-                          <CalendarIcon size={14} weight="fill" className="flex-shrink-0" />
+                          <CalendarIcon size={14} weight="fill" />
                           <span>{editedEvent.calendar}</span>
                         </div>
                       </div>
@@ -401,7 +402,7 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
                 return (
                   <motion.div
                     key={`skeleton-${index}`}
-                    className="p-6 transition-all duration-200 ease-[ease] flex flex-col gap-2 bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.08),0_4px_16px_rgba(0,0,0,0.04)] border border-black/[0.06] pointer-events-none hover:shadow-[0_2px_8px_rgba(0,0,0,0.08),0_4px_16px_rgba(0,0,0,0.04)] hover:transform-none"
+                    className="event-confirmation-card skeleton-card"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
@@ -418,94 +419,94 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
             editedEvents.filter((event): event is CalendarEvent => event !== null).map((event, index) => (
               <motion.div
                 key={index}
-                className="p-6 transition-all duration-200 ease-[ease] flex flex-col gap-2 bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.08),0_4px_16px_rgba(0,0,0,0.04)] border border-black/6 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1),0_8px_24px_rgba(0,0,0,0.06)] hover:-translate-y-0.5"
+                className="event-confirmation-card"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
               >
-                <div className="flex items-start relative flex-1 min-w-0">
-                  <div className="inline-flex items-center gap-2 py-1 px-2 -my-1 -mx-2 rounded-md transition-colors duration-200 ease-[ease] flex-1 min-w-0 cursor-pointer hover:bg-[rgba(124,143,255,0.06)] [&:hover_.edit-icon]:opacity-100 [&:hover_.edit-icon]:text-[#7C8FFF]" onClick={(e) => handleEditClick(index, 'summary', e)}>
+                <div className="event-confirmation-card-row">
+                  <div className="editable-content-wrapper" onClick={(e) => handleEditClick(index, 'summary', e)}>
                     {editingField?.eventIndex === index && editingField?.field === 'summary' ? (
                       <input
                         ref={inputRef}
                         type="text"
-                        className="flex-1 border-none outline-none bg-transparent p-0 m-0 font-inherit caret-[#7C8FFF] min-w-0 text-lg font-semibold text-[#1a1a1a] leading-[1.4]"
+                        className="event-confirmation-card-title editable-input"
                         value={event.summary}
                         onChange={(e) => handleEditChange(index, 'summary', e.target.value)}
                         onBlur={handleEditBlur}
                         onKeyDown={handleEditKeyDown}
                       />
                     ) : (
-                      <div className="text-lg font-semibold text-[#1a1a1a] leading-[1.4] flex-1 min-w-0">
+                      <div className="event-confirmation-card-title">
                         {event.summary}
                       </div>
                     )}
                     <EditIcon
                       size={16}
                       weight="regular"
-                      className="edit-icon shrink-0 text-[#999] cursor-pointer opacity-0 transition-[opacity,color] duration-200 ease-[ease] mt-0.5 hover:opacity-100 hover:text-[#7C8FFF]"
+                      className="edit-icon"
                     />
                   </div>
                 </div>
-                <div className="flex items-start relative flex-1 min-w-0">
-                  <div className="inline-flex items-center gap-2 py-1 px-2 -my-1 -mx-2 rounded-md transition-colors duration-200 ease-[ease] flex-1 min-w-0 cursor-pointer hover:bg-[rgba(124,143,255,0.06)] [&:hover_.edit-icon]:opacity-100 [&:hover_.edit-icon]:text-[#7C8FFF]" onClick={(e) => handleEditClick(index, 'date', e)}>
+                <div className="event-confirmation-card-row">
+                  <div className="editable-content-wrapper" onClick={(e) => handleEditClick(index, 'date', e)}>
                     {editingField?.eventIndex === index && editingField?.field === 'date' ? (
                       <input
                         ref={inputRef}
                         type="text"
-                        className="flex-1 border-none outline-none bg-transparent p-0 m-0 font-inherit caret-[#7C8FFF] min-w-0 text-sm text-[#666] font-normal"
+                        className="event-confirmation-card-date editable-input"
                         value={formatDate(event.start.dateTime, event.end.dateTime)}
                         onChange={(e) => handleEditChange(index, 'date', e.target.value)}
                         onBlur={handleEditBlur}
                         onKeyDown={handleEditKeyDown}
                       />
                     ) : (
-                      <div className="text-sm text-[#666] font-normal flex-1 min-w-0">
+                      <div className="event-confirmation-card-date">
                         {formatDate(event.start.dateTime, event.end.dateTime)}
                       </div>
                     )}
                     <EditIcon
                       size={14}
                       weight="regular"
-                      className="edit-icon shrink-0 text-[#999] cursor-pointer opacity-0 transition-[opacity,color] duration-200 ease-[ease] mt-0.5 hover:opacity-100 hover:text-[#7C8FFF]"
+                      className="edit-icon"
                     />
                   </div>
                 </div>
-                <div className="flex items-start relative flex-1 min-w-0">
-                  <div className="flex items-start gap-3 text-[0.9375rem] text-[#333] leading-[1.6] flex-1 min-w-0">
-                    <EqualsIcon size={16} weight="bold" className="shrink-0 mt-0.5 text-[#999]" />
-                    <div className="inline-flex items-center gap-2 py-1 px-2 -my-1 -ml-2 rounded-md transition-colors duration-200 ease-[ease] flex-1 min-w-0 cursor-pointer hover:bg-[rgba(124,143,255,0.06)] [&:hover_.edit-icon]:opacity-100 [&:hover_.edit-icon]:text-[#7C8FFF]" onClick={(e) => handleEditClick(index, 'description', e)}>
+                <div className="event-confirmation-card-row">
+                  <div className="event-confirmation-card-description">
+                    <EqualsIcon size={16} weight="bold" className="description-icon" />
+                    <div className="editable-content-wrapper" onClick={(e) => handleEditClick(index, 'description', e)}>
                       {editingField?.eventIndex === index && editingField?.field === 'description' ? (
                         <input
                           ref={inputRef}
                           type="text"
-                          className="flex-1 border-none outline-none bg-transparent p-0 m-0 font-inherit caret-[#7C8FFF] min-w-0 text-[0.9375rem] text-[#333] leading-[1.6]"
+                          className="editable-input description-input"
                           value={buildDescription(event)}
                           onChange={(e) => handleEditChange(index, 'description', e.target.value)}
                           onBlur={handleEditBlur}
                           onKeyDown={handleEditKeyDown}
                         />
                       ) : (
-                        <span className="flex-1 min-w-0">{buildDescription(event)}</span>
+                        <span>{buildDescription(event)}</span>
                       )}
                       <EditIcon
                         size={14}
                         weight="regular"
-                        className="edit-icon shrink-0 text-[#999] cursor-pointer opacity-0 transition-[opacity,color] duration-200 ease-[ease] mt-0.5 hover:opacity-100 hover:text-[#7C8FFF]"
+                        className="edit-icon"
                       />
                     </div>
                   </div>
                 </div>
                 {event.calendar && (
-                  <div className="flex items-start relative flex-1 min-w-0">
+                  <div className="event-confirmation-card-row">
                     <div
-                      className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-[0.8125rem] font-medium shadow-[0_2px_4px_rgba(0,0,0,0.1)] mt-1"
+                      className="event-calendar-badge"
                       style={{
                         backgroundColor: getCalendarColor(event.calendar),
                         color: getTextColor(getCalendarColor(event.calendar))
                       }}
                     >
-                      <CalendarIcon size={14} weight="fill" className="shrink-0" />
+                      <CalendarIcon size={14} weight="fill" />
                       <span>{event.calendar}</span>
                     </div>
                   </div>
@@ -517,35 +518,35 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
       </div>
 
       {/* Fixed Footer with gradient overlay */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[800px] z-25 pointer-events-none transition-[left] duration-300 ease-[ease] before:content-[''] before:absolute before:bottom-0 before:left-0 before:right-0 before:h-[250px] before:bg-gradient-to-b before:from-white/0 before:via-white/50 before:to-white before:pointer-events-none">
-        <div className="relative px-4 pb-8 pointer-events-auto">
+      <div className="event-confirmation-footer-overlay">
+        <div className="event-confirmation-footer">
           {isLoading ? (
             /* Progress indicators during loading */
-            <div className="flex flex-col gap-3 w-full px-2">
-              <div className="flex flex-col gap-2">
+            <div className="loading-progress-container">
+              <div className="loading-progress-steps">
                 {loadingConfig.map((config, index) => {
                   const IconComponent = config.icon
                   return (
                     <motion.div
                       key={index}
-                      className="grid grid-cols-[auto_1fr_auto] items-center gap-3 py-3 px-4 bg-white/98 backdrop-blur-[20px] rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.08),0_4px_16px_rgba(0,0,0,0.04)] border border-black/6"
+                      className="loading-progress-step"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: index * 0.1 }}
                     >
                       {IconComponent && (
-                        <div className="flex items-center justify-center w-9 h-9 bg-[#7C8FFF] rounded-full shrink-0 text-white animate-[pulse_2s_ease-in-out_infinite]">
+                        <div className="loading-progress-icon">
                           <IconComponent size={20} weight="bold" />
                         </div>
                       )}
-                      <div className="flex flex-col gap-1 min-w-0">
-                        <div className="text-[0.9375rem] font-medium text-[#1a1a1a] italic">{config.message}</div>
+                      <div className="loading-progress-text">
+                        <div className="loading-progress-message" style={{ fontStyle: 'italic' }}>{config.message}</div>
                         {config.submessage && (
-                          <div className="text-[0.8125rem] text-[#666]">{config.submessage}</div>
+                          <div className="loading-progress-submessage">{config.submessage}</div>
                         )}
                       </div>
                       {config.count && (
-                        <div className="text-sm font-semibold text-[#7C8FFF] whitespace-nowrap">{config.count}</div>
+                        <div className="loading-progress-count">{config.count}</div>
                       )}
                     </motion.div>
                   )
@@ -554,12 +555,12 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
             </div>
           ) : (
             /* Single row with cancel, chat input, and confirm buttons */
-            <div className="flex items-center gap-3 overflow-hidden">
+            <div className="event-confirmation-footer-row">
               <AnimatePresence mode="wait">
                 {isChatExpanded ? (
                   <motion.div
                     key="chat-expanded"
-                    className="flex items-center gap-3 flex-1"
+                    className="event-confirmation-footer-content"
                     initial={{
                       y: 20,
                       scale: 0.95,
@@ -581,17 +582,17 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
                     }}
                   >
                     <button
-                      className="flex items-center justify-center w-12 h-12 p-0 border-none rounded-full cursor-pointer transition-all duration-200 ease-[ease] shrink-0 bg-white/90 text-[#666] border border-black/10 hover:bg-[#f5f5f5] hover:text-[#333] hover:border-black/15 hover:-translate-y-px active:translate-y-0"
+                      className="event-confirmation-icon-button cancel"
                       onClick={() => setIsChatExpanded(false)}
                       title="Close"
                     >
                       <XIcon size={20} weight="bold" />
                     </button>
 
-                    <div className="flex items-center gap-2 flex-1 h-12 px-3 pr-3 pl-5 bg-white/98 backdrop-blur-[20px] rounded-[32px] shadow-[0_2px_12px_rgba(0,0,0,0.08),0_4px_24px_rgba(0,0,0,0.06)] border border-black/10">
+                    <div className="event-confirmation-chat">
                       <input
                         type="text"
-                        className="flex-1 py-3 px-2 text-base font-inherit text-[#333] bg-transparent border-none outline-none transition-all duration-200 ease-[ease] placeholder:text-[#aaa] focus:outline-none"
+                        className="event-confirmation-chat-input"
                         placeholder="Request changes..."
                         value={changeRequest}
                         onChange={(e) => setChangeRequest(e.target.value)}
@@ -599,17 +600,17 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
                         autoFocus
                       />
                       <button
-                        className="flex items-center justify-center w-9 h-9 p-0 bg-[#1170C5] border-none rounded-full cursor-pointer transition-all duration-200 ease-[ease] shrink-0 hover:bg-[#0D5A9E] hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(17,112,197,0.3)] active:translate-y-0 disabled:bg-[#ddd] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="event-confirmation-chat-send"
                         onClick={handleSendRequest}
                         disabled={!changeRequest.trim() || isProcessingEdit}
                       >
-                        <SendIcon size={20} weight="fill" className="text-white" />
+                        <SendIcon size={20} weight="fill" />
                       </button>
                     </div>
 
                     {onConfirm && (
                       <button
-                        className="flex items-center justify-center w-12 h-12 p-0 border-none rounded-full cursor-pointer transition-all duration-200 ease-[ease] shrink-0 bg-[#1170C5] text-white shadow-[0_2px_8px_rgba(17,112,197,0.25)] hover:bg-[#0e5a9d] hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(17,112,197,0.3)] active:translate-y-0 active:shadow-[0_2px_8px_rgba(17,112,197,0.25)]"
+                        className="event-confirmation-icon-button confirm"
                         onClick={onConfirm}
                         title="Add to Calendar"
                       >
@@ -620,7 +621,7 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
                 ) : (
                   <motion.div
                     key="chat-collapsed"
-                    className="flex items-center gap-3 flex-1"
+                    className="event-confirmation-footer-content"
                     initial={{
                       y: 20,
                       scale: 0.95,
@@ -642,7 +643,7 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
                     }}
                   >
                     <button
-                      className="flex items-center justify-center gap-2 h-12 px-5 flex-1 bg-white/98 backdrop-blur-[20px] rounded-[32px] shadow-[0_2px_12px_rgba(0,0,0,0.08),0_4px_24px_rgba(0,0,0,0.06)] border border-black/10 text-[#666] text-[0.9375rem] font-medium font-inherit cursor-pointer transition-all duration-200 ease-[ease] hover:bg-[#f5f5f5] hover:text-[#333] hover:border-black/15 hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,0,0,0.1),0_6px_28px_rgba(0,0,0,0.08)] active:translate-y-0"
+                      className="event-confirmation-request-button"
                       onClick={() => setIsChatExpanded(true)}
                     >
                       <ChatIcon size={18} weight="bold" />
@@ -651,7 +652,7 @@ export function EventConfirmation({ events, onConfirm, isLoading = false, loadin
 
                     {onConfirm && (
                       <button
-                        className="flex items-center justify-center w-12 h-12 p-0 border-none rounded-full cursor-pointer transition-all duration-200 ease-[ease] shrink-0 bg-[#1170C5] text-white shadow-[0_2px_8px_rgba(17,112,197,0.25)] hover:bg-[#0e5a9d] hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(17,112,197,0.3)] active:translate-y-0 active:shadow-[0_2px_8px_rgba(17,112,197,0.25)]"
+                        className="event-confirmation-icon-button confirm"
                         onClick={onConfirm}
                         title="Add to Calendar"
                       >

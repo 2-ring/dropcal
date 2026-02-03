@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Icon } from '@phosphor-icons/react'
 import type { LoadingStateConfig, LoadingPhase } from '../types/loadingState'
+import './LoadingState.css'
 
 interface LoadingStateProps {
   /** Single message or array of phased messages */
@@ -67,14 +68,14 @@ export function LoadingState({ config, isLoading }: LoadingStateProps) {
   if (!isLoading) return null
 
   return (
-    <div className="flex items-center justify-center w-full h-full min-h-[180px] pointer-events-none [perspective:1000px]">
-      <div className="flex flex-col items-center justify-center gap-4 p-8 max-w-[80%]">
+    <div className="loading-state-container">
+      <div className="loading-state-content">
         {/* Main message with flip animation */}
-        <div className="relative min-h-[2.5rem] flex items-center justify-center [transform-style:preserve-3d]">
+        <div className="loading-message-wrapper">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentMessage}
-              className="text-xl font-medium italic text-[var(--primary-color)] text-center tracking-[-0.02em] leading-[1.3] [transform-style:preserve-3d] [backface-visibility:hidden] [text-shadow:0_2px_4px_rgba(0,0,0,0.05)] flex items-center justify-center gap-3 md:text-xl"
+              className="loading-message"
               initial={{
                 rotateX: 90,
                 opacity: 0,
@@ -97,7 +98,7 @@ export function LoadingState({ config, isLoading }: LoadingStateProps) {
             >
               {currentIcon && (
                 <motion.span
-                  className="flex items-center justify-center text-[var(--primary-color)] flex-shrink-0"
+                  className="loading-message-icon"
                   initial={{ scale: 0, rotate: -180 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ duration: 0.4, ease: "easeOut" }}
@@ -108,18 +109,18 @@ export function LoadingState({ config, isLoading }: LoadingStateProps) {
                   })()}
                 </motion.span>
               )}
-              <span className="inline-block">{currentMessage}</span>
+              <span className="loading-message-text">{currentMessage}</span>
             </motion.div>
           </AnimatePresence>
         </div>
 
         {/* Submessage with fade animation */}
         {currentSubmessage && (
-          <div className="relative min-h-[1.5rem] flex items-center justify-center">
+          <div className="loading-submessage-wrapper">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentSubmessage}
-                className="text-base font-normal text-[#666] text-center leading-[1.4] md:text-[0.9rem]"
+                className="loading-submessage"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -133,11 +134,11 @@ export function LoadingState({ config, isLoading }: LoadingStateProps) {
 
         {/* Progress indicator for phased loading */}
         {Array.isArray(config) && config.length > 1 && (
-          <div className="flex gap-2 mt-2 w-50 md:w-37.5">
+          <div className="loading-progress">
             {config.map((_, index) => (
               <motion.div
                 key={index}
-                className="flex-1 h-0.75 rounded-sm origin-left"
+                className="progress-bar"
                 initial={{ scaleX: 0 }}
                 animate={{
                   scaleX: index <= currentPhaseIndex ? 1 : 0,

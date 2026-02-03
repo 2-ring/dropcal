@@ -158,13 +158,7 @@ export function MainInputArea({
 
   return (
     <motion.div
-      className={`relative w-full max-w-175 min-h-45 -mt-24 rounded-4xl bg-[rgba(17,112,197,0.05)] flex items-center justify-center cursor-pointer transition-all duration-300 hover:bg-[rgba(17,112,197,0.1)] ${isDragging ? 'bg-[rgba(17,112,197,0.2)] scale-[1.02]' : ''} ${isProcessing ? '' : ''}`}
-      style={{
-        backgroundImage: isDragging
-          ? "url(\"data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='32' ry='32' stroke='%231170C5FF' stroke-width='9' stroke-dasharray='28 22' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e\")"
-          : "url(\"data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='32' ry='32' stroke='%231170C5FF' stroke-width='9' stroke-dasharray='28 22' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e\")",
-        pointerEvents: isProcessing ? 'none' : 'auto'
-      }}
+      className={`drop-area ${isDragging ? 'dragging' : ''} ${isProcessing ? 'processing' : ''}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
@@ -173,6 +167,7 @@ export function MainInputArea({
       onDragOver={!isProcessing ? handleDragOver : undefined}
       onDrop={!isProcessing ? handleDrop : undefined}
       onClick={!isProcessing ? handleDropAreaClick : undefined}
+      style={{ pointerEvents: isProcessing ? 'none' : 'auto' }}
     >
       {isRecording ? (
         <AudioInput
@@ -196,25 +191,25 @@ export function MainInputArea({
           isLoading={isProcessing}
         />
       ) : uploadedFile ? (
-        <div className="flex flex-col items-center gap-4 pointer-events-auto">
-          <p className="text-xl font-medium text-[var(--primary-color)] m-0 break-all text-center">{uploadedFile.name}</p>
-          <p className="text-sm text-[#666] m-0">
+        <div className="file-info">
+          <p className="file-name">{uploadedFile.name}</p>
+          <p className="file-size">
             {(uploadedFile.size / 1024).toFixed(2)} KB
           </p>
           <button
-            className="px-8 py-3 text-base font-medium text-white bg-[var(--primary-color)] border-none rounded-lg cursor-pointer transition-all duration-200 hover:bg-[rgba(17,112,197,0.85)] hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(17,112,197,0.3)] active:translate-y-0"
+            className="clear-button"
             onClick={onClearFile}
           >
             Clear
           </button>
         </div>
       ) : (
-        <div className="flex items-center justify-center gap-6 pointer-events-none">
+        <div className="icon-row">
           <AnimatePresence>
             {!isDragging && (
               <motion.div
                 key="image-button"
-                className="flex items-center justify-center rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.1)] text-[#5f6368] w-12 h-12 pointer-events-auto cursor-pointer transition-[transform,box-shadow,color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:shadow-[0_8px_20px_rgba(17,112,197,0.25)] hover:text-[var(--primary-color)] active:shadow-[0_4px_10px_rgba(17,112,197,0.2)]"
+                className="icon-circle small clickable"
                 initial={{ opacity: 0, x: 20, scale: 0.8 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: 20, scale: 0.8 }}
@@ -230,7 +225,7 @@ export function MainInputArea({
             {!isDragging && (
               <motion.div
                 key="document-button"
-                className="flex items-center justify-center rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.1)] text-[#5f6368] w-12 h-12 pointer-events-auto cursor-pointer transition-[transform,box-shadow,color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:shadow-[0_8px_20px_rgba(17,112,197,0.25)] hover:text-[var(--primary-color)] active:shadow-[0_4px_10px_rgba(17,112,197,0.2)]"
+                className="icon-circle small clickable"
                 initial={{ opacity: 0, x: 10, scale: 0.8 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: 10, scale: 0.8 }}
@@ -243,7 +238,7 @@ export function MainInputArea({
             )}
           </AnimatePresence>
           <motion.div
-            className="flex items-center justify-center rounded-full bg-[var(--primary-color)] shadow-[0_4px_12px_rgba(17,112,197,0.3)] text-white w-16 h-16"
+            className="icon-circle center"
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
@@ -258,7 +253,7 @@ export function MainInputArea({
             {!isDragging && (
               <motion.div
                 key="audio-button"
-                className="flex items-center justify-center rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.1)] text-[#5f6368] w-12 h-12 pointer-events-auto cursor-pointer transition-[transform,box-shadow,color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:shadow-[0_8px_20px_rgba(17,112,197,0.25)] hover:text-[var(--primary-color)] active:shadow-[0_4px_10px_rgba(17,112,197,0.2)]"
+                className="icon-circle small clickable"
                 initial={{ opacity: 0, x: -10, scale: 0.8 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: -10, scale: 0.8 }}
@@ -274,7 +269,7 @@ export function MainInputArea({
             {!isDragging && (
               <motion.div
                 key="text-button"
-                className="flex items-center justify-center rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.1)] text-[#5f6368] w-12 h-12 pointer-events-auto cursor-pointer transition-[transform,box-shadow,color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:shadow-[0_8px_20px_rgba(17,112,197,0.25)] hover:text-[var(--primary-color)] active:shadow-[0_4px_10px_rgba(17,112,197,0.2)]"
+                className="icon-circle small clickable"
                 initial={{ opacity: 0, x: -20, scale: 0.8 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: -20, scale: 0.8 }}

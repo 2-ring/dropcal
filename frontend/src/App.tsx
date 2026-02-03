@@ -22,6 +22,7 @@ import {
   sessionCache,
 } from './utils/sessionManager'
 import { useSessionHistory } from './hooks/useSessionHistory'
+import './App.css'
 
 // Import all greeting images dynamically
 const greetingImages = import.meta.glob('./assets/greetings/*.{png,jpg,jpeg,svg}', { eager: true, as: 'url' })
@@ -688,7 +689,7 @@ function App() {
   }, [])
 
   return (
-    <div className="h-screen flex flex-col bg-[var(--white)] overflow-hidden relative">
+    <div className="app">
       <Sidebar
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -707,11 +708,11 @@ function App() {
           },
         }}
       />
-      <div className={`w-full py-16 px-4 flex flex-col items-center justify-start gap-0 flex-1 overflow-y-auto transition-all duration-300 ease-in-out ${sidebarOpen ? 'ml-70 w-[calc(100%-280px)]' : 'ml-0'}`}>
+      <div className={`content ${sidebarOpen ? 'with-sidebar' : ''}`}>
         {/* Show greeting only in input state */}
         {appState === 'input' && (
           <motion.div
-            className="flex justify-center items-center animate-[fadeIn_0.5s_ease-in] mb-6"
+            className="greeting-container"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
@@ -719,7 +720,7 @@ function App() {
             <img
               src={greetingImagePaths[currentGreetingIndex]}
               alt="Greeting"
-              className="max-w-[525px] w-full h-auto object-contain md:max-w-[82%]"
+              className="greeting-image"
             />
           </motion.div>
         )}
