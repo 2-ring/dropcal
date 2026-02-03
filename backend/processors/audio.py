@@ -12,8 +12,7 @@ from openai import OpenAI
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.input_processor import BaseInputProcessor, ProcessingResult, InputType
-from utils.logging_utils import log_processor_execution
+from processors.factory import BaseInputProcessor, ProcessingResult, InputType
 
 
 class AudioProcessor(BaseInputProcessor):
@@ -42,7 +41,6 @@ class AudioProcessor(BaseInputProcessor):
         file_ext = Path(file_path).suffix.lower()
         return file_ext in self.SUPPORTED_FORMATS
 
-    @log_processor_execution("AudioProcessor")
     def process(self, file_path: str, **kwargs) -> ProcessingResult:
         """
         Transcribe audio file to text using Whisper API.

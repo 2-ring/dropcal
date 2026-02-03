@@ -6,13 +6,12 @@ import os
 from werkzeug.utils import secure_filename
 from typing import Optional
 
-from utils.input_processor import InputProcessorFactory, InputType
+from processors.factory import InputProcessorFactory, InputType
 from backend.processors.audio import AudioProcessor
 from backend.processors.image import ImageProcessor
 from backend.processors.text import TextFileProcessor
 from backend.processors.pdf import PDFProcessor
 from calendar.service import CalendarService
-from utils.logging_utils import app_logger
 from preferences.service import PersonalizationService
 from preferences.models import UserPreferences
 
@@ -25,7 +24,7 @@ from modification.agent import EventModificationAgent
 from preferences.agent import PreferenceApplicationAgent
 
 # Import models
-from models import ExtractedFacts
+from extraction.models import ExtractedFacts
 
 # Import route blueprints
 from calendar import calendar_bp
@@ -200,7 +199,6 @@ def process_input():
         })
 
     except Exception as e:
-        app_logger.error(f"Event extraction pipeline failed: {str(e)}")
         return jsonify({'error': f'Event extraction failed: {str(e)}'}), 500
 
 
@@ -236,7 +234,6 @@ def edit_event():
         })
 
     except Exception as e:
-        app_logger.error(f"Event modification endpoint failed: {str(e)}")
         return jsonify({'error': f'Event modification failed: {str(e)}'}), 500
 
 
@@ -270,7 +267,6 @@ def apply_preferences_endpoint():
 
         if not preferences:
             # No preferences, return facts unchanged
-            app_logger.info(f"No preferences for user {user_id}, returning facts unchanged")
             return jsonify({
                 'enhanced_facts': facts_dict,
                 'preferences_applied': False,
@@ -291,7 +287,6 @@ def apply_preferences_endpoint():
         })
 
     except Exception as e:
-        app_logger.error(f"Preference application failed: {str(e)}")
         return jsonify({'error': f'Preference application failed: {str(e)}'}), 500
 
 

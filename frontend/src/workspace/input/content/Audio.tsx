@@ -7,13 +7,13 @@ import {
 } from '@phosphor-icons/react'
 import { useVoiceVisualizer, VoiceVisualizer } from 'react-voice-visualizer'
 
-interface AudioInputProps {
+interface AudioProps {
   onClose: () => void
   onSubmit: (audioBlob: Blob) => void
   onUploadFile: () => void
 }
 
-export function AudioInput({ onClose, onSubmit, onUploadFile }: AudioInputProps) {
+export function Audio({ onClose, onSubmit, onUploadFile }: AudioProps) {
   const recorderControls = useVoiceVisualizer()
   const { recordedBlob, stopRecording } = recorderControls
 

@@ -1,0 +1,105 @@
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Images as ImagesIcon,
+  Files as FileIcon,
+  Microphone as MicrophoneIcon,
+  Pen as TextIcon,
+  ArrowFatUp as ArrowFatUpIcon
+} from '@phosphor-icons/react'
+
+interface ButtonMenuProps {
+  isDragging: boolean
+  onImageClick: (e: React.MouseEvent) => void
+  onDocumentClick: (e: React.MouseEvent) => void
+  onAudioClick: (e: React.MouseEvent) => void
+  onTextClick: (e: React.MouseEvent) => void
+}
+
+export function ButtonMenu({
+  isDragging,
+  onImageClick,
+  onDocumentClick,
+  onAudioClick,
+  onTextClick
+}: ButtonMenuProps) {
+  return (
+    <div className="icon-row">
+      <AnimatePresence>
+        {!isDragging && (
+          <motion.div
+            key="image-button"
+            className="icon-circle small clickable"
+            initial={{ opacity: 0, x: 20, scale: 0.8 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 20, scale: 0.8 }}
+            transition={{ duration: 0.2, ease: "easeOut", delay: 0.05 }}
+            onClick={onImageClick}
+            title="Upload Image"
+          >
+            <ImagesIcon size={24} weight="regular" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {!isDragging && (
+          <motion.div
+            key="document-button"
+            className="icon-circle small clickable"
+            initial={{ opacity: 0, x: 10, scale: 0.8 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 10, scale: 0.8 }}
+            transition={{ duration: 0.2, ease: "easeOut", delay: 0.1 }}
+            onClick={onDocumentClick}
+            title="Upload Document"
+          >
+            <FileIcon size={24} weight="regular" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <motion.div
+        className="icon-circle center"
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+      >
+        {isDragging ? (
+          <ArrowFatUpIcon size={32} weight="fill" />
+        ) : (
+          <ArrowFatUpIcon size={32} weight="bold" />
+        )}
+      </motion.div>
+      <AnimatePresence>
+        {!isDragging && (
+          <motion.div
+            key="audio-button"
+            className="icon-circle small clickable"
+            initial={{ opacity: 0, x: -10, scale: 0.8 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -10, scale: 0.8 }}
+            transition={{ duration: 0.2, ease: "easeOut", delay: 0.1 }}
+            onClick={onAudioClick}
+            title="Record Audio"
+          >
+            <MicrophoneIcon size={24} weight="regular" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {!isDragging && (
+          <motion.div
+            key="text-button"
+            className="icon-circle small clickable"
+            initial={{ opacity: 0, x: -20, scale: 0.8 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -20, scale: 0.8 }}
+            transition={{ duration: 0.2, ease: "easeOut", delay: 0.05 }}
+            onClick={onTextClick}
+            title="Text Input"
+          >
+            <TextIcon size={24} weight="regular" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}

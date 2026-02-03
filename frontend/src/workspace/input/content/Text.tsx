@@ -6,14 +6,14 @@ import {
   ClipboardText as ClipboardIcon
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
-import { IconButton } from '../components/IconButton'
+import { IconButton } from './buttons/IconButton'
 
-interface TextInputProps {
+interface TextProps {
   onClose: () => void
   onSubmit: (text: string) => void
 }
 
-export function TextInput({ onClose, onSubmit }: TextInputProps) {
+export function Text({ onClose, onSubmit }: TextProps) {
   const [text, setText] = useState('')
 
   const handleSubmit = () => {

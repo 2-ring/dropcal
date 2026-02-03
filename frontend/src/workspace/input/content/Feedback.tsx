@@ -4,12 +4,12 @@ import {
   Info as InfoIcon
 } from '@phosphor-icons/react'
 
-interface FeedbackPillProps {
+interface FeedbackProps {
   message: string
   onClose: () => void
 }
 
-export function FeedbackPill({ message, onClose }: FeedbackPillProps) {
+export function Feedback({ message, onClose }: FeedbackProps) {
   return (
     <motion.div
       className="feedback-pill-dock"

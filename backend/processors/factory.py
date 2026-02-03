@@ -6,7 +6,6 @@ Converts them to text for downstream processing.
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 from enum import Enum
-from utils.logging_utils import log_processor_execution, processor_logger
 
 
 class InputType(Enum):
@@ -108,12 +107,10 @@ class InputProcessorFactory:
         Returns:
             ProcessingResult with extracted text
         """
-        processor_logger.info(f"Processing file: {file_path} as {input_type.value}")
 
         processor = self.get_processor(input_type)
 
         if not processor:
-            processor_logger.error(f"No processor registered for input type: {input_type.value}")
             return ProcessingResult(
                 text="",
                 input_type=input_type,
@@ -122,7 +119,6 @@ class InputProcessorFactory:
             )
 
         if not processor.supports_file(file_path):
-            processor_logger.error(f"Processor does not support file: {file_path}")
             return ProcessingResult(
                 text="",
                 input_type=input_type,
@@ -132,10 +128,8 @@ class InputProcessorFactory:
 
         try:
             result = processor.process(file_path, **kwargs)
-            processor_logger.info(f"Successfully processed {file_path}: {len(result.text)} chars extracted")
             return result
         except Exception as e:
-            processor_logger.error(f"Processing failed for {file_path}: {str(e)}")
             return ProcessingResult(
                 text="",
                 input_type=input_type,
@@ -154,15 +148,12 @@ class InputProcessorFactory:
         Returns:
             ProcessingResult with extracted text
         """
-        processor_logger.info(f"Auto-detecting file type for: {file_path}")
 
         # Try each processor to see which one supports the file
         for input_type, processor in self._processors.items():
             if processor.supports_file(file_path):
-                processor_logger.info(f"Detected file type: {input_type.value}")
                 return self.process_file(file_path, input_type, **kwargs)
 
-        processor_logger.error(f"No processor found that supports file: {file_path}")
         return ProcessingResult(
             text="",
             input_type=InputType.TEXT,

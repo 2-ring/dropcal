@@ -25,7 +25,6 @@ from preferences.models import (
     ContextualPatterns,
     DiscoveredPattern
 )
-from utils.logging_utils import app_logger
 
 
 class PatternAnalysisService:

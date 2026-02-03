@@ -8,9 +8,8 @@ from datetime import datetime
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
-from utils.base_agent import BaseAgent
-from models.agent_models import CalendarEvent
-from utils.logging_utils import log_agent_execution
+from core.base_agent import BaseAgent
+from extraction.models import CalendarEvent
 
 
 class EventModificationAgent(BaseAgent):
@@ -30,7 +29,6 @@ class EventModificationAgent(BaseAgent):
         self.llm = llm.with_structured_output(CalendarEvent)
         self.prompt_template = self.load_prompt("modification.txt")
 
-    @log_agent_execution("Agent4_EventModification")
     def execute(
         self,
         original_event: Dict[str, Any],

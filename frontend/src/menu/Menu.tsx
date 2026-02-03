@@ -1,11 +1,11 @@
 import { PlusCircle, Sidebar as SidebarIcon, CalendarBlank, ArrowSquareOut, Images, Files, Pen, Microphone } from '@phosphor-icons/react'
 import type { SessionListItem } from '../types/session'
 import type { InputType } from '../types/session'
-import './Sidebar.css'
+import './Menu.css'
 import logoImage from '../assets/Logo.png'
 import wordmarkImage from '../assets/Wordmark.png'
 
-interface SidebarProps {
+interface MenuProps {
   isOpen: boolean
   onToggle: () => void
   sessions: SessionListItem[]
@@ -14,14 +14,14 @@ interface SidebarProps {
   onNewSession: () => void
 }
 
-export function Sidebar({
+export function Menu({
   isOpen,
   onToggle,
   sessions,
   currentSessionId,
   onSessionClick,
   onNewSession,
-}: SidebarProps) {
+}: MenuProps) {
   // Get icon for input type (matches input area icons)
   const getInputIcon = (inputType: InputType) => {
     switch (inputType) {
@@ -135,12 +135,12 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Logo and dock */}
-      <>
-        <button className="floating-logo" onClick={onToggle} title="DropCal">
-          <img src={logoImage} alt="DropCal" className="floating-logo-icon" />
-        </button>
-        {!isOpen && (
+      {/* Logo and dock when sidebar is closed */}
+      {!isOpen && (
+        <>
+          <button className="floating-logo" onClick={onToggle} title="DropCal">
+            <img src={logoImage} alt="DropCal" className="floating-logo-icon" />
+          </button>
           <div className="sidebar-dock">
             <button className="dock-icon-button" onClick={onToggle} title="Expand sidebar">
               <SidebarIcon size={20} weight="regular" />
@@ -149,8 +149,8 @@ export function Sidebar({
               <PlusCircle size={20} weight="regular" />
             </button>
           </div>
-        )}
-      </>
+        </>
+      )}
     </>
   )
 }

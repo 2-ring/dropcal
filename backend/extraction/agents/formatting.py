@@ -7,9 +7,8 @@ from datetime import datetime
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
-from utils.base_agent import BaseAgent
-from models.agent_models import ExtractedFacts, CalendarEvent
-from utils.logging_utils import log_agent_execution
+from core.base_agent import BaseAgent
+from extraction.models import ExtractedFacts, CalendarEvent
 
 
 class CalendarFormattingAgent(BaseAgent):
@@ -29,7 +28,6 @@ class CalendarFormattingAgent(BaseAgent):
         self.llm = llm.with_structured_output(CalendarEvent)
         self.prompt_template = self.load_prompt("formatting.txt")
 
-    @log_agent_execution("Agent3_CalendarFormatting")
     def execute(self, facts: ExtractedFacts) -> CalendarEvent:
         """
         Format extracted facts into calendar event.

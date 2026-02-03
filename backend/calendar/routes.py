@@ -7,7 +7,6 @@ from flask import Blueprint, jsonify, request, redirect
 from typing import Optional
 
 from calendar.service import CalendarService
-from utils.logging_utils import app_logger
 
 # Create blueprint
 calendar_bp = Blueprint('calendar', __name__)
@@ -30,7 +29,6 @@ def resolve_calendar_name_to_id(calendar_name: str, calendar_service: CalendarSe
     try:
         # Handle special case: "Default" or "Primary" → 'primary'
         if calendar_name.lower() in ['default', 'primary']:
-            app_logger.info(f"Calendar '{calendar_name}' resolved to 'primary'")
             return 'primary'
 
         # Get user's calendar list
@@ -42,15 +40,12 @@ def resolve_calendar_name_to_id(calendar_name: str, calendar_service: CalendarSe
             cal_id = cal.get('id', '')
 
             if cal_name.lower() == calendar_name.lower():
-                app_logger.info(f"Matched calendar '{calendar_name}' to ID: {cal_id}")
                 return cal_id
 
         # Calendar not found
-        app_logger.warning(f"Calendar '{calendar_name}' not found. Will use primary as fallback.")
         return None
 
     except Exception as e:
-        app_logger.error(f"Error resolving calendar name '{calendar_name}': {e}")
         return None
 
 
@@ -163,9 +158,7 @@ def create_calendar_event():
         if calendar_name:
             calendar_id = resolve_calendar_name_to_id(calendar_name, calendar_service)
             if calendar_id:
-                app_logger.info(f"Resolved calendar '{calendar_name}' to ID: {calendar_id}")
             else:
-                app_logger.info(f"Calendar '{calendar_name}' not resolved, using primary")
 
         # Format attendees if provided (convert list of strings to list of dicts)
         if 'attendees' in event_data and event_data['attendees']:

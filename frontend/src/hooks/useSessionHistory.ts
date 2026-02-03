@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { sessionCache } from '../utils/sessionManager'
+import { sessionCache } from '../menu/sessionManager'
 import type { Session } from '../types/session'
 
 /**

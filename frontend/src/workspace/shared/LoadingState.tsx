@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Icon } from '@phosphor-icons/react'
-import type { LoadingStateConfig, LoadingPhase } from '../types/loadingState'
+import type { LoadingStateConfig, LoadingPhase } from '../../types/loadingState'
 import './LoadingState.css'
 
 interface LoadingStateProps {

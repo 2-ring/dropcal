@@ -11,8 +11,7 @@ from typing import Set
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.input_processor import BaseInputProcessor, ProcessingResult, InputType
-from utils.logging_utils import log_processor_execution
+from processors.factory import BaseInputProcessor, ProcessingResult, InputType
 
 
 class ImageProcessor(BaseInputProcessor):
@@ -46,7 +45,6 @@ class ImageProcessor(BaseInputProcessor):
         file_ext = Path(file_path).suffix.lower()
         return self.MEDIA_TYPES.get(file_ext, 'image/jpeg')
 
-    @log_processor_execution("ImageProcessor")
     def process(self, file_path: str, **kwargs) -> ProcessingResult:
         """
         Prepare image file for Claude Vision API processing.

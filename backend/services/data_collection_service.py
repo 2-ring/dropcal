@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import time
 from calendar.service import CalendarService
-from utils.logging_utils import app_logger
 
 
 class DataCollectionService:
@@ -39,7 +38,6 @@ class DataCollectionService:
         Raises:
             ValueError: If mode is not recognized
         """
-        app_logger.info(f"Starting data collection in '{mode}' mode")
 
         if mode == 'quick':
             events = self._quick_collection()
@@ -53,7 +51,6 @@ class DataCollectionService:
         # Filter out noise
         filtered_events = self._filter_relevant_events(events)
 
-        app_logger.info(f"Collected {len(filtered_events)} relevant events for analysis")
 
         return filtered_events
 
@@ -67,7 +64,6 @@ class DataCollectionService:
 
         Ideal for first-time setup and most users.
         """
-        app_logger.info("Quick collection: fetching last 3 months")
 
         time_min = self._calculate_date_ago(months=3)
         events = self.calendar_service.list_events(
@@ -77,14 +73,12 @@ class DataCollectionService:
 
         # If calendar is sparse, extend time range
         if len(events) < 30:
-            app_logger.info(f"Only {len(events)} events found. Extending to 12 months.")
             time_min = self._calculate_date_ago(months=12)
             events = self.calendar_service.list_events(
                 max_results=250,
                 time_min=time_min
             )
 
-        app_logger.info(f"Quick collection completed: {len(events)} events")
         return events
 
     def _deep_collection(self) -> List[Dict]:
@@ -97,36 +91,29 @@ class DataCollectionService:
 
         For users who want thorough analysis and comprehensive insights.
         """
-        app_logger.info("Deep collection: fetching last 12 months with sampling")
 
         all_events = []
 
         # Tier 1: Recent events (last 3 months, full fetch)
-        app_logger.info("Tier 1: Fetching recent events (last 3 months)")
         recent = self._fetch_range(
             months_back=3,
             max_events=200
         )
         all_events.extend(recent)
-        app_logger.info(f"Tier 1 complete: {len(recent)} events")
 
         # Tier 2: Historical sample (3-12 months ago)
         if len(recent) >= 20:  # Only if calendar is reasonably active
-            app_logger.info("Tier 2: Sampling historical events (3-12 months ago)")
             historical = self._fetch_sampled_range(
                 start_months_back=12,
                 end_months_back=3,
                 sample_size=150
             )
             all_events.extend(historical)
-            app_logger.info(f"Tier 2 complete: {len(historical)} events sampled")
         else:
-            app_logger.info("Tier 2 skipped: Calendar not active enough")
 
         # Deduplicate (in case of overlaps)
         all_events = self._deduplicate_events(all_events)
 
-        app_logger.info(f"Deep collection completed: {len(all_events)} total events")
         return all_events
 
     def _comprehensive_collection(self) -> List[Dict]:
@@ -141,13 +128,11 @@ class DataCollectionService:
         Uses pagination to fetch everything without sampling.
         Fetches from ALL calendars, not just primary.
         """
-        app_logger.info("Comprehensive collection: fetching ALL events from ALL calendars (last 365 days)")
 
         time_min = self._calculate_date_ago(days=365)
 
         # Get list of all calendars first
         calendars = self.calendar_service.get_calendar_list()
-        app_logger.info(f"Found {len(calendars)} calendars to check")
 
         # Fetch events from each calendar
         all_events = []
@@ -156,7 +141,6 @@ class DataCollectionService:
             cal_name = calendar.get('summary', 'Unnamed')
 
             try:
-                app_logger.info(f"Fetching events from calendar: {cal_name}")
 
                 # Fetch events from this calendar
                 calendar_events = self._fetch_all_with_pagination(
@@ -171,13 +155,10 @@ class DataCollectionService:
                     event['_source_calendar_name'] = cal_name
 
                 all_events.extend(calendar_events)
-                app_logger.info(f"  → Collected {len(calendar_events)} events from {cal_name}")
 
             except Exception as e:
-                app_logger.error(f"Error fetching from calendar {cal_name}: {e}")
                 continue
 
-        app_logger.info(f"Comprehensive collection completed: {len(all_events)} total events across all calendars")
         return all_events
 
     def _fetch_all_with_pagination(self, time_min: str, max_total: int = 10000, calendar_id: str = 'primary') -> List[Dict]:
@@ -212,12 +193,10 @@ class DataCollectionService:
                 events = response.get('items', [])
                 all_events.extend(events)
 
-                app_logger.info(f"Page {page_num}: +{len(events)} events (total: {len(all_events)})")
 
                 # Check for next page
                 page_token = response.get('nextPageToken')
                 if not page_token:
-                    app_logger.info("No more pages. Fetch complete.")
                     break
 
                 page_num += 1
@@ -226,12 +205,10 @@ class DataCollectionService:
                 time.sleep(0.1)
 
             except Exception as e:
-                app_logger.error(f"Error fetching page {page_num}: {e}")
                 break
 
         # Enforce safety cap
         if len(all_events) > max_total:
-            app_logger.warning(f"Hit safety cap at {max_total} events. Truncating.")
             all_events = all_events[:max_total]
 
         return all_events
@@ -308,7 +285,6 @@ class DataCollectionService:
                 time.sleep(0.1)
 
             except Exception as e:
-                app_logger.warning(f"Error fetching month {month_offset}: {e}")
                 continue
 
         return sampled
@@ -515,54 +491,37 @@ class DataCollectionService:
             - calendars: List of all calendars user has
             - stats: Statistics about collected data
         """
-        app_logger.info("=" * 60)
-        app_logger.info("COMPREHENSIVE DATA COLLECTION")
-        app_logger.info("=" * 60)
 
         result = {}
 
         # 1. Fetch all events from last year
-        app_logger.info("\n[1/4] Fetching events from last 365 days...")
         events = self.collect_for_analysis(mode='comprehensive')
         result['events'] = events
-        app_logger.info(f"✓ Collected {len(events)} events")
 
         # 2. Fetch user settings
-        app_logger.info("\n[2/4] Fetching user settings...")
         try:
             settings = self.calendar_service.get_settings()
             result['settings'] = settings
-            app_logger.info(f"✓ Collected {len(settings)} settings")
         except Exception as e:
-            app_logger.error(f"Failed to fetch settings: {e}")
             result['settings'] = {}
 
         # 3. Fetch color definitions
-        app_logger.info("\n[3/4] Fetching color palette definitions...")
         try:
             colors = self.calendar_service.get_colors()
             result['colors'] = colors
             event_colors = colors.get('event', {})
-            app_logger.info(f"✓ Collected {len(event_colors)} event colors")
         except Exception as e:
-            app_logger.error(f"Failed to fetch colors: {e}")
             result['colors'] = {}
 
         # 4. Fetch calendar list
-        app_logger.info("\n[4/4] Fetching calendar list...")
         try:
             calendars = self.calendar_service.get_calendar_list()
             result['calendars'] = calendars
-            app_logger.info(f"✓ Collected {len(calendars)} calendars")
         except Exception as e:
-            app_logger.error(f"Failed to fetch calendar list: {e}")
             result['calendars'] = []
 
         # 5. Generate statistics
         result['stats'] = self.get_collection_stats(events)
 
-        app_logger.info("\n" + "=" * 60)
-        app_logger.info("COLLECTION COMPLETE")
-        app_logger.info("=" * 60)
 
         return result

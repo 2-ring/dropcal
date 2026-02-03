@@ -8,7 +8,6 @@ import json
 from typing import Optional
 from datetime import datetime
 from preferences.models import UserPreferences
-from utils.logging_utils import app_logger
 
 
 class PersonalizationService:
@@ -47,14 +46,12 @@ class PersonalizationService:
         """
         # Check cache first
         if user_id in self._preferences_cache:
-            app_logger.info(f"Loaded preferences for user {user_id} from cache")
             return self._preferences_cache[user_id]
 
         # Not in cache, try loading from disk
         preferences_path = self._get_preferences_path(user_id)
 
         if not os.path.exists(preferences_path):
-            app_logger.info(f"No preferences found for user {user_id}")
             return None
 
         try:
@@ -65,10 +62,8 @@ class PersonalizationService:
                 # Populate cache
                 self._preferences_cache[user_id] = preferences
 
-                app_logger.info(f"Loaded preferences for user {user_id} from disk (analyzed {preferences.total_events_analyzed} events)")
                 return preferences
         except Exception as e:
-            app_logger.error(f"Error loading preferences for user {user_id}: {e}")
             return None
 
     def save_preferences(self, preferences: UserPreferences) -> bool:
@@ -94,11 +89,9 @@ class PersonalizationService:
             # Update cache
             self._preferences_cache[preferences.user_id] = preferences
 
-            app_logger.info(f"Saved preferences for user {preferences.user_id} (disk + cache)")
             return True
 
         except Exception as e:
-            app_logger.error(f"Error saving preferences for user {preferences.user_id}: {e}")
             return False
 
     def delete_preferences(self, user_id: str) -> bool:
@@ -121,14 +114,11 @@ class PersonalizationService:
             # Remove from disk
             if os.path.exists(preferences_path):
                 os.remove(preferences_path)
-                app_logger.info(f"Deleted preferences for user {user_id} (disk + cache)")
                 return True
             else:
-                app_logger.warning(f"No preferences to delete for user {user_id}")
                 return False
 
         except Exception as e:
-            app_logger.error(f"Error deleting preferences for user {user_id}: {e}")
             return False
 
     def has_preferences(self, user_id: str) -> bool:
@@ -162,7 +152,6 @@ class PersonalizationService:
             return preferences
 
         # Create new
-        app_logger.info(f"Creating new preferences for user {user_id}")
 
         preferences = UserPreferences(user_id=user_id)
 

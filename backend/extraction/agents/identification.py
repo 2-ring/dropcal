@@ -7,9 +7,8 @@ from typing import Dict, Any, Optional
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
-from utils.base_agent import BaseAgent
-from models.agent_models import IdentificationResult
-from utils.logging_utils import log_agent_execution
+from core.base_agent import BaseAgent
+from extraction.models import IdentificationResult
 
 
 class EventIdentificationAgent(BaseAgent):
@@ -29,7 +28,6 @@ class EventIdentificationAgent(BaseAgent):
         self.llm = llm.with_structured_output(IdentificationResult)
         self.prompt_template = self.load_prompt("identification.txt")
 
-    @log_agent_execution("Agent1_EventIdentification")
     def execute(
         self,
         raw_input: str,

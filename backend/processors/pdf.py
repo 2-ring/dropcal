@@ -11,8 +11,7 @@ from typing import List, Dict, Any
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.input_processor import BaseInputProcessor, ProcessingResult, InputType
-from utils.logging_utils import log_processor_execution
+from processors.factory import BaseInputProcessor, ProcessingResult, InputType
 
 
 class PDFProcessor(BaseInputProcessor):
@@ -141,7 +140,6 @@ class PDFProcessor(BaseInputProcessor):
             print(f"PDF rendering failed: {e}")
             return []
 
-    @log_processor_execution("PDFProcessor")
     def process(self, file_path: str, **kwargs) -> ProcessingResult:
         """
         Process PDF using hybrid approach.

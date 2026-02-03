@@ -1,11 +1,8 @@
 import { useState, useCallback, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { Toaster, toast } from 'sonner'
-import { validateFile } from './utils/fileValidation'
-import { MainInputArea } from './input/main-area'
-import { GoogleCalendarAuth } from './components/GoogleCalendarAuth'
-import { EventConfirmation } from './events/EventConfirmation'
-import { Sidebar } from './sidebar/Sidebar'
+import { validateFile } from './workspace/input/Validation'
+import { Workspace } from './workspace/Workspace'
+import { Menu } from './menu/Menu'
 import type { CalendarEvent } from './types/calendarEvent'
 import type { LoadingStateConfig } from './types/loadingState'
 import { LOADING_MESSAGES } from './types/loadingState'
@@ -20,7 +17,7 @@ import {
   completeSession,
   toSessionListItem,
   sessionCache,
-} from './utils/sessionManager'
+} from './menu/sessionManager'
 import { useSessionHistory } from './hooks/useSessionHistory'
 import { useIsMobile } from './hooks/useIsMobile'
 import './App.css'
@@ -718,7 +715,7 @@ function App() {
 
   return (
     <div className="app">
-      <Sidebar
+      <Menu
         isOpen={isSidebarVisible}
         onToggle={handleSidebarToggle}
         sessions={sessionHistory.map(toSessionListItem)}
@@ -737,45 +734,21 @@ function App() {
         }}
       />
       {isMainVisible && (
-      <div className={`content ${sidebarOpen ? 'with-sidebar' : ''} ${isMobile ? 'mobile-view' : ''}`}>
-        {/* Show greeting only in input state */}
-        {appState === 'input' && (
-          <motion.div
-            className="greeting-container"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-          >
-            <img
-              src={greetingImagePaths[currentGreetingIndex]}
-              alt="Greeting"
-              className="greeting-image"
-            />
-          </motion.div>
-        )}
-
-        {/* Show MainInputArea only when in input state */}
-        {appState === 'input' && (
-          <MainInputArea
+        <div className={`content ${sidebarOpen ? 'with-sidebar' : ''} ${isMobile ? 'mobile-view' : ''}`}>
+          <Workspace
+            appState={appState}
             uploadedFile={uploadedFile}
             isProcessing={isProcessing}
             loadingConfig={loadingConfig}
             feedbackMessage={feedbackMessage}
+            greetingImage={greetingImagePaths[currentGreetingIndex]}
+            calendarEvents={calendarEvents}
+            expectedEventCount={expectedEventCount}
             onFileUpload={handleFileUpload}
             onAudioSubmit={handleAudioSubmit}
             onTextSubmit={handleTextSubmit}
             onClearFile={handleClearFile}
             onClearFeedback={() => setFeedbackMessage('')}
-          />
-        )}
-
-        {/* Show EventConfirmation in both loading and review states */}
-        {(appState === 'loading' || appState === 'review') && (
-          <EventConfirmation
-            events={calendarEvents}
-            isLoading={appState === 'loading'}
-            loadingConfig={loadingConfig}
-            expectedEventCount={expectedEventCount}
             onConfirm={() => {
               // TODO: Implement add to calendar functionality
               toast.success('Adding to calendar...', {
@@ -783,14 +756,9 @@ function App() {
                 duration: 3000,
               })
             }}
+            onAuthChange={setIsCalendarAuthenticated}
           />
-        )}
-
-        {/* Google Calendar Authentication - only show in input state */}
-        {appState === 'input' && (
-          <GoogleCalendarAuth onAuthChange={setIsCalendarAuthenticated} />
-        )}
-      </div>
+        </div>
       )}
     </div>
   )
