@@ -3,6 +3,7 @@ from flask_cors import CORS
 from langchain_anthropic import ChatAnthropic
 from dotenv import load_dotenv
 import os
+import threading
 from werkzeug.utils import secure_filename
 from typing import Optional
 
@@ -35,6 +36,9 @@ from calendar import calendar_bp
 
 # Import auth middleware
 from auth.middleware import require_auth
+
+# Import session processor
+from processing.session_processor import SessionProcessor
 
 load_dotenv()
 
@@ -84,6 +88,9 @@ input_processor_factory.register_processor(InputType.TEXT, text_processor)
 # Register PDF processor
 pdf_processor = PDFProcessor()
 input_processor_factory.register_processor(InputType.PDF, pdf_processor)
+
+# Initialize session processor
+session_processor = SessionProcessor(llm, input_processor_factory)
 
 
 # ============================================================================
@@ -399,11 +406,18 @@ def create_text_session():
             input_content=input_text
         )
 
-        # TODO: Trigger AI processing pipeline (will be done in Agent 5)
+        # Start processing in background thread
+        thread = threading.Thread(
+            target=session_processor.process_text_session,
+            args=(session['id'], input_text)
+        )
+        thread.daemon = True  # Don't block server shutdown
+        thread.start()
 
         return jsonify({
             'success': True,
-            'session': session
+            'session': session,
+            'message': 'Session created, processing started'
         }), 201
 
     except Exception as e:
@@ -458,12 +472,19 @@ def upload_file_endpoint():
             input_content=file_path
         )
 
-        # TODO: Trigger AI processing pipeline (will be done in Agent 5)
+        # Start processing in background thread
+        thread = threading.Thread(
+            target=session_processor.process_file_session,
+            args=(session['id'], file_path, file_type)
+        )
+        thread.daemon = True  # Don't block server shutdown
+        thread.start()
 
         return jsonify({
             'success': True,
             'session': session,
-            'file_path': file_path
+            'file_path': file_path,
+            'message': 'File uploaded, processing started'
         }), 201
 
     except Exception as e:

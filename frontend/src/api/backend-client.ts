@@ -128,6 +128,49 @@ export async function getUserSessions(limit: number = 50): Promise<Session[]> {
 }
 
 /**
+ * Poll a session until it's processed or errored.
+ * Calls onUpdate callback with session data on each poll.
+ *
+ * @param sessionId - ID of the session to poll
+ * @param onUpdate - Callback function called with updated session data
+ * @param intervalMs - Polling interval in milliseconds (default: 2000)
+ * @returns Promise that resolves with final session when processed or rejects on error
+ */
+export async function pollSession(
+  sessionId: string,
+  onUpdate?: (session: Session) => void,
+  intervalMs: number = 2000
+): Promise<Session> {
+  return new Promise((resolve, reject) => {
+    const poll = async () => {
+      try {
+        const session = await getSession(sessionId);
+
+        // Call update callback if provided
+        if (onUpdate) {
+          onUpdate(session);
+        }
+
+        // Check if processing is complete
+        if (session.status === 'processed') {
+          resolve(session);
+        } else if (session.status === 'error') {
+          reject(new Error(session.error_message || 'Processing failed'));
+        } else {
+          // Still pending or processing, poll again
+          setTimeout(poll, intervalMs);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    };
+
+    // Start polling
+    poll();
+  });
+}
+
+/**
  * Health check endpoint.
  */
 export async function healthCheck(): Promise<{ status: string; message: string }> {

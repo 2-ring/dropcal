@@ -257,6 +257,73 @@ class Session:
         return response.data[0]
 
     @staticmethod
+    def update_extracted_events(
+        session_id: str,
+        extracted_events: List[Dict]
+    ) -> Dict[str, Any]:
+        """
+        Update session with extracted events (Agent 1 output).
+
+        Args:
+            session_id: Session's UUID
+            extracted_events: List of raw extracted events
+
+        Returns:
+            Dict containing updated session data
+        """
+        supabase = get_supabase()
+
+        response = supabase.table("sessions").update({
+            "extracted_events": extracted_events,
+            "status": "processing"
+        }).eq("id", session_id).execute()
+        return response.data[0]
+
+    @staticmethod
+    def update_processed_events(
+        session_id: str,
+        processed_events: List[Dict]
+    ) -> Dict[str, Any]:
+        """
+        Update session with processed calendar events (Agent 3 output).
+        Marks session as processed.
+
+        Args:
+            session_id: Session's UUID
+            processed_events: List of formatted calendar events
+
+        Returns:
+            Dict containing updated session data
+        """
+        supabase = get_supabase()
+
+        response = supabase.table("sessions").update({
+            "processed_events": processed_events,
+            "status": "processed"
+        }).eq("id", session_id).execute()
+        return response.data[0]
+
+    @staticmethod
+    def mark_error(session_id: str, error_message: str) -> Dict[str, Any]:
+        """
+        Mark session as failed with error message.
+
+        Args:
+            session_id: Session's UUID
+            error_message: Error message describing what went wrong
+
+        Returns:
+            Dict containing updated session data
+        """
+        supabase = get_supabase()
+
+        response = supabase.table("sessions").update({
+            "status": "error",
+            "error_message": error_message
+        }).eq("id", session_id).execute()
+        return response.data[0]
+
+    @staticmethod
     def mark_added_to_calendar(
         session_id: str,
         calendar_event_ids: List[str]
