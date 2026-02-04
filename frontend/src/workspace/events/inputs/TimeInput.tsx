@@ -1,15 +1,41 @@
 import { useState, useRef, useEffect } from 'react'
 import './TimeInput.css'
 
+export type CursorBehavior = 'select-all' | 'end' | 'before-suffix'
+
 export interface TimeInputProps {
   value: string
   onChange: (value: string) => void
+  onFocus?: () => void
   onBlur?: () => void
+  isEditing?: boolean
   placeholder?: string
   className?: string
+  cursorBehavior?: CursorBehavior
 }
 
-export function TimeInputDesktop({ value, onChange, onBlur, placeholder, className }: TimeInputProps) {
+const setCursorPosition = (input: HTMLInputElement, behavior: CursorBehavior, value: string) => {
+  switch (behavior) {
+    case 'select-all':
+      input.select()
+      break
+    case 'end':
+      input.setSelectionRange(value.length, value.length)
+      break
+    case 'before-suffix':
+      // For time inputs, position cursor before AM/PM
+      const amPmMatch = value.match(/\s?(AM|PM)$/i)
+      if (amPmMatch) {
+        const position = value.length - amPmMatch[0].length
+        input.setSelectionRange(position, position)
+      } else {
+        input.setSelectionRange(value.length, value.length)
+      }
+      break
+  }
+}
+
+export function TimeInputDesktop({ value, onChange, onFocus, onBlur, isEditing, placeholder, className, cursorBehavior = 'before-suffix' }: TimeInputProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -24,6 +50,13 @@ export function TimeInputDesktop({ value, onChange, onBlur, placeholder, classNa
       }))
     }
   }, [value])
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      setCursorPosition(inputRef.current, cursorBehavior, inputValue)
+    }
+  }, [isEditing, cursorBehavior, inputValue])
 
   const generateTimeSuggestions = () => {
     const times: { value: string; label: string }[] = []
@@ -82,6 +115,10 @@ export function TimeInputDesktop({ value, onChange, onBlur, placeholder, classNa
     }, 200)
   }
 
+  const handleInputFocus = () => {
+    onFocus?.()
+  }
+
   const timeSuggestions = generateTimeSuggestions()
   const filteredSuggestions = inputValue
     ? timeSuggestions.filter(t =>
@@ -97,8 +134,10 @@ export function TimeInputDesktop({ value, onChange, onBlur, placeholder, classNa
         className={`time-input ${className || ''}`}
         value={inputValue}
         onChange={handleInputChange}
+        onFocus={handleInputFocus}
         onBlur={handleInputBlur}
         placeholder={placeholder || 'Enter time'}
+        readOnly={!isEditing}
       />
 
       {isOpen && filteredSuggestions.length > 0 && (
@@ -119,7 +158,7 @@ export function TimeInputDesktop({ value, onChange, onBlur, placeholder, classNa
   )
 }
 
-export function TimeInputMobile({ value, onChange, onBlur, placeholder, className }: TimeInputProps) {
+export function TimeInputMobile({ value, onChange, onFocus, onBlur, isEditing, placeholder, className, cursorBehavior = 'before-suffix' }: TimeInputProps) {
   const [timeValue, setTimeValue] = useState('')
 
   useEffect(() => {
@@ -148,8 +187,10 @@ export function TimeInputMobile({ value, onChange, onBlur, placeholder, classNam
       className={`time-input-mobile ${className || ''}`}
       value={timeValue}
       onChange={handleTimeChange}
+      onFocus={onFocus}
       onBlur={onBlur}
       placeholder={placeholder}
+      readOnly={!isEditing}
     />
   )
 }

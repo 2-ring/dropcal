@@ -4,7 +4,7 @@
  * Opens settings popup when clicked (when logged in).
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { User as UserIcon } from '@phosphor-icons/react';
 import { useAuth } from '../auth/AuthContext';
 import { SettingsPopup } from './SettingsPopup';
@@ -16,6 +16,7 @@ import './Account.css';
 export function Account() {
   const { user, loading, signIn } = useAuth();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
 
   if (loading) {
     return (
@@ -86,6 +87,7 @@ export function Account() {
     <>
       <div className="account-container">
         <button
+          ref={accountButtonRef}
           className="account-user-button"
           onClick={() => setIsSettingsOpen(prev => !prev)}
         >
@@ -119,6 +121,7 @@ export function Account() {
           userEmail={user.email || ''}
           userName={user.user_metadata?.name || user.email?.split('@')[0] || 'User'}
           userAvatar={user.user_metadata?.avatar_url}
+          triggerRef={accountButtonRef}
         />
       )}
     </>

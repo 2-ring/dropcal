@@ -15,6 +15,17 @@
   font-size: inherit;
   color: inherit;
   caret-color: #7C8FFF;
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+}
+
+.time-input[readonly] {
+  cursor: pointer;
+}
+
+.time-input:not([readonly]) {
+  cursor: text;
 }
 
 .time-dropdown {

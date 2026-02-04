@@ -27,6 +27,7 @@ import 'react-loading-skeleton/dist/skeleton.css';
 import './SettingsPopup.css';
 import { useState, useEffect, useRef } from 'react';
 import { getCalendarProviders, setPrimaryCalendarProvider, disconnectCalendarProvider } from '../api/backend-client';
+import { Tooltip } from '../components/Tooltip';
 
 interface SettingsPopupProps {
   onClose: () => void;
@@ -34,6 +35,7 @@ interface SettingsPopupProps {
   userName: string;
   userAvatar?: string;
   isLoading?: boolean;
+  triggerRef?: React.RefObject<HTMLElement>;
 }
 
 interface CalendarIntegration {
@@ -47,7 +49,7 @@ interface CalendarIntegration {
 
 type ViewMode = 'main' | 'integrations';
 
-export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoading = false }: SettingsPopupProps) {
+export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoading = false, triggerRef }: SettingsPopupProps) {
   const navigate = useNavigate();
   const { signOut, signIn } = useAuth();
   const popupRef = useRef<HTMLDivElement>(null);
@@ -202,7 +204,11 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
   // Close popup when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const isOutsidePopup = popupRef.current && !popupRef.current.contains(target);
+      const isOutsideTrigger = triggerRef?.current && !triggerRef.current.contains(target);
+
+      if (isOutsidePopup && isOutsideTrigger) {
         onClose();
       }
     };
@@ -216,7 +222,7 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
       clearTimeout(timeoutId);
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [onClose]);
+  }, [onClose, triggerRef]);
 
   return (
     <div className="settings-popup-backdrop">
@@ -364,7 +370,11 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                         <span style={{ fontSize: '11px', color: '#999', lineHeight: '1.2' }}>Sign in</span>
                       </div>
                       <div className="settings-integration-actions">
-                        <SignIn size={20} weight="regular" />
+                        <Tooltip content={`Sign in to ${getProviderName(provider)}`}>
+                          <div style={{ display: 'flex' }}>
+                            <SignIn size={20} weight="regular" />
+                          </div>
+                        </Tooltip>
                       </div>
                     </button>
                   );
@@ -381,23 +391,27 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                       <span style={{ fontSize: '11px', color: '#999', lineHeight: '1.2' }}>{calendar!.email}</span>
                     </div>
                     <div className="settings-integration-actions">
-                      <button
-                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex' }}
-                        onClick={() => !isDefault && handleSetDefault(provider)}
-                        onMouseEnter={() => setHoveredStar(provider)}
-                        onMouseLeave={() => setHoveredStar(null)}
-                        disabled={isDefault}
-                      >
-                        <Star size={20} weight={isDefault || hoveredStar === provider ? 'duotone' : 'regular'} style={{ color: '#666' }} />
-                      </button>
-                      <button
-                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex' }}
-                        onClick={() => handleDisconnect(provider)}
-                        onMouseEnter={() => setHoveredSignOut(provider)}
-                        onMouseLeave={() => setHoveredSignOut(null)}
-                      >
-                        <SignOut size={20} weight={hoveredSignOut === provider ? 'bold' : 'regular'} style={{ color: '#d32f2f' }} />
-                      </button>
+                      <Tooltip content={isDefault ? 'Primary calendar' : 'Set as primary'}>
+                        <button
+                          style={{ background: 'none', border: 'none', padding: 0, cursor: isDefault ? 'default' : 'pointer', display: 'flex' }}
+                          onClick={() => !isDefault && handleSetDefault(provider)}
+                          onMouseEnter={() => setHoveredStar(provider)}
+                          onMouseLeave={() => setHoveredStar(null)}
+                          disabled={isDefault}
+                        >
+                          <Star size={20} weight={isDefault || hoveredStar === provider ? 'duotone' : 'regular'} style={{ color: '#666' }} />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="Sign out">
+                        <button
+                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex' }}
+                          onClick={() => handleDisconnect(provider)}
+                          onMouseEnter={() => setHoveredSignOut(provider)}
+                          onMouseLeave={() => setHoveredSignOut(null)}
+                        >
+                          <SignOut size={20} weight={hoveredSignOut === provider ? 'bold' : 'regular'} style={{ color: '#d32f2f' }} />
+                        </button>
+                      </Tooltip>
                     </div>
                   </div>
                 );

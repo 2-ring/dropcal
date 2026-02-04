@@ -15,6 +15,7 @@ interface TopBarProps {
   expectedEventCount?: number
   isLoadingCalendars?: boolean
   isEditingEvent?: boolean
+  isScrollable?: boolean
 }
 
 export function TopBar({
@@ -23,10 +24,11 @@ export function TopBar({
   isLoading,
   expectedEventCount,
   isLoadingCalendars = false,
-  isEditingEvent = false
+  isEditingEvent = false,
+  isScrollable = true
 }: TopBarProps) {
   return (
-    <div className="event-confirmation-header">
+    <div className={`event-confirmation-header ${!isScrollable ? 'no-scroll' : ''}`}>
       <div className="event-confirmation-header-content">
         <div className="header-left">
           <CalendarSelector isLoading={isLoadingCalendars} isMinimized={isEditingEvent} />
@@ -65,6 +67,7 @@ interface BottomBarProps {
   onSend: () => void
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
   onConfirm?: () => void
+  isScrollable?: boolean
 }
 
 export function BottomBar({
@@ -80,6 +83,7 @@ export function BottomBar({
   onSend,
   onKeyDown,
   onConfirm,
+  isScrollable = true
 }: BottomBarProps) {
 
   // Determine the current view state
@@ -94,7 +98,7 @@ export function BottomBar({
   const viewState = getViewState()
 
   return (
-    <div className="event-confirmation-footer-overlay">
+    <div className={`event-confirmation-footer-overlay ${!isScrollable ? 'no-scroll' : ''}`}>
       <div className="event-confirmation-footer">
         {viewState === 'loading' ? (
           /* Loading Progress */
@@ -151,7 +155,7 @@ export function BottomBar({
                       onClick={onCancel}
                       title="Cancel"
                     >
-                      <FirstAidIcon size={20} weight="bold" style={{ transform: 'rotate(45deg)' }} />
+                      <FirstAidIcon size={20} weight="duotone" style={{ transform: 'rotate(45deg)' }} />
                     </button>
                     <button
                       className="event-confirmation-request-button"
@@ -176,7 +180,7 @@ export function BottomBar({
                       onClick={onCancel}
                       title="Back to edit"
                     >
-                      <FirstAidIcon size={20} weight="bold" style={{ transform: 'rotate(45deg)' }} />
+                      <FirstAidIcon size={20} weight="duotone" style={{ transform: 'rotate(45deg)' }} />
                     </button>
                     <div className="event-confirmation-chat-input-wrapper">
                       <input
@@ -206,7 +210,7 @@ export function BottomBar({
                       onClick={onCancel}
                       title="Cancel"
                     >
-                      <FirstAidIcon size={20} weight="bold" style={{ transform: 'rotate(45deg)' }} />
+                      <FirstAidIcon size={20} weight="duotone" style={{ transform: 'rotate(45deg)' }} />
                     </button>
                     <div className="event-confirmation-chat-input-wrapper">
                       <input

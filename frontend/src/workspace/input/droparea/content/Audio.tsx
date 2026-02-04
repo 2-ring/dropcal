@@ -66,7 +66,7 @@ export function Audio({ onClose, onSubmit, onUploadFile }: AudioProps) {
           onClick={handleClose}
           title="Cancel"
         >
-          <XIcon size={24} weight="bold" />
+          <XIcon size={24} weight="duotone" />
         </button>
 
         {/* Sound Wave Visualization */}

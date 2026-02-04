@@ -132,13 +132,32 @@
   background-color: transparent;
   color: #666;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 50%;
   transition: all 0.15s ease;
 }
 
 .sidebar-toggle:hover {
   background-color: #e8e8e8;
   color: #333;
+}
+
+/* Hide sidebar icon on mobile */
+.sidebar-toggle .sidebar-icon {
+  display: block;
+}
+
+.sidebar-toggle .sidebar-chevron {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar-toggle .sidebar-icon {
+    display: none;
+  }
+
+  .sidebar-toggle .sidebar-chevron {
+    display: block;
+  }
 }
 
 /* Minimized dock */

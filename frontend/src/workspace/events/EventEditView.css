@@ -41,6 +41,8 @@
     transparent 100%
   );
   transition: left 0s;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .event-edit-overlay .editable-content-wrapper:hover::before {
@@ -69,8 +71,8 @@
   min-width: 0;
 }
 
-/* Allow overflow for time input dropdowns */
-.event-edit-overlay .editable-content-wrapper:has(.time-input-container) {
+/* Allow overflow only when time input has dropdown open */
+.event-edit-overlay .editable-content-wrapper:has(.time-dropdown) {
   overflow: visible;
 }
 

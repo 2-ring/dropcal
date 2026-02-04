@@ -20,13 +20,13 @@
  * Position it where you want it in the render order to control animation timing.
  */
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Skeleton from 'react-loading-skeleton'
 import { Clock as ClockIcon, MapPin as LocationIcon, TextAlignLeft as DescriptionIcon, Globe as GlobeIcon, ArrowsClockwise as RepeatIcon } from '@phosphor-icons/react'
 import type { CalendarEvent } from './types'
 import { editViewVariants, editSectionVariants } from './animations'
-import { TimeInput } from './inputs'
+import { TimeInput, type CursorBehavior } from './inputs'
 import './EventEditView.css'
 
 interface GoogleCalendar {
@@ -69,12 +69,37 @@ export function EventEditView({
     }))
   }
 
+  const getCursorBehavior = (field: EditableField): CursorBehavior => {
+    switch (field) {
+      case 'summary':
+        return 'select-all'
+      case 'description':
+      case 'location':
+        return 'end'
+      case 'startTime':
+      case 'endTime':
+        return 'before-suffix'
+      default:
+        return 'end'
+    }
+  }
+
   const handleEditClick = (field: EditableField, e?: React.MouseEvent) => {
     e?.stopPropagation()
     setEditingField(field)
+
     setTimeout(() => {
-      inputRef.current?.focus()
-      inputRef.current?.select()
+      if (inputRef.current) {
+        inputRef.current.focus()
+        const behavior = getCursorBehavior(field)
+
+        if (behavior === 'select-all') {
+          inputRef.current.select()
+        } else if (behavior === 'end') {
+          const length = inputRef.current.value.length
+          inputRef.current.setSelectionRange(length, length)
+        }
+      }
     }, 0)
   }
 
@@ -222,26 +247,25 @@ export function EventEditView({
                       )}
                     </div>
                     {!isAllDay && (
-                      <div className="editable-content-wrapper" onClick={(e) => handleEditClick('startTime', e)}>
-                        {editingField === 'startTime' ? (
-                          <TimeInput
-                            value={editedEvent.start.dateTime}
-                            onChange={(newTime) => {
-                              setEditedEvent(prev => ({
-                                ...prev,
-                                start: {
-                                  ...prev.start,
-                                  dateTime: newTime
-                                }
-                              }))
-                            }}
-                            onBlur={handleEditBlur}
-                            className="date-text editable-input"
-                          />
-                        ) : (
-                          <span className="date-text">{formatTimeForDisplay(editedEvent.start.dateTime)}</span>
-                        )}
-                        </div>
+                      <div className="editable-content-wrapper">
+                        <TimeInput
+                          value={editedEvent.start.dateTime}
+                          onChange={(newTime) => {
+                            setEditedEvent(prev => ({
+                              ...prev,
+                              start: {
+                                ...prev.start,
+                                dateTime: newTime
+                              }
+                            }))
+                          }}
+                          onFocus={() => setEditingField('startTime')}
+                          onBlur={handleEditBlur}
+                          isEditing={editingField === 'startTime'}
+                          cursorBehavior="before-suffix"
+                          className="date-text"
+                        />
+                      </div>
                     )}
                   </div>
                   <div className="row-main">
@@ -264,26 +288,25 @@ export function EventEditView({
                       )}
                     </div>
                     {!isAllDay && (
-                      <div className="editable-content-wrapper" onClick={(e) => handleEditClick('endTime', e)}>
-                        {editingField === 'endTime' ? (
-                          <TimeInput
-                            value={editedEvent.end.dateTime}
-                            onChange={(newTime) => {
-                              setEditedEvent(prev => ({
-                                ...prev,
-                                end: {
-                                  ...prev.end,
-                                  dateTime: newTime
-                                }
-                              }))
-                            }}
-                            onBlur={handleEditBlur}
-                            className="date-text editable-input"
-                          />
-                        ) : (
-                          <span className="date-text">{formatTimeForDisplay(editedEvent.end.dateTime)}</span>
-                        )}
-                        </div>
+                      <div className="editable-content-wrapper">
+                        <TimeInput
+                          value={editedEvent.end.dateTime}
+                          onChange={(newTime) => {
+                            setEditedEvent(prev => ({
+                              ...prev,
+                              end: {
+                                ...prev.end,
+                                dateTime: newTime
+                              }
+                            }))
+                          }}
+                          onFocus={() => setEditingField('endTime')}
+                          onBlur={handleEditBlur}
+                          isEditing={editingField === 'endTime'}
+                          cursorBehavior="before-suffix"
+                          className="date-text"
+                        />
+                      </div>
                     )}
                   </div>
                 </div>

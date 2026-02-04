@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import 'react-loading-skeleton/dist/skeleton.css'
 import { toast } from 'sonner'
@@ -40,6 +40,8 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
   const [isProcessingEdit, setIsProcessingEdit] = useState(false)
   const [calendars, setCalendars] = useState<GoogleCalendar[]>([])
   const [isLoadingCalendars, setIsLoadingCalendars] = useState(true)
+  const [isScrollable, setIsScrollable] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   // Fetch calendar list on mount
   useEffect(() => {
@@ -64,6 +66,23 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
   useEffect(() => {
     setEditedEvents(events)
   }, [events])
+
+  // Check if content is scrollable
+  useEffect(() => {
+    const checkScrollable = () => {
+      if (contentRef.current) {
+        const hasOverflow = contentRef.current.scrollHeight > contentRef.current.clientHeight
+        setIsScrollable(hasOverflow)
+      }
+    }
+
+    // Check initially and when content changes
+    checkScrollable()
+
+    // Also check on window resize
+    window.addEventListener('resize', checkScrollable)
+    return () => window.removeEventListener('resize', checkScrollable)
+  }, [events, editedEvents, isLoading, editingEventIndex])
 
   const handleEventClick = (eventIndex: number) => {
     setEditingEventIndex(eventIndex)
@@ -321,9 +340,13 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
         expectedEventCount={expectedEventCount}
         isLoadingCalendars={isLoadingCalendars}
         isEditingEvent={editingEventIndex !== null}
+        isScrollable={isScrollable}
       />
 
-      <div className="event-confirmation-content">
+      <div
+        ref={contentRef}
+        className="event-confirmation-content"
+      >
         <AnimatePresence mode="wait">
           {/* Event Edit View - Replaces event list when editing */}
           {editingEventIndex !== null && editedEvents[editingEventIndex] ? (
@@ -463,6 +486,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
         onSend={handleSendRequest}
         onKeyDown={handleKeyDown}
         onConfirm={onConfirm}
+        isScrollable={isScrollable}
       />
     </div>
   )

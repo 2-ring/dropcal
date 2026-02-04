@@ -20,7 +20,7 @@ export function Feedback({ message, onClose }: FeedbackProps) {
     >
       {/* Info Icon */}
       <div className="feedback-icon">
-        <InfoIcon size={24} weight="bold" />
+        <InfoIcon size={24} weight="duotone" />
       </div>
 
       {/* Message */}
@@ -34,7 +34,7 @@ export function Feedback({ message, onClose }: FeedbackProps) {
         onClick={onClose}
         title="Dismiss"
       >
-        <XIcon size={24} weight="bold" />
+        <XIcon size={24} weight="duotone" />
       </button>
     </motion.div>
   )

@@ -1,9 +1,11 @@
-import { PlusCircle, SidebarSimple as SidebarIcon, CalendarBlank, ArrowSquareOut, Images, Files, Pen, Microphone } from '@phosphor-icons/react'
+import { useState, useEffect } from 'react'
+import { PlusCircle, SidebarSimple as SidebarIcon, CalendarBlank, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, CaretCircleLeft, GoogleLogo, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
 import type { SessionListItem } from '../sessions'
 import type { InputType } from '../sessions'
 import { Account } from './Account'
 import { MenuButton } from './MenuButton'
 import { SkeletonSessionGroup } from '../components/skeletons'
+import { getCalendarProviders } from '../api/backend-client'
 import './Menu.css'
 import markImage from '../assets/Mark.png'
 import wordImage from '../assets/Word.png'
@@ -28,6 +30,59 @@ export function Menu({
   onNewSession,
   isLoadingSessions = false,
 }: MenuProps) {
+  // State for primary calendar provider
+  const [primaryProvider, setPrimaryProvider] = useState<'google' | 'microsoft' | 'apple' | null>(null)
+
+  // Fetch primary calendar provider on mount
+  useEffect(() => {
+    const fetchPrimaryProvider = async () => {
+      try {
+        const response = await getCalendarProviders()
+        const primary = response.providers.find(p => p.is_primary && p.connected)
+        if (primary) {
+          setPrimaryProvider(primary.provider as 'google' | 'microsoft' | 'apple')
+        } else {
+          // Default to Google if no primary provider is set
+          setPrimaryProvider('google')
+        }
+      } catch (error) {
+        console.error('Failed to fetch calendar providers:', error)
+        // Default to Google on error
+        setPrimaryProvider('google')
+      }
+    }
+
+    fetchPrimaryProvider()
+  }, [])
+
+  // Get calendar URL based on provider
+  const getCalendarUrl = () => {
+    switch (primaryProvider) {
+      case 'google':
+        return 'https://calendar.google.com'
+      case 'microsoft':
+        return 'https://outlook.office.com/calendar'
+      case 'apple':
+        return 'https://www.icloud.com/calendar'
+      default:
+        return 'https://calendar.google.com'
+    }
+  }
+
+  // Get calendar icon based on provider
+  const getCalendarIcon = () => {
+    switch (primaryProvider) {
+      case 'google':
+        return <GoogleLogo size={20} weight="duotone" />
+      case 'microsoft':
+        return <MicrosoftOutlookLogo size={20} weight="duotone" />
+      case 'apple':
+        return <AppleLogo size={20} weight="duotone" />
+      default:
+        return <CalendarBlank size={20} weight="duotone" />
+    }
+  }
+
   // Get icon for input type (matches input area icons)
   const getInputIcon = (inputType: InputType) => {
     switch (inputType) {
@@ -118,22 +173,23 @@ export function Menu({
             <img src={wordImage} alt="DropCal" className="word-logo" />
           </div>
           <button className="sidebar-toggle" onClick={onToggle}>
-            <SidebarIcon size={20} weight="regular" />
+            <SidebarIcon size={20} weight="regular" className="sidebar-icon" />
+            <CaretCircleLeft size={20} weight="regular" className="sidebar-chevron" />
           </button>
         </div>
 
         <div className="sidebar-content">
           <MenuButton
             onClick={onNewSession}
-            icon={<PlusCircle size={16} weight="bold" />}
+            icon={<CalendarStar size={20} weight="duotone" />}
             variant="primary"
           >
             Start new
           </MenuButton>
 
           <MenuButton
-            onClick={() => window.open('https://calendar.google.com', '_blank')?.focus()}
-            icon={<CalendarBlank size={16} weight="bold" />}
+            onClick={() => window.open(getCalendarUrl(), '_blank')?.focus()}
+            icon={getCalendarIcon()}
             trailingIcon={<ArrowSquareOut size={14} weight="regular" />}
             variant="secondary"
           >

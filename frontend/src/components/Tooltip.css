@@ -1,0 +1,136 @@
+/**
+ * Tooltip Styles
+ *
+ * Styled to match the reference design:
+ * - Dark background (#1a1a1a)
+ * - White text
+ * - Rounded corners
+ * - Subtle shadow
+ * - Smooth animations
+ */
+
+.tooltip-content {
+  background-color: #1a1a1a;
+  color: #ffffff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.15);
+  user-select: none;
+  z-index: 9999;
+  max-width: 300px;
+  word-wrap: break-word;
+
+  /* Animation */
+  animation-duration: 0.2s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Fade in animation */
+.tooltip-content[data-state='delayed-open'],
+.tooltip-content[data-state='instant-open'] {
+  animation-name: tooltipFadeIn;
+}
+
+/* Fade out animation */
+.tooltip-content[data-state='closed'] {
+  animation-name: tooltipFadeOut;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes tooltipFadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96) translateY(-2px);
+  }
+}
+
+/* Arrow - hidden by default */
+.tooltip-arrow {
+  display: none;
+}
+
+/* Side-specific animations for better UX */
+.tooltip-content[data-side='bottom'] {
+  animation-name: tooltipFadeInFromTop;
+}
+
+.tooltip-content[data-side='top'] {
+  animation-name: tooltipFadeInFromBottom;
+}
+
+.tooltip-content[data-side='left'] {
+  animation-name: tooltipFadeInFromRight;
+}
+
+.tooltip-content[data-side='right'] {
+  animation-name: tooltipFadeInFromLeft;
+}
+
+@keyframes tooltipFadeInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tooltipFadeInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tooltipFadeInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes tooltipFadeInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Mobile: Slightly larger touch targets */
+@media (max-width: 768px) {
+  .tooltip-content {
+    font-size: 0.875rem;
+    padding: 0.625rem 0.875rem;
+  }
+}

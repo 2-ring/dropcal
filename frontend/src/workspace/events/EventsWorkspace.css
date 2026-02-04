@@ -43,6 +43,11 @@
   pointer-events: none;
 }
 
+/* Hide gradient when content is not scrollable */
+.event-confirmation-header.no-scroll::before {
+  display: none;
+}
+
 /* Header Content - Inner Bar */
 .event-confirmation-header-content {
   position: relative;
@@ -690,6 +695,11 @@
     rgba(255, 255, 255, 1) 100%
   );
   pointer-events: none;
+}
+
+/* Hide gradient when content is not scrollable */
+.event-confirmation-footer-overlay.no-scroll::before {
+  display: none;
 }
 
 .event-confirmation-footer {

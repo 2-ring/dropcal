@@ -70,7 +70,7 @@ export function Text({ onClose, onSubmit }: TextProps) {
           onClick={onClose}
           title="Cancel"
         >
-          <XIcon size={24} weight="bold" />
+          <XIcon size={24} weight="duotone" />
         </button>
 
         {/* Text Input */}
