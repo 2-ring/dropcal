@@ -2,17 +2,27 @@
 
 .expand-icon {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  gap: 0px;
   color: #666;
   flex-shrink: 0;
-}
-
-.expand-icon.expanded {
-  transform: rotate(180deg);
+  padding: 2px;
 }
 
 .expand-icon svg {
   display: block;
+  line-height: 0;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Top chevron rotates 180° to point down when expanded */
+.expand-icon-top.rotated {
+  transform: rotate(180deg);
+}
+
+/* Bottom chevron rotates 180° to point up when expanded */
+.expand-icon-bottom.rotated {
+  transform: rotate(180deg);
 }

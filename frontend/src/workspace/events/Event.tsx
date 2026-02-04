@@ -1,7 +1,6 @@
 import { Equals as EqualsIcon, MapPin as LocationIcon } from '@phosphor-icons/react'
 import Skeleton from 'react-loading-skeleton'
 import type { CalendarEvent } from './types'
-import { EventCalendarSelector } from './EventCalendarSelector'
 
 interface GoogleCalendar {
   id: string
@@ -33,11 +32,8 @@ export function Event({
   event,
   index,
   isLoading = false,
-  isLoadingCalendars = false,
   skeletonOpacity = 1,
   calendars = [],
-  formatDate,
-  formatTime,
   formatTimeRange,
   getCalendarColor,
   onClick,

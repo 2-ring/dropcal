@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { X as XIcon, CheckFat as CheckIcon, ChatCircleDots as ChatIcon, PaperPlaneRight as SendIcon, CaretLeft as BackIcon, FloppyDisk as SaveIcon } from '@phosphor-icons/react'
+import { FirstAid as FirstAidIcon, CheckFat as CheckIcon, ChatCircleDots as ChatIcon, PaperPlaneTilt as SendIcon, CalendarCheck as CalendarCheckIcon } from '@phosphor-icons/react'
 import Skeleton from 'react-loading-skeleton'
 import type { LoadingStateConfig } from './types'
 import { CalendarSelector } from './CalendarSelector'
@@ -14,8 +14,6 @@ interface TopBarProps {
   isLoading: boolean
   expectedEventCount?: number
   isLoadingCalendars?: boolean
-  showBackButton?: boolean
-  onBack?: () => void
 }
 
 export function TopBar({
@@ -23,23 +21,12 @@ export function TopBar({
   eventCount,
   isLoading,
   expectedEventCount,
-  isLoadingCalendars = false,
-  showBackButton = false,
-  onBack
+  isLoadingCalendars = false
 }: TopBarProps) {
   return (
     <div className="event-confirmation-header">
       <div className="event-confirmation-header-content">
         <div className="header-left">
-          {showBackButton && onBack && (
-            <button
-              className="header-back-button"
-              onClick={onBack}
-              title="Back to menu"
-            >
-              <BackIcon size={20} weight="bold" />
-            </button>
-          )}
           <CalendarSelector isLoading={isLoadingCalendars} />
         </div>
         <div className="header-center">
@@ -96,6 +83,7 @@ export function BottomBar({
   // Determine the current view state
   const getViewState = () => {
     if (isLoading) return 'loading'
+    if (isEditingEvent && isChatExpanded) return 'editing-chat'
     if (isEditingEvent) return 'editing'
     if (isChatExpanded) return 'chat'
     return 'default'
@@ -154,21 +142,58 @@ export function BottomBar({
                 transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               >
                 {viewState === 'editing' ? (
-                  /* Edit Mode: Cancel + Save */
+                  /* Edit Mode: Cancel + Request Changes + Save */
                   <>
                     <button
                       className="event-confirmation-icon-button cancel"
                       onClick={onCancel}
                       title="Cancel"
                     >
-                      <XIcon size={20} weight="bold" />
+                      <FirstAidIcon size={20} weight="bold" style={{ transform: 'rotate(45deg)' }} />
                     </button>
                     <button
-                      className="event-confirmation-save-button"
-                      onClick={onCancel}
+                      className="event-confirmation-request-button"
+                      onClick={onRequestChanges}
                     >
-                      <SaveIcon size={18} weight="bold" />
-                      <span>Save changes</span>
+                      <ChatIcon size={18} weight="bold" />
+                      <span>Request changes</span>
+                    </button>
+                    <button
+                      className="event-confirmation-icon-button confirm"
+                      onClick={onCancel}
+                      title="Save changes"
+                    >
+                      <CheckIcon size={24} weight="bold" />
+                    </button>
+                  </>
+                ) : viewState === 'editing-chat' ? (
+                  /* Edit Mode with Chat: Cancel + Input + Send */
+                  <>
+                    <button
+                      className="event-confirmation-icon-button cancel"
+                      onClick={onCancel}
+                      title="Back to edit"
+                    >
+                      <FirstAidIcon size={20} weight="bold" style={{ transform: 'rotate(45deg)' }} />
+                    </button>
+                    <div className="event-confirmation-chat-input-wrapper">
+                      <input
+                        type="text"
+                        className="event-confirmation-chat-input"
+                        placeholder="Request changes..."
+                        value={changeRequest}
+                        onChange={(e) => onChangeRequestChange(e.target.value)}
+                        onKeyDown={onKeyDown}
+                        autoFocus
+                      />
+                    </div>
+                    <button
+                      className="event-confirmation-icon-button send"
+                      onClick={onSend}
+                      disabled={!changeRequest.trim() || isProcessingEdit}
+                      title="Send"
+                    >
+                      <SendIcon size={22} weight="fill" />
                     </button>
                   </>
                 ) : viewState === 'chat' ? (
@@ -179,7 +204,7 @@ export function BottomBar({
                       onClick={onCancel}
                       title="Cancel"
                     >
-                      <XIcon size={20} weight="bold" />
+                      <FirstAidIcon size={20} weight="bold" style={{ transform: 'rotate(45deg)' }} />
                     </button>
                     <div className="event-confirmation-chat-input-wrapper">
                       <input
@@ -217,7 +242,7 @@ export function BottomBar({
                         onClick={onConfirm}
                         title="Add to Calendar"
                       >
-                        <CheckIcon size={24} weight="bold" />
+                        <CalendarCheckIcon size={24} weight="bold" />
                       </button>
                     )}
                   </>

@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import 'react-loading-skeleton/dist/skeleton.css'
 import { toast } from 'sonner'
 import type { CalendarEvent } from './types'
@@ -9,6 +10,11 @@ import { DateHeader } from './DateHeader'
 import { EventEditView } from './EventEditView'
 import wordmarkImage from '../../assets/Wordmark.png'
 import './EventsWorkspace.css'
+import {
+  listContainerVariants,
+  eventItemVariants,
+  dateHeaderVariants
+} from './animations'
 
 interface GoogleCalendar {
   id: string
@@ -34,7 +40,6 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
   const [isProcessingEdit, setIsProcessingEdit] = useState(false)
   const [calendars, setCalendars] = useState<GoogleCalendar[]>([])
   const [isLoadingCalendars, setIsLoadingCalendars] = useState(true)
-  const inputRef = useRef<HTMLInputElement>(null)
 
   // Fetch calendar list on mount
   useEffect(() => {
@@ -83,19 +88,17 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
     setEditingEventIndex(null)
   }
 
-  const handleBackNavigation = () => {
-    // TODO: Implement navigation back to menu
-    console.log('Back button clicked')
-  }
-
-  // Simple mobile detection
-  const isMobile = useMemo(() => window.innerWidth <= 768, [])
-
   // Unified cancel handler
   const handleCancel = () => {
-    if (editingEventIndex !== null) {
+    if (editingEventIndex !== null && isChatExpanded) {
+      // In editing-chat mode: close chat but stay in edit mode
+      setIsChatExpanded(false)
+      setChangeRequest('')
+    } else if (editingEventIndex !== null) {
+      // In editing mode: close edit
       handleCloseEdit()
     } else if (isChatExpanded) {
+      // In chat mode: close chat
       setIsChatExpanded(false)
       setChangeRequest('')
     }
@@ -221,31 +224,6 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
     return `${startTime} - ${endTime}`
   }
 
-  const buildDescription = (event: CalendarEvent): string => {
-    const parts: string[] = []
-
-    // Add time information
-    const startTime = formatTime(event.start.dateTime)
-    const endTime = formatTime(event.end.dateTime)
-
-    if (startTime !== endTime) {
-      parts.push(`${startTime} - ${endTime}`)
-    } else {
-      parts.push(startTime)
-    }
-
-    // Add location if available
-    if (event.location) {
-      parts.push(event.location)
-    }
-
-    // Add description if available
-    if (event.description) {
-      parts.push(event.description)
-    }
-
-    return parts.join('. ')
-  }
 
   const getCalendarColor = (calendarName: string | undefined): string => {
     if (!calendarName || calendarName === 'Primary' || calendarName === 'Default') {
@@ -261,19 +239,6 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
     return calendar?.backgroundColor || '#1170C5'
   }
 
-  const getTextColor = (backgroundColor: string): string => {
-    // Convert hex to RGB
-    const hex = backgroundColor.replace('#', '')
-    const r = parseInt(hex.substr(0, 2), 16)
-    const g = parseInt(hex.substr(2, 2), 16)
-    const b = parseInt(hex.substr(4, 2), 16)
-
-    // Calculate brightness using the luminance formula
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000
-
-    // Return black for light backgrounds, white for dark backgrounds
-    return brightness > 155 ? '#000000' : '#FFFFFF'
-  }
 
   // Group events by date
   const groupEventsByDate = (events: CalendarEvent[]): Map<string, CalendarEvent[]> => {
@@ -291,7 +256,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
     })
 
     // Sort events within each date by start time
-    grouped.forEach((events, dateKey) => {
+    grouped.forEach((events) => {
       events.sort((a, b) => new Date(a.start.dateTime).getTime() - new Date(b.start.dateTime).getTime())
     })
 
@@ -306,23 +271,30 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
         isLoading={isLoading}
         expectedEventCount={expectedEventCount}
         isLoadingCalendars={isLoadingCalendars}
-        showBackButton={isMobile}
-        onBack={handleBackNavigation}
       />
 
       <div className="event-confirmation-content">
-        {/* Event Edit View - Replaces event list when editing */}
-        {editingEventIndex !== null && editedEvents[editingEventIndex] ? (
-          <EventEditView
-            event={editedEvents[editingEventIndex]!}
-            calendars={calendars}
-            isLoadingCalendars={isLoadingCalendars}
-            onClose={handleCloseEdit}
-            onSave={handleEventSave}
-            getCalendarColor={getCalendarColor}
-          />
-        ) : (
-          <div className="event-confirmation-list">
+        <AnimatePresence mode="wait">
+          {/* Event Edit View - Replaces event list when editing */}
+          {editingEventIndex !== null && editedEvents[editingEventIndex] ? (
+            <EventEditView
+              key="edit-view"
+              event={editedEvents[editingEventIndex]!}
+              calendars={calendars}
+              isLoadingCalendars={isLoadingCalendars}
+              onClose={handleCloseEdit}
+              onSave={handleEventSave}
+              getCalendarColor={getCalendarColor}
+            />
+          ) : (
+            <motion.div
+              key="event-list"
+              className="event-confirmation-list"
+              variants={listContainerVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
             {isLoading ? (
               // Streaming state - show skeleton for null events, actual cards for completed events
               Array.from({ length: expectedEventCount || 3 }).map((_, index) => {
@@ -334,20 +306,24 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
                 const skeletonOpacity = 1 - (index / count) * 0.7
 
                 return (
-                  <Event
+                  <motion.div
                     key={event ? `event-${index}` : `skeleton-${index}`}
-                    event={editedEvent}
-                    index={index}
-                    isLoading={!event}
-                    isLoadingCalendars={isLoadingCalendars}
-                    skeletonOpacity={skeletonOpacity}
-                    calendars={calendars}
-                    formatDate={formatDate}
-                    formatTime={formatTime}
-                    formatTimeRange={formatTimeRange}
-                    getCalendarColor={getCalendarColor}
-                    onClick={() => handleEventClick(index)}
-                  />
+                    variants={eventItemVariants}
+                  >
+                    <Event
+                      event={editedEvent}
+                      index={index}
+                      isLoading={!event}
+                      isLoadingCalendars={isLoadingCalendars}
+                      skeletonOpacity={skeletonOpacity}
+                      calendars={calendars}
+                      formatDate={formatDate}
+                      formatTime={formatTime}
+                      formatTimeRange={formatTimeRange}
+                      getCalendarColor={getCalendarColor}
+                      onClick={() => handleEventClick(index)}
+                    />
+                  </motion.div>
                 )
               })
             ) : (
@@ -359,37 +335,47 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
                 // Sort date keys chronologically
                 const sortedDateKeys = Array.from(groupedEvents.keys()).sort()
 
-                return sortedDateKeys.flatMap((dateKey, dateGroupIndex) => {
+                return sortedDateKeys.flatMap((dateKey) => {
                   const eventsForDate = groupedEvents.get(dateKey)!
                   const dateObj = new Date(dateKey + 'T00:00:00')
 
                   // Return date header followed by events for that date
                   return [
-                    <DateHeader key={`date-${dateKey}`} date={dateObj} />,
+                    <motion.div
+                      key={`date-${dateKey}`}
+                      variants={dateHeaderVariants}
+                    >
+                      <DateHeader date={dateObj} />
+                    </motion.div>,
                     ...eventsForDate.map((event, eventIndex) => {
                       // Find the original index for proper editing state management
                       const originalIndex = filteredEvents.indexOf(event)
                       return (
-                        <Event
+                        <motion.div
                           key={`${dateKey}-${eventIndex}`}
-                          event={event}
-                          index={originalIndex}
-                          isLoadingCalendars={isLoadingCalendars}
-                          calendars={calendars}
-                          formatDate={formatDate}
-                          formatTime={formatTime}
-                          formatTimeRange={formatTimeRange}
-                          getCalendarColor={getCalendarColor}
-                          onClick={() => handleEventClick(originalIndex)}
-                        />
+                          variants={eventItemVariants}
+                        >
+                          <Event
+                            event={event}
+                            index={originalIndex}
+                            isLoadingCalendars={isLoadingCalendars}
+                            calendars={calendars}
+                            formatDate={formatDate}
+                            formatTime={formatTime}
+                            formatTimeRange={formatTimeRange}
+                            getCalendarColor={getCalendarColor}
+                            onClick={() => handleEventClick(originalIndex)}
+                          />
+                        </motion.div>
                       )
                     })
                   ]
                 })
               })()
             )}
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <BottomBar

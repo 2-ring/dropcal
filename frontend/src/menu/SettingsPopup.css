@@ -1,5 +1,18 @@
 /* Settings Popup Styles - Compact and Integrated */
 
+/* Spacing constant for consistent margins */
+:root {
+  --settings-popup-spacing: 16px;
+  --account-margin-bottom: 12px; /* 0.75rem converted to px for consistency */
+}
+
+/* Increase spacing on mobile to match larger button height */
+@media (max-width: 768px) {
+  :root {
+    --settings-popup-spacing: 20px;
+  }
+}
+
 .settings-popup-backdrop {
   position: fixed;
   top: 0;
@@ -13,9 +26,9 @@
 
 .settings-popup {
   position: fixed;
-  bottom: 80px;
-  left: 16px;
-  width: calc(280px - 32px);
+  bottom: calc(var(--menu-button-height) + var(--account-margin-bottom) + var(--settings-popup-spacing));
+  left: var(--settings-popup-spacing);
+  width: calc(280px - var(--settings-popup-spacing) * 2);
   background-color: white;
   border: 1px solid #e5e5e5;
   border-radius: 12px;
@@ -33,6 +46,17 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes slideUpCentered {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
   }
 }
 
@@ -155,10 +179,13 @@
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .settings-popup {
-    left: 50%;
-    bottom: 80px;
-    transform: translateX(-50%);
-    width: calc(100% - 32px);
-    max-width: 320px;
+    /* Align with account button which has 1rem side margins */
+    left: 1rem;
+    right: 1rem;
+    bottom: calc(var(--menu-button-height) + var(--account-margin-bottom) + var(--settings-popup-spacing));
+    width: auto;
+    max-width: none;
+    animation: slideUp 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    transform: none;
   }
 }

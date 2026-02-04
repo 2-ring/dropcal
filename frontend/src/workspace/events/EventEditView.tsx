@@ -1,7 +1,31 @@
+/**
+ * EventEditView Component
+ *
+ * Displays an event editor with staggered section animations.
+ *
+ * Animation Structure:
+ * - Container uses `editViewVariants` to control stagger timing
+ * - Each section wraps content with `motion.div` using `editSectionVariants`
+ * - Sections animate in sequence with ripple effect (scale + opacity + y movement)
+ *
+ * Current Sections (in order):
+ * 1. Title - Event title input
+ * 2. Calendar - Calendar selection chips
+ * 3. Time - Date/time, timezone, and repeat settings
+ * 4. Location - Location input
+ * 5. Description - Description textarea
+ *
+ * To Add New Sections:
+ * Simply wrap new content with: <motion.div variants={editSectionVariants}>
+ * Position it where you want it in the render order to control animation timing.
+ */
+
 import { useState, useRef } from 'react'
+import { motion } from 'framer-motion'
 import Skeleton from 'react-loading-skeleton'
-import { X as CloseIcon, Clock as ClockIcon, MapPin as LocationIcon, TextAlignLeft as DescriptionIcon, Globe as GlobeIcon, ArrowsClockwise as RepeatIcon } from '@phosphor-icons/react'
+import { Clock as ClockIcon, MapPin as LocationIcon, TextAlignLeft as DescriptionIcon, Globe as GlobeIcon, ArrowsClockwise as RepeatIcon } from '@phosphor-icons/react'
 import type { CalendarEvent } from './types'
+import { editViewVariants, editSectionVariants } from './animations'
 import './EventEditView.css'
 
 interface GoogleCalendar {
@@ -25,9 +49,9 @@ export function EventEditView({
   event,
   calendars,
   isLoadingCalendars = false,
-  onClose,
-  onSave,
-  getCalendarColor
+  onClose: _onClose,
+  onSave: _onSave,
+  getCalendarColor: _getCalendarColor,
 }: EventEditViewProps) {
   const [editedEvent, setEditedEvent] = useState<CalendarEvent>(event)
   const [isAllDay, setIsAllDay] = useState(false)
@@ -40,13 +64,6 @@ export function EventEditView({
     }))
   }
 
-  const handleSave = () => {
-    onSave(editedEvent)
-    onClose()
-  }
-
-  const calendarColor = getCalendarColor(editedEvent.calendar)
-
   const formatDateForDisplay = (dateTime: string) => {
     const date = new Date(dateTime)
     return date.toLocaleDateString('en-US', {
@@ -55,11 +72,6 @@ export function EventEditView({
       day: 'numeric',
       year: 'numeric'
     })
-  }
-
-  const formatTimeForInput = (dateTime: string) => {
-    const date = new Date(dateTime)
-    return date.toTimeString().slice(0, 5)
   }
 
   const formatTimeForDisplay = (dateTime: string) => {
@@ -71,29 +83,21 @@ export function EventEditView({
     })
   }
 
-  const updateDateTime = (field: 'start' | 'end', time: string) => {
-    const currentDateTime = new Date(editedEvent[field].dateTime)
-    const [hours, minutes] = time.split(':').map(Number)
-    currentDateTime.setHours(hours, minutes, 0, 0)
-
-    setEditedEvent(prev => ({
-      ...prev,
-      [field]: {
-        ...prev[field],
-        dateTime: currentDateTime.toISOString()
-      }
-    }))
-  }
-
   const handleCalendarSelect = (calendarId: string) => {
     handleChange('calendar', calendarId)
   }
 
   return (
     <div className="event-edit-overlay">
-      <div className="event-edit-container">
-        {/* Header with Title */}
-        <div className="event-edit-header">
+      <motion.div
+        className="event-edit-container"
+        variants={editViewVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+      >
+        {/* Section 1: Title */}
+        <motion.div variants={editSectionVariants} className="event-edit-header">
           <input
             type="text"
             className="event-edit-title-input"
@@ -101,14 +105,14 @@ export function EventEditView({
             onChange={(e) => handleChange('summary', e.target.value)}
             placeholder="Add title"
           />
-        </div>
+        </motion.div>
 
         {/* Scrollable Body */}
         <div className="event-edit-body">
-          {/* Calendar Selection - Horizontal scroll */}
-          <div className="event-edit-calendar-section">
+          {/* Section 2: Calendar Selection */}
+          <motion.div variants={editSectionVariants} className="event-edit-calendar-section">
             <div className="calendar-chips" ref={calendarScrollRef}>
-              {true ? (
+              {isLoadingCalendars ? (
                 // Show skeleton loaders with reducing opacity
                 Array.from({ length: 3 }).map((_, index) => (
                   <div
@@ -140,58 +144,61 @@ export function EventEditView({
                 ))
               )}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Combined Date & Time Row */}
-          <div className="event-edit-row">
-            <ClockIcon size={20} weight="regular" className="row-icon" />
-            <div className="row-content">
-              <div className="time-row-group">
-                <div className="row-main">
-                  <span className="date-text">All day</span>
-                  <label className="toggle-switch">
-                    <input
-                      type="checkbox"
-                      checked={isAllDay}
-                      onChange={(e) => setIsAllDay(e.target.checked)}
-                    />
-                    <span className="toggle-slider"></span>
-                  </label>
-                </div>
-                <div className="row-main">
-                  <span className="date-text">{formatDateForDisplay(editedEvent.start.dateTime)}</span>
-                  {!isAllDay && (
-                    <span className="date-text">{formatTimeForDisplay(editedEvent.start.dateTime)}</span>
-                  )}
-                </div>
-                <div className="row-main">
-                  <span className="date-text">{formatDateForDisplay(editedEvent.end.dateTime)}</span>
-                  {!isAllDay && (
-                    <span className="date-text">{formatTimeForDisplay(editedEvent.end.dateTime)}</span>
-                  )}
+          {/* Section 3: Time (includes date, time, timezone, repeat) */}
+          <motion.div variants={editSectionVariants}>
+            {/* Date & Time Row */}
+            <div className="event-edit-row">
+              <ClockIcon size={20} weight="regular" className="row-icon" />
+              <div className="row-content">
+                <div className="time-row-group">
+                  <div className="row-main">
+                    <span className="date-text">All day</span>
+                    <label className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={isAllDay}
+                        onChange={(e) => setIsAllDay(e.target.checked)}
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div className="row-main">
+                    <span className="date-text">{formatDateForDisplay(editedEvent.start.dateTime)}</span>
+                    {!isAllDay && (
+                      <span className="date-text">{formatTimeForDisplay(editedEvent.start.dateTime)}</span>
+                    )}
+                  </div>
+                  <div className="row-main">
+                    <span className="date-text">{formatDateForDisplay(editedEvent.end.dateTime)}</span>
+                    {!isAllDay && (
+                      <span className="date-text">{formatTimeForDisplay(editedEvent.end.dateTime)}</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Timezone Row */}
-          <div className="event-edit-row no-border">
-            <GlobeIcon size={20} weight="regular" className="row-icon" />
-            <div className="row-content">
-              <span className="date-text">Eastern Standard Time</span>
+            {/* Timezone Row */}
+            <div className="event-edit-row no-border">
+              <GlobeIcon size={20} weight="regular" className="row-icon" />
+              <div className="row-content">
+                <span className="date-text">Eastern Standard Time</span>
+              </div>
             </div>
-          </div>
 
-          {/* Repeat Row */}
-          <div className="event-edit-row no-border">
-            <RepeatIcon size={20} weight="regular" className="row-icon" />
-            <div className="row-content">
-              <span className="date-text">Does not repeat</span>
+            {/* Repeat Row */}
+            <div className="event-edit-row no-border">
+              <RepeatIcon size={20} weight="regular" className="row-icon" />
+              <div className="row-content">
+                <span className="date-text">Does not repeat</span>
+              </div>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Location Row */}
-          <div className="event-edit-row">
+          {/* Section 4: Location */}
+          <motion.div variants={editSectionVariants} className="event-edit-row">
             <LocationIcon size={20} weight="regular" className="row-icon" />
             <div className="row-content">
               <input
@@ -202,10 +209,10 @@ export function EventEditView({
                 onChange={(e) => handleChange('location', e.target.value)}
               />
             </div>
-          </div>
+          </motion.div>
 
-          {/* Description Row */}
-          <div className="event-edit-row">
+          {/* Section 5: Description */}
+          <motion.div variants={editSectionVariants} className="event-edit-row">
             <DescriptionIcon size={20} weight="regular" className="row-icon" />
             <div className="row-content">
               <textarea
@@ -216,9 +223,9 @@ export function EventEditView({
                 rows={3}
               />
             </div>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }

@@ -61,35 +61,6 @@
   height: 20px;
 }
 
-/* Header Back Button - Matches confirm button style */
-.header-back-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--dock-height);
-  height: var(--dock-height);
-  padding: 0;
-  background-color: #1170C5;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(17, 112, 197, 0.25);
-  flex-shrink: 0;
-}
-
-.header-back-button:hover {
-  background-color: #0e5a9d;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(17, 112, 197, 0.3);
-}
-
-.header-back-button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(17, 112, 197, 0.25);
-}
-
 /* Calendar Selector Button */
 .calendar-selector-button {
   display: flex;
@@ -615,7 +586,7 @@
 
 .event-confirmation-footer {
   position: relative;
-  padding: 0 1rem 2rem 1rem;
+  padding: 0 var(--page-padding-x) 2rem var(--page-padding-x);
   pointer-events: auto;
 }
 
@@ -647,10 +618,6 @@
 
 .content.with-sidebar .event-confirmation-footer-overlay {
   left: calc(50% + 140px);
-}
-
-.content.with-sidebar .event-confirmation-header-content .header-wordmark {
-  opacity: 0;
 }
 
 .event-confirmation-request-button {
@@ -785,9 +752,10 @@
 }
 
 .event-confirmation-icon-button.cancel {
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.98);
   color: #666;
   border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 4px 24px rgba(0, 0, 0, 0.06);
 }
 
 .event-confirmation-icon-button.cancel:hover {
@@ -795,44 +763,46 @@
   color: #333;
   border-color: rgba(0, 0, 0, 0.15);
   transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 6px 28px rgba(0, 0, 0, 0.08);
 }
 
 .event-confirmation-icon-button.cancel:active {
   transform: translateY(0);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 4px 24px rgba(0, 0, 0, 0.06);
 }
 
 .event-confirmation-icon-button.confirm {
   background-color: #1170C5;
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(17, 112, 197, 0.25);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 4px 24px rgba(0, 0, 0, 0.06);
 }
 
 .event-confirmation-icon-button.confirm:hover {
   background-color: #0e5a9d;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(17, 112, 197, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 6px 28px rgba(0, 0, 0, 0.08);
 }
 
 .event-confirmation-icon-button.confirm:active {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(17, 112, 197, 0.25);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 4px 24px rgba(0, 0, 0, 0.06);
 }
 
 .event-confirmation-icon-button.send {
   background-color: #1170C5;
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(17, 112, 197, 0.25);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 4px 24px rgba(0, 0, 0, 0.06);
 }
 
 .event-confirmation-icon-button.send:hover:not(:disabled) {
   background-color: #0e5a9d;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(17, 112, 197, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 6px 28px rgba(0, 0, 0, 0.08);
 }
 
 .event-confirmation-icon-button.send:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(17, 112, 197, 0.25);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 4px 24px rgba(0, 0, 0, 0.06);
 }
 
 .event-confirmation-icon-button.send:disabled {
@@ -885,7 +855,7 @@
   }
 
   .event-confirmation-header {
-    padding: 0 1rem;
+    padding: 0 var(--page-padding-x);
   }
 
   .event-confirmation-header-content {
@@ -909,7 +879,7 @@
   }
 
   .event-confirmation-list {
-    padding: 0 0.75rem;
+    padding: 0 var(--page-padding-x);
     gap: 0.75rem;
   }
 
@@ -943,7 +913,7 @@
   }
 
   .event-confirmation-footer {
-    padding: 0 1rem 1.5rem 1rem;
+    padding: 0 var(--page-padding-x) 1.5rem var(--page-padding-x);
   }
 
   .event-confirmation-footer-row {
@@ -1040,17 +1010,6 @@
   .calendar-selector-option .calendar-selector-icon {
     width: 16px;
     height: 16px;
-  }
-
-  /* Header Back Button Mobile - Keep same dock height as other buttons */
-  .header-back-button {
-    width: var(--dock-height);
-    height: var(--dock-height);
-  }
-
-  .header-back-button svg {
-    width: 20px;
-    height: 20px;
   }
 
   /* Chat Input Wrapper Mobile */

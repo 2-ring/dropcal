@@ -3,7 +3,7 @@
  * Used for New events, View calendar, and sign-in buttons.
  */
 
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import './MenuButton.css';
 
 interface MenuButtonProps {

@@ -108,7 +108,7 @@ export function Account() {
               </span>
               <span className="account-user-plan">Pro plan</span>
             </div>
-            <ExpandIcon isExpanded={isSettingsOpen} size={16} />
+            <ExpandIcon isExpanded={isSettingsOpen} size={10} />
           </div>
         </button>
       </div>
