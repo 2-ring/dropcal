@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { Equals as EqualsIcon, PencilSimple as EditIcon, Calendar as CalendarIcon } from '@phosphor-icons/react'
 import Skeleton from 'react-loading-skeleton'
 import type { CalendarEvent } from './types'
@@ -42,18 +41,12 @@ export function Event({
   onEditBlur,
   onEditKeyDown,
 }: EventProps) {
-  // Loading skeleton - simplified to single rounded box
+  // Loading skeleton - simple grey box like session skeletons
   if (isLoading && !event) {
     return (
-      <motion.div
-        key={`skeleton-${index}`}
-        className="event-confirmation-card skeleton-card"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: index * 0.1 }}
-      >
-        <Skeleton height="100%" borderRadius={12} containerClassName="skeleton-full-height" />
-      </motion.div>
+      <div key={`skeleton-${index}`} style={{ padding: '0' }}>
+        <Skeleton height={140} borderRadius={16} />
+      </div>
     )
   }
 
@@ -62,12 +55,9 @@ export function Event({
 
   // Actual event card
   return (
-    <motion.div
+    <div
       key={`event-${index}`}
       className="event-confirmation-card"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
     >
       {/* Title */}
       <div className="event-confirmation-card-row">
@@ -155,6 +145,6 @@ export function Event({
           )}
         </div>
       )}
-    </motion.div>
+    </div>
   )
 }

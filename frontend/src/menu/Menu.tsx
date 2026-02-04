@@ -92,7 +92,7 @@ export function Menu({
           <button className="dock-icon-button" onClick={onToggle} title="Expand sidebar">
             <SidebarIcon size={20} weight="regular" />
           </button>
-          <button className="dock-icon-button" onClick={onNewSession} title="New events">
+          <button className="dock-icon-button" onClick={onNewSession} title="Start new">
             <PlusCircle size={20} weight="regular" />
           </button>
         </div>
@@ -115,7 +115,7 @@ export function Menu({
             icon={<PlusCircle size={16} weight="bold" />}
             variant="primary"
           >
-            New events
+            Start new
           </MenuButton>
 
           <MenuButton

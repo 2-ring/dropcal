@@ -51,14 +51,14 @@ class PreferenceApplicationAgent(BaseAgent):
         Args:
             facts: ExtractedFacts from Agent 2
             discovered_patterns: Patterns from PatternDiscoveryService (preferred)
-                - calendar_patterns: Dict[cal_id, summary]
-                - color_patterns: List[str]
+                - category_patterns: Dict[category_id, summary]
                 - style_stats: Dict
             user_preferences: Legacy UserPreferences (fallback, optional)
             historical_events: User's historical events for similarity search
 
         Returns:
-            Enhanced ExtractedFacts with calendar + color + formatting applied
+            Enhanced ExtractedFacts with category + formatting applied
+            (Colors are automatically applied based on category during write)
         """
         if not facts:
             raise ValueError("No facts provided for preference application")
@@ -136,16 +136,12 @@ Return the enhanced ExtractedFacts with calendar, colorId, and formatted title."
             Formatted context string for LLM
         """
 
-        calendar_patterns = patterns.get('calendar_patterns', {})
-        color_patterns = patterns.get('color_patterns', [])
+        category_patterns = patterns.get('category_patterns', {})
         style_stats = patterns.get('style_stats', {})
         total_events = patterns.get('total_events_analyzed', 0)
 
-        # Format calendar summaries
-        calendar_text = self._format_calendar_summaries(calendar_patterns)
-
-        # Format color patterns
-        color_text = "\n".join(f"  - {p}" for p in color_patterns)
+        # Format category summaries
+        category_text = self._format_category_summaries(category_patterns)
 
         # Format style stats
         style_text = self._format_style_stats(style_stats)
@@ -154,39 +150,36 @@ Return the enhanced ExtractedFacts with calendar, colorId, and formatted title."
 USER'S PREFERENCES (Learned from {total_events} historical events)
 
 {'='*60}
-CALENDAR USAGE PATTERNS:
+CATEGORY USAGE PATTERNS:
 {'='*60}
-{calendar_text}
-
-{'='*60}
-COLOR USAGE PATTERNS:
-{'='*60}
-{color_text}
+{category_text}
 
 {'='*60}
 STYLE PREFERENCES:
 {'='*60}
 {style_text}
+
+Note: Colors are handled automatically based on category assignment.
 """
         return context
 
-    def _format_calendar_summaries(self, calendar_patterns: Dict) -> str:
-        """Format calendar patterns for prompt"""
-        if not calendar_patterns:
-            return "  (No calendar patterns discovered)"
+    def _format_category_summaries(self, category_patterns: Dict) -> str:
+        """Format category patterns for prompt"""
+        if not category_patterns:
+            return "  (No category patterns discovered)"
 
         lines = []
-        for cal_id, pattern in calendar_patterns.items():
-            name = pattern.get('name', cal_id)
+        for cat_id, pattern in category_patterns.items():
+            name = pattern.get('name', cat_id)
             is_primary = pattern.get('is_primary', False)
             desc = pattern.get('description', '')
             event_types = pattern.get('event_types', [])
             examples = pattern.get('examples', [])
             never_contains = pattern.get('never_contains', [])
 
-            primary_str = " ⭐ PRIMARY CALENDAR" if is_primary else ""
+            primary_str = " ⭐ PRIMARY" if is_primary else ""
 
-            lines.append(f"\nCalendar: {name}{primary_str}")
+            lines.append(f"\nCategory: {name}{primary_str}")
             lines.append(f"  Description: {desc}")
 
             if event_types:

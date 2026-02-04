@@ -2,13 +2,14 @@
 Lightweight pattern discovery service.
 
 Analyzes calendar history to produce:
-1. Calendar summaries (what goes where)
-2. Color patterns (event types → colors)
-3. Style statistics (capitalization, length, brackets, etc.)
+1. Category patterns (calendars/categories - what goes where)
+2. Style statistics (capitalization, length, brackets, etc.)
 
 This service uses a hybrid approach:
 - Statistical analysis for style (no LLM - just counting)
-- LLM-based summaries for calendars and colors
+- LLM-based summaries for categories
+
+Note: Colors are not analyzed - they're a visual output determined by category assignment.
 """
 
 from typing import Dict, List, Optional
@@ -22,7 +23,10 @@ class PatternDiscoveryService:
     """
     Discovers user preferences through:
     - Statistical analysis (no LLM needed)
-    - Lightweight LLM-based pattern summaries
+    - Lightweight LLM-based category pattern summaries
+
+    Categories = Calendars (Google) or Categories (Microsoft) - same concept
+    Colors are ignored - they're just visual output, not organizational dimensions
     """
 
     def __init__(self, llm: ChatAnthropic):
@@ -53,10 +57,12 @@ class PatternDiscoveryService:
         Returns:
             Dict with:
                 - user_id: str
-                - calendar_patterns: Dict[calendar_id, summary]
-                - color_patterns: List[pattern descriptions]
+                - category_patterns: Dict[calendar_id, summary]
                 - style_stats: Dict with statistics
                 - total_events_analyzed: int
+
+        Note: Colors are not analyzed - they're automatically assigned based on
+        category (calendar) during event creation.
         """
 
         events = comprehensive_data.get('events', [])
@@ -68,19 +74,14 @@ class PatternDiscoveryService:
         print(f"Analyzing {len(events)} events from {len(calendars)} calendars...")
 
         # 1. Statistical analysis (fast, no LLM)
-        print("\n[1/3] Computing style statistics...")
+        print("\n[1/2] Computing style statistics...")
         style_stats = self._analyze_style_statistics(events)
         print(f"✓ Style statistics computed")
 
-        # 2. Calendar summaries (one LLM call per calendar)
-        print(f"\n[2/3] Analyzing calendar usage patterns...")
-        calendar_patterns = self._discover_calendar_patterns(events, calendars)
-        print(f"✓ Calendar patterns discovered for {len(calendar_patterns)} calendars")
-
-        # 3. Color patterns (one LLM call)
-        print(f"\n[3/3] Discovering color usage patterns...")
-        color_patterns = self._discover_color_patterns(events)
-        print(f"✓ Color patterns discovered")
+        # 2. Category patterns (one LLM call per calendar/category)
+        print(f"\n[2/2] Analyzing category usage patterns...")
+        category_patterns = self._discover_category_patterns(events, calendars)
+        print(f"✓ Category patterns discovered for {len(category_patterns)} categories")
 
         print(f"\n{'='*60}")
         print(f"PATTERN DISCOVERY COMPLETE")
@@ -88,8 +89,7 @@ class PatternDiscoveryService:
 
         return {
             'user_id': user_id,
-            'calendar_patterns': calendar_patterns,
-            'color_patterns': color_patterns,
+            'category_patterns': category_patterns,
             'style_stats': style_stats,
             'total_events_analyzed': len(events)
         }
@@ -190,108 +190,122 @@ class PatternDiscoveryService:
         }
 
     # =========================================================================
-    # 2. CALENDAR PATTERNS (One LLM call per calendar)
+    # 2. CATEGORY PATTERNS (One LLM call per calendar/category)
     # =========================================================================
 
-    def _discover_calendar_patterns(
+    def _discover_category_patterns(
         self,
         events: List[Dict],
         calendars: List[Dict]
     ) -> Dict[str, Dict]:
         """
-        For each calendar, generate a summary of when/why it's used.
+        For each category (calendar in Google, category in Microsoft),
+        generate a summary of when/why it's used.
+
+        Categories are the primary organizational dimension - not colors.
 
         Returns:
-            Dict mapping calendar_id to pattern summary
+            Dict mapping category_id to pattern summary
         """
 
-        # Group events by calendar
-        events_by_calendar = self._group_events_by_calendar(events, calendars)
+        # Group events by category (calendar)
+        events_by_category = self._group_events_by_calendar(events, calendars)
 
-        calendar_patterns = {}
+        category_patterns = {}
 
         for calendar in calendars:
             cal_id = calendar.get('id')
             cal_name = calendar.get('summary', 'Unnamed')
             is_primary = calendar.get('primary', False)
 
-            cal_events = events_by_calendar.get(cal_id, [])
+            # Extract calendar color for UI (not used in LLM analysis)
+            cal_color = calendar.get('backgroundColor')
+            cal_foreground_color = calendar.get('foregroundColor')
+
+            cal_events = events_by_category.get(cal_id, [])
 
             print(f"  Analyzing: {cal_name} ({len(cal_events)} events)...")
 
             if not cal_events:
-                # Empty calendar
-                calendar_patterns[cal_id] = {
+                # Empty category
+                category_patterns[cal_id] = {
                     'name': cal_name,
                     'is_primary': is_primary,
-                    'description': 'This calendar has no events in the analyzed period',
+                    'color': cal_color,
+                    'foreground_color': cal_foreground_color,
+                    'description': 'This category has no events in the analyzed period',
                     'event_types': [],
                     'examples': [],
                     'never_contains': []
                 }
                 continue
 
-            # Sample events for analysis
-            sampled = self._smart_sample(cal_events, target=100)
+            # Sample events for analysis with recency weighting
+            # 60% from recent events, 30% mid-term, 10% historical
+            sampled = self._smart_sample_weighted(cal_events, target=100, recency_bias=0.6)
 
-            # Call LLM to analyze this calendar
-            summary = self._analyze_calendar_with_llm(
-                calendar_name=cal_name,
+            # Call LLM to analyze this category
+            summary = self._analyze_category_with_llm(
+                category_name=cal_name,
                 is_primary=is_primary,
                 events=sampled,
                 total_count=len(cal_events)
             )
 
-            calendar_patterns[cal_id] = {
+            category_patterns[cal_id] = {
                 'name': cal_name,
                 'is_primary': is_primary,
+                'color': cal_color,  # For UI display
+                'foreground_color': cal_foreground_color,  # For UI display
                 **summary
             }
 
-        return calendar_patterns
+        return category_patterns
 
-    def _analyze_calendar_with_llm(
+    def _analyze_category_with_llm(
         self,
-        calendar_name: str,
+        category_name: str,
         is_primary: bool,
         events: List[Dict],
         total_count: int
     ) -> Dict:
         """
-        Use LLM to analyze a single calendar and generate summary.
+        Use LLM to analyze a single category (calendar) and generate summary.
+
+        Note: Color information is excluded from LLM analysis - colors are
+        just visual output, not organizational patterns.
 
         Returns:
             Dict with description, event_types, examples, never_contains
         """
 
-        # Prepare event summaries
+        # Prepare event summaries (exclude colorId - not relevant for patterns)
         event_summaries = []
         for e in events[:50]:  # Show first 50 to LLM
             event_summaries.append({
                 'title': e.get('summary', ''),
                 'date': self._extract_date(e),
-                'colorId': e.get('colorId'),
                 'location': e.get('location', '')[:50] if e.get('location') else None
             })
 
-        prompt = f"""Analyze this calendar to understand when/why the user uses it.
+        prompt = f"""Analyze this category to understand when/why the user uses it.
 
-CALENDAR: {calendar_name} {"(PRIMARY CALENDAR)" if is_primary else "(Secondary Calendar)"}
+CATEGORY: {category_name} {"(PRIMARY)" if is_primary else "(Secondary)"}
 TOTAL EVENTS: {total_count}
 
 SAMPLE EVENTS (first 50):
 {json.dumps(event_summaries, indent=2)}
 
 YOUR TASK:
-Write a concise description of this calendar's usage pattern.
+Write a concise description of this category's usage pattern.
 
 Focus on:
 1. What types of events go here?
 2. What NEVER goes here? (if specialized)
-3. Is this calendar specialized or general-purpose?
+3. Is this category specialized or general-purpose?
 
 Provide:
-- description: 1-2 sentence summary of what this calendar is for
+- description: 1-2 sentence summary of what this category is for
 - event_types: List of event types (e.g., ["Classes", "Homework", "Office Hours"])
 - examples: 5-7 representative example titles from the data
 - never_contains: What doesn't belong here (e.g., ["personal events", "work meetings"])
@@ -299,94 +313,15 @@ Provide:
 Return structured JSON."""
 
         # Structured output
-        class CalendarSummary(BaseModel):
+        class CategorySummary(BaseModel):
             description: str
             event_types: List[str]
             examples: List[str]
             never_contains: List[str]
 
-        result = self.llm.with_structured_output(CalendarSummary).invoke(prompt)
+        result = self.llm.with_structured_output(CategorySummary).invoke(prompt)
 
         return result.model_dump()
-
-    # =========================================================================
-    # 3. COLOR PATTERNS (One LLM call total)
-    # =========================================================================
-
-    def _discover_color_patterns(self, events: List[Dict]) -> List[str]:
-        """
-        Discover how user assigns colors to events.
-
-        Returns:
-            List of pattern strings like:
-            - "Academic classes → Turquoise (colorId 2)"
-            - "Deadlines → Red (colorId 11)"
-        """
-
-        # Filter events that have colors
-        colored_events = [e for e in events if e.get('colorId')]
-
-        if not colored_events:
-            return ["No color patterns detected (most events use default colors)"]
-
-        # Sample for analysis
-        sampled = self._smart_sample(colored_events, target=200)
-
-        # Group by color to show distribution
-        by_color = defaultdict(list)
-        for e in sampled:
-            color = e.get('colorId')
-            by_color[color].append(e.get('summary', ''))
-
-        # Prepare for LLM - show examples per color
-        color_examples = {}
-        for color_id, titles in by_color.items():
-            color_examples[color_id] = titles[:10]  # Top 10 examples per color
-
-        prompt = f"""Analyze color usage patterns in this user's calendar.
-
-EVENTS GROUPED BY COLOR ID:
-{json.dumps(color_examples, indent=2)}
-
-GOOGLE CALENDAR COLOR IDS:
-1 = Lavender
-2 = Turquoise/Sage
-3 = Purple/Grape
-4 = Pink/Flamingo
-5 = Yellow/Banana
-6 = Orange/Tangerine
-7 = Cyan/Peacock
-8 = Gray/Graphite
-9 = Blue/Blueberry
-10 = Green/Basil
-11 = Red/Tomato
-
-YOUR TASK:
-Discover patterns in color usage. What types of events get which colors?
-
-Look for:
-- Semantic patterns (e.g., "homework" → red, "classes" → turquoise)
-- Consistency (always/usually/sometimes)
-- Event type associations
-
-Return a list of pattern strings formatted like:
-- "Academic classes and lectures → Turquoise (colorId 2) [always]"
-- "Assignment deadlines → Red (colorId 11) [always]"
-- "Personal appointments → Blue (colorId 9) [usually]"
-
-Each pattern should specify:
-1. Event type
-2. Color name and ID
-3. Frequency [always/usually/sometimes]
-
-Return structured JSON with patterns list."""
-
-        class ColorPatterns(BaseModel):
-            patterns: List[str]
-
-        result = self.llm.with_structured_output(ColorPatterns).invoke(prompt)
-
-        return result.patterns
 
     # =========================================================================
     # Helper Methods
@@ -439,6 +374,156 @@ Return structured JSON with patterns list."""
                 sampled.append(items[index])
 
         return sampled
+
+    def _smart_sample_weighted(self, items: List[Dict], target: int, recency_bias: float = 0.6) -> List[Dict]:
+        """
+        Sample items with recency weighting - more recent events sampled more heavily.
+
+        Uses a tiered approach with configurable recency bias:
+        - Tier 1 (Most Recent): Always included + densely sampled
+        - Tier 2 (Mid-term): Moderate sampling
+        - Tier 3 (Historical): Light sampling for context
+
+        Research basis: Exponential decay with configurable half-life.
+        Default 60/30/10 split based on recommendation system research.
+
+        Args:
+            items: List of events (assumed chronologically ordered, oldest first)
+            target: Target sample size
+            recency_bias: How much to favor recent events (0.5 = equal, 0.8 = heavy recency)
+                         - 0.5: 50% recent, 30% mid, 20% old (balanced)
+                         - 0.6: 60% recent, 30% mid, 10% old (default, moderate bias)
+                         - 0.7: 70% recent, 20% mid, 10% old (strong bias)
+
+        Returns:
+            Sampled list with recency weighting
+        """
+        if len(items) <= target:
+            return items
+
+        # Calculate tier boundaries
+        # Items are ordered oldest→newest, so recent events are at the END
+        total = len(items)
+
+        # Define time periods (assuming events span ~12 months)
+        # Recent: Last 25% of events (roughly last 3 months)
+        # Mid: Middle 35% of events (roughly 3-9 months ago)
+        # Old: First 40% of events (roughly 9+ months ago)
+        recent_start = int(total * 0.75)  # Last 25% of list
+        mid_start = int(total * 0.40)     # Middle 35% of list
+
+        old_events = items[:mid_start]
+        mid_events = items[mid_start:recent_start]
+        recent_events = items[recent_start:]
+
+        # Allocate samples based on recency bias
+        # Ensure we always get at least a few from each tier
+        min_per_tier = max(1, int(target * 0.05))  # At least 5% from each tier
+
+        recent_count = max(min_per_tier, int(target * recency_bias))
+        mid_count = max(min_per_tier, int(target * (1 - recency_bias) * 0.75))
+        old_count = max(min_per_tier, target - recent_count - mid_count)
+
+        # Adjust if we over-allocated
+        total_allocated = recent_count + mid_count + old_count
+        if total_allocated > target:
+            # Reduce proportionally from each tier
+            scale = target / total_allocated
+            recent_count = int(recent_count * scale)
+            mid_count = int(mid_count * scale)
+            old_count = target - recent_count - mid_count
+
+        # Sample from each tier
+        recent_sampled = self._smart_sample(recent_events, recent_count)
+        mid_sampled = self._smart_sample(mid_events, mid_count)
+        old_sampled = self._smart_sample(old_events, old_count)
+
+        # Combine in chronological order (oldest first)
+        return old_sampled + mid_sampled + recent_sampled
+
+    def _smart_sample_top_heavy(self, items: List[Dict], target: int, guaranteed_recent: int = 10) -> List[Dict]:
+        """
+        Sample with absolute guarantee of N most recent events + exponential decay for older.
+
+        This is the most aggressive recency bias - ensures you ALWAYS get the last N events
+        no matter what, then samples older events with exponential decay.
+
+        Use cases:
+        - When recent semester is critical (academic calendars)
+        - When user's style may have changed recently
+        - When you want to guarantee representation of current patterns
+
+        Args:
+            items: List of events (chronologically ordered, oldest first)
+            target: Target sample size
+            guaranteed_recent: Number of most recent events to always include (default 10)
+
+        Returns:
+            Sampled list with guaranteed recent events + exponentially decayed historical sampling
+        """
+        if len(items) <= target:
+            return items
+
+        total = len(items)
+
+        # Always include the last N events
+        guaranteed = min(guaranteed_recent, total, target)
+        recent_events = items[-guaranteed:]
+
+        # Sample remaining from historical events
+        remaining_target = target - guaranteed
+        if remaining_target <= 0:
+            return recent_events
+
+        historical_events = items[:-guaranteed] if guaranteed > 0 else items
+
+        if len(historical_events) <= remaining_target:
+            # Include all historical
+            return historical_events + recent_events
+
+        # Exponential sampling from historical events
+        # More recent (within historical) gets sampled more
+        historical_sampled = self._exponential_sample(historical_events, remaining_target)
+
+        return historical_sampled + recent_events
+
+    def _exponential_sample(self, items: List[Dict], target: int) -> List[Dict]:
+        """
+        Sample using exponential decay - older events less likely to be selected.
+
+        Uses inverse exponential weighting where item at position i has weight:
+        weight[i] = exp(i / len(items)) - more recent items exponentially more likely
+
+        Args:
+            items: List of events (chronologically ordered)
+            target: Number of samples to take
+
+        Returns:
+            Sampled events with exponential recency bias
+        """
+        if len(items) <= target:
+            return items
+
+        import math
+
+        # Calculate exponential weights (position-based, not time-based for simplicity)
+        # Recent items get exponentially higher weights
+        weights = []
+        for i in range(len(items)):
+            # Normalize position to 0-1, then apply exponential
+            # decay_rate = 2 means recent items are ~7x more likely than oldest
+            decay_rate = 2.0
+            normalized_pos = i / len(items)
+            weight = math.exp(decay_rate * normalized_pos)
+            weights.append(weight)
+
+        # Sample indices based on weights
+        import random
+        sampled_indices = sorted(
+            random.choices(range(len(items)), weights=weights, k=target)
+        )
+
+        return [items[i] for i in sampled_indices]
 
     def _extract_date(self, event: Dict) -> str:
         """Extract date string from event"""

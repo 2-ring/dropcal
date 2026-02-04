@@ -190,8 +190,7 @@ class PersonalizationService:
             Dict with patterns if exists, None otherwise
             Dict format:
                 - user_id: str
-                - calendar_patterns: Dict[calendar_id, summary]
-                - color_patterns: List[pattern descriptions]
+                - category_patterns: Dict[category_id, summary]
                 - style_stats: Dict with statistics
                 - total_events_analyzed: int
         """

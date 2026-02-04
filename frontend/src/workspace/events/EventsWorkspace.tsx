@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
 import 'react-loading-skeleton/dist/skeleton.css'
 import { toast } from 'sonner'
 import type { CalendarEvent } from './types'
@@ -270,12 +269,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
   }
 
   return (
-    <motion.div
-      className="event-confirmation"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-    >
+    <div className="event-confirmation">
       <TopBar
         wordmarkImage={wordmarkImage}
         eventCount={events.filter(e => e !== null).length}
@@ -347,6 +341,6 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
         onKeyDown={handleKeyDown}
         onConfirm={onConfirm}
       />
-    </motion.div>
+    </div>
   )
 }

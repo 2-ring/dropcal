@@ -33,21 +33,108 @@ interface SessionListItem {
   eventCount: number
 }
 
+// Test data for events
+const TEST_EVENTS: CalendarEvent[] = [
+  {
+    summary: 'Team Standup',
+    start: {
+      dateTime: '2026-02-05T10:00:00',
+      timeZone: 'America/New_York'
+    },
+    end: {
+      dateTime: '2026-02-05T10:30:00',
+      timeZone: 'America/New_York'
+    },
+    location: 'Conference Room A',
+    description: 'Daily team sync to discuss progress and blockers',
+    calendar: 'primary'
+  },
+  {
+    summary: 'Client Presentation',
+    start: {
+      dateTime: '2026-02-06T14:00:00',
+      timeZone: 'America/New_York'
+    },
+    end: {
+      dateTime: '2026-02-06T15:30:00',
+      timeZone: 'America/New_York'
+    },
+    location: 'Zoom Meeting',
+    description: 'Quarterly review presentation for client stakeholders',
+    calendar: 'primary'
+  },
+  {
+    summary: 'Hack@Brown 2026',
+    start: {
+      dateTime: '2026-02-07T09:00:00',
+      timeZone: 'America/New_York'
+    },
+    end: {
+      dateTime: '2026-02-08T18:00:00',
+      timeZone: 'America/New_York'
+    },
+    location: 'Brown University',
+    description: 'Annual hackathon - Marshall Wace Track',
+    calendar: 'primary'
+  },
+  {
+    summary: 'Coffee with Alex',
+    start: {
+      dateTime: '2026-02-10T15:00:00',
+      timeZone: 'America/New_York'
+    },
+    end: {
+      dateTime: '2026-02-10T16:00:00',
+      timeZone: 'America/New_York'
+    },
+    location: 'Blue State Coffee',
+    description: 'Catch up on project ideas',
+    calendar: 'primary'
+  }
+]
+
 function App() {
   const { user } = useAuth()
   const [currentGreetingIndex] = useState(() =>
     Math.floor(Math.random() * greetingImagePaths.length)
   )
-  const [appState, setAppState] = useState<AppState>('input')
-  const [isProcessing, setIsProcessing] = useState(false)
+  // TEMPORARY: Start with loading state to show events workspace immediately
+  const [appState, setAppState] = useState<AppState>('loading')
+  const [isProcessing, setIsProcessing] = useState(true)
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
-  const [loadingMessage, setLoadingMessage] = useState('Processing...')
+  const [loadingMessage, setLoadingMessage] = useState<string>(LOADING_MESSAGES.READING_FILE.message)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [feedbackMessage, setFeedbackMessage] = useState<string>('')
 
   // Session state (from backend)
   const [currentSession, setCurrentSession] = useState<BackendSession | null>(null)
   const [sessionHistory, setSessionHistory] = useState<BackendSession[]>([])
+
+  // TEMPORARY: Show loading sequence for 5 seconds, then load test data
+  useEffect(() => {
+    const loadingSequence = [
+      { message: LOADING_MESSAGES.READING_FILE.message, delay: 0 },
+      { message: LOADING_MESSAGES.UNDERSTANDING_CONTEXT.message, delay: 1000 },
+      { message: LOADING_MESSAGES.EXTRACTING_EVENTS.message, delay: 2000 },
+      { message: LOADING_MESSAGES.EXTRACTING_FACTS.message, delay: 3500 },
+      { message: LOADING_MESSAGES.FORMATTING_CALENDAR.message, delay: 4500 }
+    ]
+
+    const timers = loadingSequence.map(({ message, delay }) =>
+      setTimeout(() => setLoadingMessage(message), delay)
+    )
+
+    const finalTimer = setTimeout(() => {
+      setCalendarEvents(TEST_EVENTS)
+      setAppState('review')
+      setIsProcessing(false)
+    }, 5000)
+
+    return () => {
+      timers.forEach(clearTimeout)
+      clearTimeout(finalTimer)
+    }
+  }, [])
 
   // Load session history when user logs in
   useEffect(() => {
