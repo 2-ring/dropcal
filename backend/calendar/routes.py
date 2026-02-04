@@ -6,8 +6,8 @@ Handles OAuth, event creation, conflict checking, and calendar operations.
 from flask import Blueprint, jsonify, request, redirect
 from typing import Optional
 
-from calendar.service import CalendarService
-from calendar.google_calendar import GoogleCalendarClient, store_google_tokens_from_supabase
+from .service import CalendarService
+from .google_calendar import GoogleCalendarClient, store_google_tokens_from_supabase
 from auth.middleware import require_auth
 
 # Create blueprint
@@ -159,8 +159,6 @@ def create_calendar_event():
         calendar_id = None
         if calendar_name:
             calendar_id = resolve_calendar_name_to_id(calendar_name, calendar_service)
-            if calendar_id:
-            else:
 
         # Format attendees if provided (convert list of strings to list of dicts)
         if 'attendees' in event_data and event_data['attendees']:
