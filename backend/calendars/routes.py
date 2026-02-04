@@ -7,7 +7,7 @@ from flask import Blueprint, jsonify, request, redirect
 from typing import Optional
 
 from .service import CalendarService
-from calendar import factory
+from calendars import factory
 from calendars.google import auth as google_auth  # Still needed for legacy token storage endpoint
 from auth.middleware import require_auth
 

@@ -175,10 +175,10 @@ class CalendarEventSimilarity:
 
     def _length_similarity(self, event1: Dict, event2: Dict) -> float:
         """
-        Compute length similarity with sigmoid smoothing.
+        Compute length similarity with exponential decay.
 
         Events of similar length often get similar formatting.
-        Uses sigmoid to smoothly taper similarity as length difference increases.
+        Uses exponential decay: exp(-diff/T) for smooth tapering.
 
         Args:
             event1: First event
@@ -186,6 +186,10 @@ class CalendarEventSimilarity:
 
         Returns:
             Similarity score in [0, 1]
+            - diff=0: 1.0 (perfect match)
+            - diff=3: 0.37 (moderate match)
+            - diff=6: 0.13 (weak match)
+            - diff→∞: 0.0 (no match)
         """
         # Count words in titles
         len1 = len(event1.get('title', '').split())
@@ -194,9 +198,9 @@ class CalendarEventSimilarity:
         # Compute absolute difference
         diff = abs(len1 - len2)
 
-        # Sigmoid smoothing: 1 / (1 + exp(diff / T))
-        # T=3 gives smooth tapering (from research)
-        similarity = 1.0 / (1.0 + np.exp(diff / 3.0))
+        # Exponential decay: exp(-diff / T)
+        # T=3 gives smooth tapering: same length=1.0, diff=3→0.37, diff=6→0.13
+        similarity = np.exp(-diff / 3.0)
 
         return float(similarity)
 

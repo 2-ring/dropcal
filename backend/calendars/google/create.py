@@ -8,7 +8,7 @@ from googleapiclient.errors import HttpError
 from typing import Dict, Optional, List, Tuple
 
 from database.models import Session as DBSession
-from calendar.google import auth, fetch
+from . import auth, fetch
 
 
 def create_event(

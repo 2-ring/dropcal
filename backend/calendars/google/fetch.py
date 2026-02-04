@@ -7,7 +7,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from typing import List, Dict
 
-from calendar.google import auth
+from . import auth
 
 
 def list_events(
