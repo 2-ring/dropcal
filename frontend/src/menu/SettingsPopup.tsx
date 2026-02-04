@@ -4,12 +4,10 @@
  */
 
 import {
-  Gear,
-  Globe,
-  Question,
+  User,
+  CalendarBlank,
+  Clock,
   CrownSimple,
-  Gift,
-  BookOpen,
   SignOut,
   CaretRight,
 } from '@phosphor-icons/react';
@@ -92,7 +90,7 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
         <div className="settings-popup-menu">
           {isLoading ? (
             <>
-              {[...Array(6)].map((_, i) => (
+              {[...Array(4)].map((_, i) => (
                 <div key={i} className="settings-popup-item" style={{ padding: '12px 16px' }}>
                   <Skeleton width={20} height={20} style={{ marginRight: 12 }} />
                   <Skeleton width={100 + i * 10} height={16} />
@@ -101,36 +99,26 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
             </>
           ) : (
             <>
-          <button className="settings-popup-item" disabled>
-            <Gear size={20} weight="regular" />
-            <span>Settings</span>
-            <span className="settings-popup-shortcut">⌘+Ctrl+,</span>
-          </button>
-
-          <button className="settings-popup-item" disabled>
-            <Globe size={20} weight="regular" />
-            <span>Language</span>
-            <CaretRight size={16} weight="regular" className="settings-popup-arrow" />
-          </button>
-
-          <button className="settings-popup-item" disabled>
-            <Question size={20} weight="regular" />
-            <span>Get help</span>
-          </button>
-
           <button className="settings-popup-item" onClick={handleUpgradePlan}>
             <CrownSimple size={20} weight="regular" />
             <span>Upgrade plan</span>
           </button>
 
           <button className="settings-popup-item" disabled>
-            <Gift size={20} weight="regular" />
-            <span>Gift Claude</span>
+            <Clock size={20} weight="regular" />
+            <span>Date convention</span>
+            <CaretRight size={16} weight="regular" className="settings-popup-arrow" />
           </button>
 
           <button className="settings-popup-item" disabled>
-            <BookOpen size={20} weight="regular" />
-            <span>Learn more</span>
+            <CalendarBlank size={20} weight="regular" />
+            <span>Manage integrations</span>
+            <CaretRight size={16} weight="regular" className="settings-popup-arrow" />
+          </button>
+
+          <button className="settings-popup-item" disabled>
+            <User size={20} weight="regular" />
+            <span>Account settings</span>
             <CaretRight size={16} weight="regular" className="settings-popup-arrow" />
           </button>
             </>

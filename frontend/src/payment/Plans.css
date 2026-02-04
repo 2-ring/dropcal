@@ -271,7 +271,7 @@
 }
 
 .plans-disclaimer {
-  position: absolute;
+  position: fixed;
   bottom: 2rem;
   left: 0;
   right: 0;
@@ -279,6 +279,7 @@
   color: #5f6368;
   font-size: 0.75rem;
   font-style: italic;
+  z-index: 5;
 }
 
 /* Mobile responsive */
@@ -305,9 +306,9 @@
   }
 
   .plans-greeting {
-    /* TEMPORARY: Reset negative margins on mobile */
-    margin-top: 0;
-    margin-bottom: 0;
+    /* TEMPORARY: Reduced negative margins on mobile */
+    margin-top: -2rem;
+    margin-bottom: -2rem;
   }
 
   .plans-greeting-image {

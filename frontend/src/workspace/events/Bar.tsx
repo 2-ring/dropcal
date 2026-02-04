@@ -3,7 +3,6 @@ import { X as XIcon, CheckFat as CheckIcon, ChatCircleDots as ChatIcon, PaperPla
 import Skeleton from 'react-loading-skeleton'
 import type { LoadingStateConfig } from './types'
 import { CalendarSelector } from './CalendarSelector'
-import { deriveBottomBarState, getBottomBarConfig, type BarContext } from './barStateMachine'
 
 // ============================================================================
 // TOP BAR
@@ -65,29 +64,25 @@ export function TopBar({
 // ============================================================================
 
 interface BottomBarProps {
-  // State machine context
-  context: BarContext
-
-  // Loading state
+  isLoading: boolean
   loadingConfig?: LoadingStateConfig[]
-
-  // Chat state
+  isEditingEvent: boolean
+  isChatExpanded: boolean
   changeRequest: string
   isProcessingEdit: boolean
-
-  // Callbacks
   onCancel: () => void
   onRequestChanges: () => void
   onChangeRequestChange: (value: string) => void
   onSend: () => void
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
   onConfirm?: () => void
-  onSave?: () => void
 }
 
 export function BottomBar({
-  context,
+  isLoading,
   loadingConfig = [],
+  isEditingEvent,
+  isChatExpanded,
   changeRequest,
   isProcessingEdit,
   onCancel,
@@ -96,21 +91,27 @@ export function BottomBar({
   onSend,
   onKeyDown,
   onConfirm,
-  onSave,
 }: BottomBarProps) {
-  // Derive state and configuration
-  const state = deriveBottomBarState(context)
-  const config = getBottomBarConfig(state, context)
+
+  // Determine the current view state
+  const getViewState = () => {
+    if (isLoading) return 'loading'
+    if (isEditingEvent) return 'editing'
+    if (isChatExpanded) return 'chat'
+    return 'default'
+  }
+
+  const viewState = getViewState()
 
   return (
     <div className="event-confirmation-footer-overlay">
       <div className="event-confirmation-footer">
-        {state === 'loading' ? (
-          /* Progress indicators during loading */
+        {viewState === 'loading' ? (
+          /* Loading Progress */
           <div className="loading-progress-container">
             <div className="loading-progress-steps">
-              {loadingConfig.map((loadingStep, index) => {
-                const IconComponent = loadingStep.icon
+              {loadingConfig.map((step, index) => {
+                const IconComponent = step.icon
                 return (
                   <motion.div
                     key={index}
@@ -126,14 +127,14 @@ export function BottomBar({
                     )}
                     <div className="loading-progress-text">
                       <div className="loading-progress-message" style={{ fontStyle: 'italic' }}>
-                        {loadingStep.message}
+                        {step.message}
                       </div>
-                      {loadingStep.submessage && (
-                        <div className="loading-progress-submessage">{loadingStep.submessage}</div>
+                      {step.submessage && (
+                        <div className="loading-progress-submessage">{step.submessage}</div>
                       )}
                     </div>
-                    {loadingStep.count && (
-                      <div className="loading-progress-count">{loadingStep.count}</div>
+                    {step.count && (
+                      <div className="loading-progress-count">{step.count}</div>
                     )}
                   </motion.div>
                 )
@@ -141,86 +142,85 @@ export function BottomBar({
             </div>
           </div>
         ) : (
-          /* Dynamic content based on state */
+          /* Interactive Bar */
           <div className="event-confirmation-footer-row">
             <AnimatePresence mode="wait">
               <motion.div
-                key={state}
+                key={viewState}
                 className="event-confirmation-footer-content"
                 initial={{ y: 20, scale: 0.95, opacity: 0 }}
                 animate={{ y: 0, scale: 1, opacity: 1 }}
                 exit={{ y: -20, scale: 0.95, opacity: 0 }}
                 transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               >
-                {/* Left: Cancel button (edit mode or chat expanded) */}
-                {config.showCancelButton && (
-                  <button
-                    className="event-confirmation-icon-button cancel"
-                    onClick={onCancel}
-                    title="Cancel"
-                  >
-                    <XIcon size={20} weight="bold" />
-                  </button>
-                )}
-
-                {/* Middle: Request changes button */}
-                {config.showRequestChangesButton && (
-                  <button
-                    className="event-confirmation-request-button"
-                    onClick={onRequestChanges}
-                  >
-                    <ChatIcon size={18} weight="bold" />
-                    <span>Request changes</span>
-                  </button>
-                )}
-
-                {/* Middle: Chat input (no send button inside) */}
-                {config.showChatInput && (
-                  <div className="event-confirmation-chat-input-wrapper">
-                    <input
-                      type="text"
-                      className="event-confirmation-chat-input"
-                      placeholder="Request changes..."
-                      value={changeRequest}
-                      onChange={(e) => onChangeRequestChange(e.target.value)}
-                      onKeyDown={onKeyDown}
-                      autoFocus
-                    />
-                  </div>
-                )}
-
-                {/* Middle: Save button (edit mode) */}
-                {config.showSaveButton && onSave && (
-                  <button
-                    className="event-confirmation-save-button"
-                    onClick={onSave}
-                  >
-                    <SaveIcon size={18} weight="bold" />
-                    <span>Save changes</span>
-                  </button>
-                )}
-
-                {/* Right: Confirm button */}
-                {config.showConfirmButton && onConfirm && (
-                  <button
-                    className="event-confirmation-icon-button confirm"
-                    onClick={onConfirm}
-                    title="Add to Calendar"
-                  >
-                    <CheckIcon size={24} weight="bold" />
-                  </button>
-                )}
-
-                {/* Right: Send button (replaces confirm when chat is open) */}
-                {config.showSendButton && (
-                  <button
-                    className="event-confirmation-icon-button send"
-                    onClick={onSend}
-                    disabled={!changeRequest.trim() || isProcessingEdit}
-                    title="Send"
-                  >
-                    <SendIcon size={22} weight="fill" />
-                  </button>
+                {viewState === 'editing' ? (
+                  /* Edit Mode: Cancel + Save */
+                  <>
+                    <button
+                      className="event-confirmation-icon-button cancel"
+                      onClick={onCancel}
+                      title="Cancel"
+                    >
+                      <XIcon size={20} weight="bold" />
+                    </button>
+                    <button
+                      className="event-confirmation-save-button"
+                      onClick={onCancel}
+                    >
+                      <SaveIcon size={18} weight="bold" />
+                      <span>Save changes</span>
+                    </button>
+                  </>
+                ) : viewState === 'chat' ? (
+                  /* Chat Expanded: Cancel + Input + Send */
+                  <>
+                    <button
+                      className="event-confirmation-icon-button cancel"
+                      onClick={onCancel}
+                      title="Cancel"
+                    >
+                      <XIcon size={20} weight="bold" />
+                    </button>
+                    <div className="event-confirmation-chat-input-wrapper">
+                      <input
+                        type="text"
+                        className="event-confirmation-chat-input"
+                        placeholder="Request changes..."
+                        value={changeRequest}
+                        onChange={(e) => onChangeRequestChange(e.target.value)}
+                        onKeyDown={onKeyDown}
+                        autoFocus
+                      />
+                    </div>
+                    <button
+                      className="event-confirmation-icon-button send"
+                      onClick={onSend}
+                      disabled={!changeRequest.trim() || isProcessingEdit}
+                      title="Send"
+                    >
+                      <SendIcon size={22} weight="fill" />
+                    </button>
+                  </>
+                ) : (
+                  /* Default: Request Changes + Confirm */
+                  <>
+                    <button
+                      className="event-confirmation-request-button"
+                      onClick={onRequestChanges}
+                    >
+                      <ChatIcon size={18} weight="bold" />
+                      <span>Request changes</span>
+                    </button>
+                    {onConfirm && (
+                      <button
+                        className="event-confirmation-icon-button confirm"
+                        onClick={onConfirm}
+                        title="Add to Calendar"
+                      >
+                        <CheckIcon size={24} weight="bold" />
+                      </button>
+                    )}
+                  </>
                 )}
               </motion.div>
             </AnimatePresence>

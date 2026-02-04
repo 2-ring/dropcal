@@ -10,6 +10,7 @@ import { useAuth } from '../auth/AuthContext';
 import { SettingsPopup } from './SettingsPopup';
 import { MenuButton } from './MenuButton';
 import { LoadingSpinnerContainer } from '../components/skeletons';
+import { ExpandIcon } from './ExpandIcon';
 import './Account.css';
 
 export function Account() {
@@ -107,6 +108,7 @@ export function Account() {
               </span>
               <span className="account-user-plan">Pro plan</span>
             </div>
+            <ExpandIcon isExpanded={isSettingsOpen} size={16} />
           </div>
         </button>
       </div>

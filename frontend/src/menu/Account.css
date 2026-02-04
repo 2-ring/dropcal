@@ -96,7 +96,7 @@
   align-items: flex-start;
   flex: 1;
   min-width: 0;
-  gap: 2px;
+  gap: 0px;
 }
 
 .account-user-name {

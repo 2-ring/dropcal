@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import 'react-loading-skeleton/dist/skeleton.css'
 import { toast } from 'sonner'
 import type { CalendarEvent } from './types'
@@ -81,6 +81,24 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
 
   const handleCloseEdit = () => {
     setEditingEventIndex(null)
+  }
+
+  const handleBackNavigation = () => {
+    // TODO: Implement navigation back to menu
+    console.log('Back button clicked')
+  }
+
+  // Simple mobile detection
+  const isMobile = useMemo(() => window.innerWidth <= 768, [])
+
+  // Unified cancel handler
+  const handleCancel = () => {
+    if (editingEventIndex !== null) {
+      handleCloseEdit()
+    } else if (isChatExpanded) {
+      setIsChatExpanded(false)
+      setChangeRequest('')
+    }
   }
 
   const handleSendRequest = async () => {
@@ -288,6 +306,8 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
         isLoading={isLoading}
         expectedEventCount={expectedEventCount}
         isLoadingCalendars={isLoadingCalendars}
+        showBackButton={isMobile}
+        onBack={handleBackNavigation}
       />
 
       <div className="event-confirmation-content">
@@ -375,12 +395,14 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
       <BottomBar
         isLoading={isLoading}
         loadingConfig={loadingConfig}
+        isEditingEvent={editingEventIndex !== null}
         isChatExpanded={isChatExpanded}
         changeRequest={changeRequest}
         isProcessingEdit={isProcessingEdit}
-        onChatExpandToggle={() => setIsChatExpanded(!isChatExpanded)}
+        onCancel={handleCancel}
+        onRequestChanges={() => setIsChatExpanded(true)}
         onChangeRequestChange={setChangeRequest}
-        onSendRequest={handleSendRequest}
+        onSend={handleSendRequest}
         onKeyDown={handleKeyDown}
         onConfirm={onConfirm}
       />
