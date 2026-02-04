@@ -76,8 +76,8 @@ export function CalendarSelector({
         {currentCalendar.icon}
         <span className="calendar-selector-provider">{currentCalendar.name}</span>
         <CaretDownIcon
-          size={14}
-          weight="bold"
+          size={10}
+          weight="regular"
           className={`calendar-selector-chevron ${isDropdownOpen ? 'open' : ''}`}
         />
       </button>

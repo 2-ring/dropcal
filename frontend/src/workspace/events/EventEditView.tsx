@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import Skeleton from 'react-loading-skeleton'
 import { X as CloseIcon, Clock as ClockIcon, MapPin as LocationIcon, TextAlignLeft as DescriptionIcon, Globe as GlobeIcon, ArrowsClockwise as RepeatIcon } from '@phosphor-icons/react'
 import type { CalendarEvent } from './types'
 import './EventEditView.css'
@@ -93,9 +94,6 @@ export function EventEditView({
       <div className="event-edit-container">
         {/* Header with Title */}
         <div className="event-edit-header">
-          <button className="event-edit-close" onClick={onClose}>
-            <CloseIcon size={24} weight="regular" />
-          </button>
           <input
             type="text"
             className="event-edit-title-input"
@@ -103,9 +101,6 @@ export function EventEditView({
             onChange={(e) => handleChange('summary', e.target.value)}
             placeholder="Add title"
           />
-          <button className="event-edit-save" onClick={handleSave}>
-            Save
-          </button>
         </div>
 
         {/* Scrollable Body */}
@@ -113,83 +108,74 @@ export function EventEditView({
           {/* Calendar Selection - Horizontal scroll */}
           <div className="event-edit-calendar-section">
             <div className="calendar-chips" ref={calendarScrollRef}>
-              {calendars.map((calendar) => (
-                <button
-                  key={calendar.id}
-                  className={`calendar-chip ${calendar.id === editedEvent.calendar ? 'active' : ''}`}
-                  onClick={() => handleCalendarSelect(calendar.id)}
-                  style={{
-                    backgroundColor: calendar.id === editedEvent.calendar ? calendar.backgroundColor : 'transparent',
-                    color: calendar.id === editedEvent.calendar ? '#ffffff' : '#666',
-                    borderColor: calendar.backgroundColor
-                  }}
-                >
+              {true ? (
+                // Show skeleton loaders with reducing opacity
+                Array.from({ length: 3 }).map((_, index) => (
                   <div
-                    className="calendar-chip-dot"
-                    style={{ backgroundColor: calendar.backgroundColor }}
-                  />
-                  <span>{calendar.summary}</span>
-                </button>
-              ))}
+                    key={`skeleton-${index}`}
+                    className="calendar-chip-skeleton"
+                    style={{ opacity: 1 - index * 0.3 }}
+                  >
+                    <Skeleton width={100} height={32} borderRadius={20} />
+                  </div>
+                ))
+              ) : (
+                calendars.map((calendar) => (
+                  <button
+                    key={calendar.id}
+                    className={`calendar-chip ${calendar.id === editedEvent.calendar ? 'active' : ''}`}
+                    onClick={() => handleCalendarSelect(calendar.id)}
+                    style={{
+                      backgroundColor: calendar.id === editedEvent.calendar ? calendar.backgroundColor : 'transparent',
+                      color: calendar.id === editedEvent.calendar ? '#ffffff' : '#666',
+                      borderColor: calendar.backgroundColor
+                    }}
+                  >
+                    <div
+                      className="calendar-chip-dot"
+                      style={{ backgroundColor: calendar.backgroundColor }}
+                    />
+                    <span>{calendar.summary}</span>
+                  </button>
+                ))
+              )}
             </div>
           </div>
 
-          {/* All Day Toggle Row */}
+          {/* Combined Date & Time Row */}
           <div className="event-edit-row">
             <ClockIcon size={20} weight="regular" className="row-icon" />
             <div className="row-content">
-              <div className="row-main">
-                <span className="date-text">All day</span>
-                <label className="toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={isAllDay}
-                    onChange={(e) => setIsAllDay(e.target.checked)}
-                  />
-                  <span className="toggle-slider"></span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Start Date & Time Row */}
-          <div className="event-edit-row">
-            <ClockIcon size={20} weight="regular" className="row-icon" />
-            <div className="row-content">
-              <div className="row-main">
-                <span className="date-text">{formatDateForDisplay(editedEvent.start.dateTime)}</span>
-                {!isAllDay && (
-                  <input
-                    type="time"
-                    className="time-input"
-                    value={formatTimeForInput(editedEvent.start.dateTime)}
-                    onChange={(e) => updateDateTime('start', e.target.value)}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* End Date & Time Row */}
-          <div className="event-edit-row">
-            <ClockIcon size={20} weight="regular" className="row-icon" />
-            <div className="row-content">
-              <div className="row-main">
-                <span className="date-text">{formatDateForDisplay(editedEvent.end.dateTime)}</span>
-                {!isAllDay && (
-                  <input
-                    type="time"
-                    className="time-input"
-                    value={formatTimeForInput(editedEvent.end.dateTime)}
-                    onChange={(e) => updateDateTime('end', e.target.value)}
-                  />
-                )}
+              <div className="time-row-group">
+                <div className="row-main">
+                  <span className="date-text">All day</span>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={isAllDay}
+                      onChange={(e) => setIsAllDay(e.target.checked)}
+                    />
+                    <span className="toggle-slider"></span>
+                  </label>
+                </div>
+                <div className="row-main">
+                  <span className="date-text">{formatDateForDisplay(editedEvent.start.dateTime)}</span>
+                  {!isAllDay && (
+                    <span className="date-text">{formatTimeForDisplay(editedEvent.start.dateTime)}</span>
+                  )}
+                </div>
+                <div className="row-main">
+                  <span className="date-text">{formatDateForDisplay(editedEvent.end.dateTime)}</span>
+                  {!isAllDay && (
+                    <span className="date-text">{formatTimeForDisplay(editedEvent.end.dateTime)}</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Timezone Row */}
-          <div className="event-edit-row">
+          <div className="event-edit-row no-border">
             <GlobeIcon size={20} weight="regular" className="row-icon" />
             <div className="row-content">
               <span className="date-text">Eastern Standard Time</span>
@@ -197,7 +183,7 @@ export function EventEditView({
           </div>
 
           {/* Repeat Row */}
-          <div className="event-edit-row">
+          <div className="event-edit-row no-border">
             <RepeatIcon size={20} weight="regular" className="row-icon" />
             <div className="row-content">
               <span className="date-text">Does not repeat</span>

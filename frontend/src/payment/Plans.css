@@ -15,7 +15,7 @@
   justify-content: center;
   border: none;
   background-color: transparent;
-  color: #666;
+  color: #5f6368;
   cursor: pointer;
   transition: all 0.2s ease;
   z-index: 10;
@@ -23,7 +23,7 @@
 }
 
 .back-button:hover {
-  color: #333;
+  color: var(--primary-color);
   transform: translateX(-4px);
 }
 
@@ -44,8 +44,9 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  /* TEMPORARY: Large negative margin to remove extra space from temporary greeting image */
-  margin-bottom: -4rem;
+  /* TEMPORARY: Very large negative margins to remove extra space from temporary greeting image */
+  margin-top: -6rem;
+  margin-bottom: -6rem;
 }
 
 .plans-greeting-image {
@@ -301,6 +302,12 @@
     height: auto;
     justify-content: flex-start;
     gap: 1.5rem;
+  }
+
+  .plans-greeting {
+    /* TEMPORARY: Reset negative margins on mobile */
+    margin-top: 0;
+    margin-bottom: 0;
   }
 
   .plans-greeting-image {

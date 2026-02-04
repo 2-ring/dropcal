@@ -66,7 +66,7 @@ export function Plans() {
   return (
     <div className="plans-page">
       <button className="back-button" onClick={() => navigate('/')}>
-        <CaretLeft size={32} weight="bold" />
+        <CaretLeft size={24} weight="regular" />
       </button>
 
       <div className="plans-container">
