@@ -23,7 +23,7 @@
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import Skeleton from 'react-loading-skeleton'
-import { Clock as ClockIcon, MapPin as LocationIcon, TextAlignLeft as DescriptionIcon, Globe as GlobeIcon, ArrowsClockwise as RepeatIcon, PencilSimple as EditIcon } from '@phosphor-icons/react'
+import { Clock as ClockIcon, MapPin as LocationIcon, TextAlignLeft as DescriptionIcon, Globe as GlobeIcon, ArrowsClockwise as RepeatIcon } from '@phosphor-icons/react'
 import type { CalendarEvent } from './types'
 import { editViewVariants, editSectionVariants } from './animations'
 import './EventEditView.css'
@@ -141,7 +141,6 @@ export function EventEditView({
                 {editedEvent.summary || 'Add title'}
               </div>
             )}
-            <EditIcon size={16} weight="regular" className="edit-icon" />
           </div>
         </motion.div>
 
@@ -220,7 +219,6 @@ export function EventEditView({
                       ) : (
                         <span className="date-text">{formatDateForDisplay(editedEvent.start.dateTime)}</span>
                       )}
-                      <EditIcon size={14} weight="regular" className="edit-icon" />
                     </div>
                     {!isAllDay && (
                       <div className="editable-content-wrapper" onClick={(e) => handleEditClick('startDate', e)}>
@@ -240,8 +238,7 @@ export function EventEditView({
                         ) : (
                           <span className="date-text">{formatTimeForDisplay(editedEvent.start.dateTime)}</span>
                         )}
-                        <EditIcon size={14} weight="regular" className="edit-icon" />
-                      </div>
+                        </div>
                     )}
                   </div>
                   <div className="row-main">
@@ -262,7 +259,6 @@ export function EventEditView({
                       ) : (
                         <span className="date-text">{formatDateForDisplay(editedEvent.end.dateTime)}</span>
                       )}
-                      <EditIcon size={14} weight="regular" className="edit-icon" />
                     </div>
                     {!isAllDay && (
                       <div className="editable-content-wrapper" onClick={(e) => handleEditClick('endDate', e)}>
@@ -282,8 +278,7 @@ export function EventEditView({
                         ) : (
                           <span className="date-text">{formatTimeForDisplay(editedEvent.end.dateTime)}</span>
                         )}
-                        <EditIcon size={14} weight="regular" className="edit-icon" />
-                      </div>
+                        </div>
                     )}
                   </div>
                 </div>
@@ -310,7 +305,6 @@ export function EventEditView({
                   ) : (
                     <span className="date-text">Eastern Standard Time</span>
                   )}
-                  <EditIcon size={14} weight="regular" className="edit-icon" />
                 </div>
               </div>
             </div>
@@ -335,7 +329,6 @@ export function EventEditView({
                   ) : (
                     <span className="date-text">Does not repeat</span>
                   )}
-                  <EditIcon size={14} weight="regular" className="edit-icon" />
                 </div>
               </div>
             </div>
@@ -362,7 +355,6 @@ export function EventEditView({
                     {editedEvent.location || 'Add location'}
                   </div>
                 )}
-                <EditIcon size={14} weight="regular" className="edit-icon" />
               </div>
             </div>
           </motion.div>
@@ -388,7 +380,6 @@ export function EventEditView({
                     {editedEvent.description || 'Add description'}
                   </div>
                 )}
-                <EditIcon size={14} weight="regular" className="edit-icon" />
               </div>
             </div>
           </motion.div>
