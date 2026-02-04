@@ -13,6 +13,7 @@ interface CalendarSelectorProps {
   calendars?: CalendarOption[]
   isLoading?: boolean
   onCalendarSelect?: (calendarId: string) => void
+  isMinimized?: boolean
 }
 
 const GoogleIcon = ({ size = 16 }: { size?: number }) => (
@@ -29,7 +30,8 @@ export function CalendarSelector({
   selectedCalendar,
   calendars = [],
   isLoading = false,
-  onCalendarSelect
+  onCalendarSelect,
+  isMinimized = false
 }: CalendarSelectorProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -70,7 +72,7 @@ export function CalendarSelector({
   return (
     <div ref={dropdownRef} style={{ position: 'relative' }}>
       <button
-        className="calendar-selector-button"
+        className={`calendar-selector-button ${isMinimized ? 'minimized' : ''}`}
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
       >
         {currentCalendar.icon}

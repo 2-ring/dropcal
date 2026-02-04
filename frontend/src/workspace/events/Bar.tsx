@@ -14,6 +14,7 @@ interface TopBarProps {
   isLoading: boolean
   expectedEventCount?: number
   isLoadingCalendars?: boolean
+  isEditingEvent?: boolean
 }
 
 export function TopBar({
@@ -21,13 +22,14 @@ export function TopBar({
   eventCount,
   isLoading,
   expectedEventCount,
-  isLoadingCalendars = false
+  isLoadingCalendars = false,
+  isEditingEvent = false
 }: TopBarProps) {
   return (
     <div className="event-confirmation-header">
       <div className="event-confirmation-header-content">
         <div className="header-left">
-          <CalendarSelector isLoading={isLoadingCalendars} />
+          <CalendarSelector isLoading={isLoadingCalendars} isMinimized={isEditingEvent} />
         </div>
         <div className="header-center">
           <img src={wordmarkImage} alt="DropCal" className="header-wordmark" />

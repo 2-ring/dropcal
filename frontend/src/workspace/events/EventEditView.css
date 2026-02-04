@@ -37,7 +37,7 @@
 
 /* Header with Title */
 .event-edit-header {
-  padding: 1.5rem 0 1rem 0;
+  padding: 0 0 1rem 0;
   border-bottom: 1px solid #e5e5e5;
   flex-shrink: 0;
 }
@@ -317,7 +317,7 @@
   }
 
   .event-edit-header {
-    padding: 1rem;
+    padding: 0 1rem 1rem 1rem;
   }
 
   .event-edit-title-input {

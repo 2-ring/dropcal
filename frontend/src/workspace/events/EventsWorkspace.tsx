@@ -271,6 +271,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
         isLoading={isLoading}
         expectedEventCount={expectedEventCount}
         isLoadingCalendars={isLoadingCalendars}
+        isEditingEvent={editingEventIndex !== null}
       />
 
       <div className="event-confirmation-content">

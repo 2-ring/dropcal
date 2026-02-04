@@ -29,7 +29,6 @@ export const listContainerVariants: Variants = {
     transition: {
       staggerChildren: 0.03,
       staggerDirection: -1, // Reverse stagger on exit
-      when: 'afterChildren',
     },
   },
 }
@@ -79,7 +78,6 @@ export const editViewVariants: Variants = {
     transition: {
       staggerChildren: 0.04,
       staggerDirection: -1,
-      when: 'afterChildren',
     },
   },
 }
