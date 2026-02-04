@@ -48,11 +48,14 @@
   flex: 1;
   overflow: hidden;
   opacity: 1;
-  transition: opacity 0.2s ease;
+  transform: translateX(0);
+  transition: opacity 0.3s ease 0.15s, transform 0.3s ease 0.15s;
 }
 
 .sidebar.closed .sidebar-content {
   opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
   pointer-events: none;
 }
 
@@ -145,7 +148,7 @@
   padding: 0.625rem 1.125rem;
   background-color: white;
   border: 1px solid #e5e5e5;
-  border-radius: 16px;
+  border-radius: 24px;
   color: #333;
   font-size: 0.875rem;
   font-weight: 500;
@@ -170,7 +173,7 @@
   padding: 0.625rem 1.125rem;
   background-color: white;
   border: 1px solid #e5e5e5;
-  border-radius: 16px;
+  border-radius: 24px;
   color: #333;
   font-size: 0.875rem;
   font-weight: 500;
