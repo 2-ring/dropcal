@@ -4,18 +4,22 @@
  */
 
 import {
-  User,
-  CalendarBlank,
-  Clock,
+  Calendar,
   CrownSimple,
   SignOut,
-  CaretRight,
+  MoonStars,
+  Sun,
+  GlobeSimple,
+  FootballHelmet,
 } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { IntegrationsModal } from './IntegrationsModal';
+import { motion, AnimatePresence } from 'framer-motion';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import './SettingsPopup.css';
+import { useState } from 'react';
 
 interface SettingsPopupProps {
   onClose: () => void;
@@ -28,6 +32,11 @@ interface SettingsPopupProps {
 export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoading = false }: SettingsPopupProps) {
   const navigate = useNavigate();
   const { signOut } = useAuth();
+
+  // Settings state (will be persisted to backend/localStorage in future)
+  const [useInternationalDate, setUseInternationalDate] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -43,6 +52,10 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
     onClose();
   };
 
+  const handleManageIntegrations = () => {
+    setShowIntegrationsModal(true);
+  };
+
   // Close popup when clicking outside
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -51,8 +64,9 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
   };
 
   return (
-    <div className="settings-popup-backdrop" onClick={handleBackdropClick}>
-      <div className="settings-popup">
+    <>
+      <div className="settings-popup-backdrop" onClick={handleBackdropClick}>
+        <div className="settings-popup">
         {/* User header */}
         <div className="settings-popup-header">
           {isLoading ? (
@@ -104,22 +118,67 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
             <span>Upgrade plan</span>
           </button>
 
-          <button className="settings-popup-item" disabled>
-            <Clock size={20} weight="regular" />
-            <span>Date convention</span>
-            <CaretRight size={16} weight="regular" className="settings-popup-arrow" />
+          <button
+            className="settings-popup-item"
+            onClick={() => setUseInternationalDate(!useInternationalDate)}
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={useInternationalDate ? 'intl-icon' : 'usa-icon'}
+                initial={{ y: 20, scale: 0.95, opacity: 0 }}
+                animate={{ y: 0, scale: 1, opacity: 1 }}
+                exit={{ y: -20, scale: 0.95, opacity: 0 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {useInternationalDate ? (
+                  <GlobeSimple size={20} weight="regular" />
+                ) : (
+                  <FootballHelmet size={20} weight="regular" />
+                )}
+              </motion.div>
+            </AnimatePresence>
+            <span>Date format</span>
+            <div className="settings-popup-value">
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={useInternationalDate ? 'intl' : 'usa'}
+                  initial={{ y: 20, scale: 0.95, opacity: 0 }}
+                  animate={{ y: 0, scale: 1, opacity: 1 }}
+                  exit={{ y: -20, scale: 0.95, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {useInternationalDate ? 'DD/MM/YYYY' : 'MM/DD/YYYY'}
+                </motion.span>
+              </AnimatePresence>
+            </div>
           </button>
 
-          <button className="settings-popup-item" disabled>
-            <CalendarBlank size={20} weight="regular" />
+          <button
+            className="settings-popup-item"
+            onClick={() => setDarkMode(!darkMode)}
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={darkMode ? 'dark' : 'light'}
+                initial={{ y: 20, scale: 0.95, opacity: 0 }}
+                animate={{ y: 0, scale: 1, opacity: 1 }}
+                exit={{ y: -20, scale: 0.95, opacity: 0 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+              >
+                {darkMode ? (
+                  <MoonStars size={20} weight="regular" />
+                ) : (
+                  <Sun size={20} weight="regular" />
+                )}
+                <span>{darkMode ? 'Dark mode' : 'Light mode'}</span>
+              </motion.div>
+            </AnimatePresence>
+          </button>
+
+          <button className="settings-popup-item" onClick={handleManageIntegrations}>
+            <Calendar size={20} weight="regular" />
             <span>Manage integrations</span>
-            <CaretRight size={16} weight="regular" className="settings-popup-arrow" />
-          </button>
-
-          <button className="settings-popup-item" disabled>
-            <User size={20} weight="regular" />
-            <span>Account settings</span>
-            <CaretRight size={16} weight="regular" className="settings-popup-arrow" />
           </button>
             </>
           )}
@@ -141,5 +200,11 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
         </div>
       </div>
     </div>
+
+      {/* Integrations Modal */}
+      {showIntegrationsModal && (
+        <IntegrationsModal onClose={() => setShowIntegrationsModal(false)} />
+      )}
+    </>
   );
 }

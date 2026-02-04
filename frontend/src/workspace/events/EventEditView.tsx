@@ -23,7 +23,7 @@
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import Skeleton from 'react-loading-skeleton'
-import { Clock as ClockIcon, MapPin as LocationIcon, TextAlignLeft as DescriptionIcon, Globe as GlobeIcon, ArrowsClockwise as RepeatIcon } from '@phosphor-icons/react'
+import { Clock as ClockIcon, MapPin as LocationIcon, TextAlignLeft as DescriptionIcon, Globe as GlobeIcon, ArrowsClockwise as RepeatIcon, PencilSimple as EditIcon } from '@phosphor-icons/react'
 import type { CalendarEvent } from './types'
 import { editViewVariants, editSectionVariants } from './animations'
 import './EventEditView.css'
@@ -45,6 +45,8 @@ interface EventEditViewProps {
   getCalendarColor: (calendarName: string | undefined) => string
 }
 
+type EditableField = 'summary' | 'location' | 'description'
+
 export function EventEditView({
   event,
   calendars,
@@ -55,13 +57,37 @@ export function EventEditView({
 }: EventEditViewProps) {
   const [editedEvent, setEditedEvent] = useState<CalendarEvent>(event)
   const [isAllDay, setIsAllDay] = useState(false)
+  const [editingField, setEditingField] = useState<EditableField | null>(null)
   const calendarScrollRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null)
 
   const handleChange = (field: keyof CalendarEvent, value: any) => {
     setEditedEvent(prev => ({
       ...prev,
       [field]: value
     }))
+  }
+
+  const handleEditClick = (field: EditableField, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setEditingField(field)
+    setTimeout(() => {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }, 0)
+  }
+
+  const handleEditBlur = () => {
+    setEditingField(null)
+  }
+
+  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      setEditingField(null)
+    } else if (e.key === 'Escape') {
+      setEditingField(null)
+    }
   }
 
   const formatDateForDisplay = (dateTime: string) => {
@@ -98,13 +124,25 @@ export function EventEditView({
       >
         {/* Section 1: Title */}
         <motion.div variants={editSectionVariants} className="event-edit-header">
-          <input
-            type="text"
-            className="event-edit-title-input"
-            value={editedEvent.summary}
-            onChange={(e) => handleChange('summary', e.target.value)}
-            placeholder="Add title"
-          />
+          <div className="editable-content-wrapper" onClick={(e) => handleEditClick('summary', e)}>
+            {editingField === 'summary' ? (
+              <input
+                ref={inputRef as React.RefObject<HTMLInputElement>}
+                type="text"
+                className="event-edit-title-input editable-input"
+                value={editedEvent.summary}
+                onChange={(e) => handleChange('summary', e.target.value)}
+                onBlur={handleEditBlur}
+                onKeyDown={handleEditKeyDown}
+                placeholder="Add title"
+              />
+            ) : (
+              <div className="event-edit-title-input">
+                {editedEvent.summary || 'Add title'}
+              </div>
+            )}
+            <EditIcon size={16} weight="regular" className="edit-icon" />
+          </div>
         </motion.div>
 
         {/* Scrollable Body */}
@@ -201,13 +239,25 @@ export function EventEditView({
           <motion.div variants={editSectionVariants} className="event-edit-row">
             <LocationIcon size={20} weight="regular" className="row-icon" />
             <div className="row-content">
-              <input
-                type="text"
-                className="row-input"
-                placeholder="Add location"
-                value={editedEvent.location || ''}
-                onChange={(e) => handleChange('location', e.target.value)}
-              />
+              <div className="editable-content-wrapper" onClick={(e) => handleEditClick('location', e)}>
+                {editingField === 'location' ? (
+                  <input
+                    ref={inputRef as React.RefObject<HTMLInputElement>}
+                    type="text"
+                    className="row-input editable-input"
+                    placeholder="Add location"
+                    value={editedEvent.location || ''}
+                    onChange={(e) => handleChange('location', e.target.value)}
+                    onBlur={handleEditBlur}
+                    onKeyDown={handleEditKeyDown}
+                  />
+                ) : (
+                  <div className="row-input">
+                    {editedEvent.location || 'Add location'}
+                  </div>
+                )}
+                <EditIcon size={14} weight="regular" className="edit-icon" />
+              </div>
             </div>
           </motion.div>
 
@@ -215,13 +265,25 @@ export function EventEditView({
           <motion.div variants={editSectionVariants} className="event-edit-row">
             <DescriptionIcon size={20} weight="regular" className="row-icon" />
             <div className="row-content">
-              <textarea
-                className="row-textarea"
-                placeholder="Add description"
-                value={editedEvent.description || ''}
-                onChange={(e) => handleChange('description', e.target.value)}
-                rows={3}
-              />
+              <div className="editable-content-wrapper" onClick={(e) => handleEditClick('description', e)}>
+                {editingField === 'description' ? (
+                  <textarea
+                    ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+                    className="row-textarea editable-input"
+                    placeholder="Add description"
+                    value={editedEvent.description || ''}
+                    onChange={(e) => handleChange('description', e.target.value)}
+                    onBlur={handleEditBlur}
+                    onKeyDown={handleEditKeyDown}
+                    rows={3}
+                  />
+                ) : (
+                  <div className="row-textarea">
+                    {editedEvent.description || 'Add description'}
+                  </div>
+                )}
+                <EditIcon size={14} weight="regular" className="edit-icon" />
+              </div>
             </div>
           </motion.div>
         </div>

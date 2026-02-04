@@ -6,7 +6,7 @@ import type { CalendarEvent } from './types'
 import type { LoadingStateConfig } from './types'
 import { TopBar, BottomBar } from './Bar'
 import { Event } from './Event'
-import { DateHeader } from './DateHeader'
+import { DateHeader, MonthHeader } from './DateHeader'
 import { EventEditView } from './EventEditView'
 import wordmarkImage from '../../assets/Wordmark.png'
 import './EventsWorkspace.css'
@@ -240,6 +240,43 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
   }
 
 
+  // Detect date context for all events to determine optimal display format
+  // TODO: Extend this to handle different scenarios:
+  // - All events on same day: Show only time, no date headers
+  // - All events in same month (current implementation): Show day-of-week + date number
+  // - Events span multiple months: Show month abbreviation + date
+  // - Events span multiple years: Include year in display
+  const getDateContext = (events: CalendarEvent[]): {
+    sameDay: boolean
+    sameMonth: boolean
+    sameYear: boolean
+    currentYear: boolean
+  } => {
+    if (events.length === 0) {
+      return { sameDay: true, sameMonth: true, sameYear: true, currentYear: true }
+    }
+
+    const dates = events.map(e => new Date(e.start.dateTime))
+    const currentYear = new Date().getFullYear()
+
+    // Check if all events are on the same day
+    const firstDateStr = dates[0].toDateString()
+    const sameDay = dates.every(d => d.toDateString() === firstDateStr)
+
+    // Check if all events are in the same month
+    const firstMonth = dates[0].getMonth()
+    const firstYear = dates[0].getFullYear()
+    const sameMonth = dates.every(d => d.getMonth() === firstMonth && d.getFullYear() === firstYear)
+
+    // Check if all events are in the same year
+    const sameYear = dates.every(d => d.getFullYear() === firstYear)
+
+    // Check if all events are in the current year
+    const currentYearCheck = dates.every(d => d.getFullYear() === currentYear)
+
+    return { sameDay, sameMonth, sameYear, currentYear: currentYearCheck }
+  }
+
   // Group events by date
   const groupEventsByDate = (events: CalendarEvent[]): Map<string, CalendarEvent[]> => {
     const grouped = new Map<string, CalendarEvent[]>()
@@ -328,7 +365,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
                 )
               })
             ) : (
-              // Complete state - group events by date and show with date headers
+              // Complete state - group events by date and show with timing area layout
               (() => {
                 const filteredEvents = editedEvents.filter((event): event is CalendarEvent => event !== null)
                 const groupedEvents = groupEventsByDate(filteredEvents)
@@ -336,26 +373,44 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
                 // Sort date keys chronologically
                 const sortedDateKeys = Array.from(groupedEvents.keys()).sort()
 
-                return sortedDateKeys.flatMap((dateKey) => {
+                // Render month header when month changes, followed by events
+                const eventElements = sortedDateKeys.flatMap((dateKey, dateIndex) => {
                   const eventsForDate = groupedEvents.get(dateKey)!
                   const dateObj = new Date(dateKey + 'T00:00:00')
 
-                  // Return date header followed by events for that date
-                  return [
+                  // Check if we need to show a month header (when month changes)
+                  const prevDateKey = dateIndex > 0 ? sortedDateKeys[dateIndex - 1] : null
+                  const prevDateObj = prevDateKey ? new Date(prevDateKey + 'T00:00:00') : null
+                  const showMonthHeader = dateIndex === 0 ||
+                    (prevDateObj && (prevDateObj.getMonth() !== dateObj.getMonth() || prevDateObj.getFullYear() !== dateObj.getFullYear()))
+
+                  const monthHeaderElement = showMonthHeader ? (
                     <motion.div
-                      key={`date-${dateKey}`}
-                      variants={dateHeaderVariants}
+                      key={`month-${dateKey}`}
+                      variants={eventItemVariants}
                     >
-                      <DateHeader date={dateObj} />
-                    </motion.div>,
-                    ...eventsForDate.map((event, eventIndex) => {
-                      // Find the original index for proper editing state management
-                      const originalIndex = filteredEvents.indexOf(event)
-                      return (
-                        <motion.div
-                          key={`${dateKey}-${eventIndex}`}
-                          variants={eventItemVariants}
-                        >
+                      <MonthHeader date={dateObj} />
+                    </motion.div>
+                  ) : null
+
+                  const eventElements = eventsForDate.map((event, eventIndex) => {
+                    // Find the original index for proper editing state management
+                    const originalIndex = filteredEvents.indexOf(event)
+                    const isFirstEventOfDay = eventIndex === 0
+
+                    return (
+                      <motion.div
+                        key={`event-${dateKey}-${eventIndex}`}
+                        className="event-date-group"
+                        variants={eventItemVariants}
+                      >
+                        {/* Left: Timing area with circular date (only for first event) */}
+                        <div className="event-date-timing-area">
+                          {isFirstEventOfDay && <DateHeader date={dateObj} />}
+                        </div>
+
+                        {/* Right: Event card */}
+                        <div className="event-date-event-single">
                           <Event
                             event={event}
                             index={originalIndex}
@@ -367,11 +422,15 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
                             getCalendarColor={getCalendarColor}
                             onClick={() => handleEventClick(originalIndex)}
                           />
-                        </motion.div>
-                      )
-                    })
-                  ]
+                        </div>
+                      </motion.div>
+                    )
+                  })
+
+                  return monthHeaderElement ? [monthHeaderElement, ...eventElements] : eventElements
                 })
+
+                return eventElements
               })()
             )}
             </motion.div>
