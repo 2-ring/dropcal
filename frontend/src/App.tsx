@@ -4,6 +4,7 @@ import { Toaster, toast } from 'sonner'
 import { validateFile } from './workspace/input/validation'
 import { Workspace } from './workspace/Workspace'
 import { Menu } from './menu/Menu'
+import { Plans } from './payment/Plans'
 import { useAuth } from './auth/AuthContext'
 import type { CalendarEvent, LoadingStateConfig } from './workspace/events/types'
 import { LOADING_MESSAGES } from './workspace/events/types'
@@ -482,6 +483,7 @@ function App() {
     <Routes>
       <Route path="/" element={<AppContent />} />
       <Route path="/s/:sessionId" element={<AppContent />} />
+      <Route path="/plans" element={<Plans />} />
     </Routes>
   )
 }

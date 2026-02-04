@@ -13,6 +13,7 @@ import {
   SignOut,
   CaretRight,
 } from '@phosphor-icons/react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
@@ -27,6 +28,7 @@ interface SettingsPopupProps {
 }
 
 export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoading = false }: SettingsPopupProps) {
+  const navigate = useNavigate();
   const { signOut } = useAuth();
 
   const handleLogout = async () => {
@@ -36,6 +38,11 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
     } catch (error) {
       console.error('Failed to sign out:', error);
     }
+  };
+
+  const handleUpgradePlan = () => {
+    navigate('/plans');
+    onClose();
   };
 
   // Close popup when clicking outside
@@ -111,7 +118,7 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
             <span>Get help</span>
           </button>
 
-          <button className="settings-popup-item" disabled>
+          <button className="settings-popup-item" onClick={handleUpgradePlan}>
             <CrownSimple size={20} weight="regular" />
             <span>Upgrade plan</span>
           </button>

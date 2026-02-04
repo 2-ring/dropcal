@@ -1,0 +1,366 @@
+/* Event Edit Container - Replaces entire event list */
+.event-edit-overlay {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Event Edit Container - Fills space between bars */
+.event-edit-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header with Title */
+.event-edit-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e5e5e5;
+  flex-shrink: 0;
+}
+
+.event-edit-close {
+  background: transparent;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: #5f6368;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.event-edit-close:hover {
+  color: #202124;
+}
+
+.event-edit-title-input {
+  flex: 1;
+  font-size: 1.375rem;
+  font-weight: 400;
+  color: #202124;
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 0;
+  font-family: inherit;
+}
+
+.event-edit-title-input::placeholder {
+  color: #5f6368;
+}
+
+.event-edit-save {
+  background: #a8dab5;
+  color: #137333;
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+.event-edit-save:hover {
+  background: #94d3a2;
+}
+
+/* Body */
+.event-edit-body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Calendar Selection Section */
+.event-edit-calendar-section {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e5e5;
+  flex-shrink: 0;
+}
+
+.calendar-chips {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.calendar-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.calendar-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: 1px solid;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+.calendar-chip:hover {
+  opacity: 0.8;
+}
+
+.calendar-chip.active {
+  border: none;
+}
+
+.calendar-chip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.calendar-chip.active .calendar-chip-dot {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Event Edit Rows */
+.event-edit-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e5e5e5;
+  min-height: 64px;
+}
+
+.row-icon {
+  color: #5f6368;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.row-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.row-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.date-text {
+  font-size: 0.9375rem;
+  color: #202124;
+  font-weight: 400;
+}
+
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.time-input {
+  font-size: 0.9375rem;
+  color: #202124;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  text-align: right;
+  padding: 0;
+  width: auto;
+}
+
+.time-separator {
+  color: #5f6368;
+  font-size: 0.9375rem;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #dadce0;
+  transition: 0.3s;
+  border-radius: 34px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #1a73e8;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(16px);
+}
+
+.row-input {
+  width: 100%;
+  font-size: 0.9375rem;
+  color: #202124;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  padding: 0;
+}
+
+.row-input::placeholder {
+  color: #5f6368;
+}
+
+.row-textarea {
+  width: 100%;
+  font-size: 0.9375rem;
+  color: #202124;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+  padding: 0;
+  line-height: 1.5;
+}
+
+.row-textarea::placeholder {
+  color: #5f6368;
+}
+
+/* Expand Toggle */
+.event-edit-expand-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e5e5e5;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1a73e8;
+  transition: background 0.2s ease;
+  font-family: inherit;
+}
+
+.event-edit-expand-toggle:hover {
+  background: rgba(26, 115, 232, 0.04);
+}
+
+.expand-icon {
+  transition: transform 0.2s ease;
+  color: #1a73e8;
+}
+
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  .event-edit-container {
+    border-radius: 12px;
+  }
+
+  .event-edit-header {
+    padding: 1rem;
+  }
+
+  .event-edit-title-input {
+    font-size: 1.25rem;
+  }
+
+  .event-edit-calendar-section {
+    padding: 0.75rem 1rem;
+  }
+
+  .event-edit-row {
+    padding: 1rem;
+    min-height: 56px;
+  }
+
+  .event-edit-expand-toggle {
+    padding: 0.875rem 1rem;
+  }
+
+  .date-text,
+  .time-input,
+  .row-input,
+  .row-textarea {
+    font-size: 0.875rem;
+  }
+}

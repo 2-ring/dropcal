@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { X as XIcon, CheckFat as CheckIcon, ChatCircleDots as ChatIcon, PaperPlaneRight as SendIcon } from '@phosphor-icons/react'
+import Skeleton from 'react-loading-skeleton'
 import type { LoadingStateConfig } from './types'
 import { CalendarSelector } from './CalendarSelector'
 
@@ -18,20 +19,22 @@ interface TopBarProps {
 export function TopBar({ wordmarkImage, eventCount, isLoading, expectedEventCount, isLoadingCalendars = false }: TopBarProps) {
   return (
     <div className="event-confirmation-header">
-      <div className="header-left">
-        <CalendarSelector isLoading={isLoadingCalendars} />
-      </div>
-      <div className="header-center">
-        <img src={wordmarkImage} alt="DropCal" className="header-wordmark" />
-      </div>
-      <div className="header-right">
-        {isLoading && expectedEventCount === undefined ? (
-          <Skeleton width={80} height={20} />
-        ) : (
-          <span>
-            {isLoading ? expectedEventCount : eventCount} {(isLoading ? expectedEventCount : eventCount) === 1 ? 'event' : 'events'}
-          </span>
-        )}
+      <div className="event-confirmation-header-content">
+        <div className="header-left">
+          <CalendarSelector isLoading={isLoadingCalendars} />
+        </div>
+        <div className="header-center">
+          <img src={wordmarkImage} alt="DropCal" className="header-wordmark" />
+        </div>
+        <div className="header-right">
+          {isLoading && expectedEventCount === undefined ? (
+            <Skeleton width={80} height={20} />
+          ) : (
+            <span>
+              {isLoading ? expectedEventCount : eventCount} {(isLoading ? expectedEventCount : eventCount) === 1 ? 'event' : 'events'}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )
