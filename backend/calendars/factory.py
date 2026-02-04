@@ -23,7 +23,7 @@ def get_provider_modules(provider: str) -> tuple:
         ValueError: If provider is not supported
     """
     if provider == 'google':
-        from calendar.google import auth, fetch, create
+        from calendars.google import auth, fetch, create
         return auth, fetch, create
     elif provider == 'microsoft':
         from calendar.microsoft import auth, fetch, create

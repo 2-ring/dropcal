@@ -107,37 +107,6 @@ class User:
         return response.data[0]
 
     @staticmethod
-    def update_google_tokens(
-        user_id: str,
-        access_token: str,
-        refresh_token: Optional[str] = None,
-        expires_at: Optional[datetime] = None
-    ) -> Dict[str, Any]:
-        """
-        Update user's Google Calendar API tokens.
-
-        Args:
-            user_id: User's UUID
-            access_token: Google access token
-            refresh_token: Google refresh token (optional)
-            expires_at: Token expiration datetime (optional)
-
-        Returns:
-            Dict containing updated user data
-        """
-        supabase = get_supabase()
-
-        # Encrypt tokens before storing
-        data = {"google_access_token": encrypt_token(access_token)}
-        if refresh_token:
-            data["google_refresh_token"] = encrypt_token(refresh_token)
-        if expires_at:
-            data["token_expires_at"] = expires_at.isoformat()
-
-        response = supabase.table("users").update(data).eq("id", user_id).execute()
-        return response.data[0]
-
-    @staticmethod
     def update_provider_tokens(
         user_id: str,
         provider: str,
@@ -524,6 +493,54 @@ class User:
                 return conn
 
         return None
+
+    @staticmethod
+    def update_provider_usage(
+        user_id: str,
+        provider: str,
+        usage: list
+    ) -> Dict[str, Any]:
+        """
+        Update the usage array for a specific provider connection.
+
+        Args:
+            user_id: User's UUID
+            provider: Provider name ('google', 'microsoft', 'apple')
+            usage: Updated usage array (e.g., ['auth', 'calendar'])
+
+        Returns:
+            Dict containing updated user data
+
+        Raises:
+            ValueError: If provider connection doesn't exist
+        """
+        supabase = get_supabase()
+        user = User.get_by_id(user_id)
+
+        if not user:
+            raise ValueError(f"User {user_id} not found")
+
+        connections = user.get('provider_connections', [])
+
+        # Find the provider connection
+        provider_idx = None
+        for idx, conn in enumerate(connections):
+            if conn.get('provider') == provider:
+                provider_idx = idx
+                break
+
+        if provider_idx is None:
+            raise ValueError(f"Provider connection for '{provider}' not found")
+
+        # Update the usage array
+        connections[provider_idx]['usage'] = usage
+
+        # Update database
+        response = supabase.table("users").update({
+            "provider_connections": connections
+        }).eq("id", user_id).execute()
+
+        return response.data[0]
 
     @staticmethod
     def get_primary_calendar_connection(user_id: str) -> Optional[Dict[str, Any]]:

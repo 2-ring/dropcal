@@ -1,14 +1,17 @@
 """
 Agent 5: Preference Application
-Applies user's learned preferences to extracted facts.
+Applies user's learned preferences to extracted facts using few-shot learning
+from similar historical events.
 """
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
+from typing import List, Dict, Optional
 
 from core.base_agent import BaseAgent
 from extraction.models import ExtractedFacts
 from preferences.models import UserPreferences
+from preferences.similarity import ProductionSimilaritySearch
 
 
 class PreferenceApplicationAgent(BaseAgent):
@@ -27,18 +30,22 @@ class PreferenceApplicationAgent(BaseAgent):
         super().__init__("Agent5_PreferenceApplication")
         self.llm = llm.with_structured_output(ExtractedFacts)
         self.system_prompt = self.load_prompt("preferences.txt")
+        self.similarity_search = None  # Initialized when historical events are provided
 
     def execute(
         self,
         facts: ExtractedFacts,
-        user_preferences: UserPreferences
+        user_preferences: UserPreferences,
+        historical_events: Optional[List[Dict]] = None
     ) -> ExtractedFacts:
         """
-        Apply user preferences to enhance extracted facts.
+        Apply user preferences to enhance extracted facts using few-shot learning
+        from similar historical events.
 
         Args:
             facts: ExtractedFacts from Agent 2
             user_preferences: Learned user preferences
+            historical_events: User's historical events for similarity search
 
         Returns:
             Enhanced ExtractedFacts with preferences applied
@@ -47,14 +54,16 @@ class PreferenceApplicationAgent(BaseAgent):
             raise ValueError("No facts provided for preference application")
 
         if not user_preferences:
-            app_logger.info("No user preferences available, returning facts unchanged")
+            self.log_info("No user preferences available, returning facts unchanged")
             return facts
 
         # Build preference context for LLM
         preferences_context = self._build_preferences_context(user_preferences)
 
-        # Build few-shot examples
-        few_shot_examples = self._build_few_shot_examples()
+        # Build few-shot examples from similar historical events
+        few_shot_examples = self._build_few_shot_examples_from_history(
+            facts, historical_events
+        )
 
         # Combine into full prompt
         full_system_prompt = f"""{self.system_prompt}
@@ -172,10 +181,102 @@ USER SETTINGS:
 """
         return context
 
+    def _build_few_shot_examples_from_history(
+        self,
+        query_facts: ExtractedFacts,
+        historical_events: Optional[List[Dict]] = None
+    ) -> str:
+        """
+        Build few-shot examples from similar historical events using semantic similarity.
+
+        Args:
+            query_facts: The facts we're trying to enhance
+            historical_events: User's historical calendar events
+
+        Returns:
+            Formatted few-shot examples string
+        """
+        if not historical_events or len(historical_events) < 3:
+            # Fallback to static examples if not enough history
+            return self._build_few_shot_examples()
+
+        # Build similarity index if not already built
+        if self.similarity_search is None:
+            self.similarity_search = ProductionSimilaritySearch()
+            self.similarity_search.build_index(historical_events)
+
+        # Create query event from extracted facts
+        query_event = {
+            'title': query_facts.summary or '',
+            'all_day': query_facts.time is None,
+            'calendar_name': getattr(query_facts, 'calendar', 'Default')
+        }
+
+        # Find similar events with diversity
+        try:
+            similar_events = self.similarity_search.find_similar_with_diversity(
+                query_event,
+                k=5,  # Get 5 diverse examples
+                diversity_threshold=0.85
+            )
+        except Exception as e:
+            self.log_warning(f"Similarity search failed: {e}, using static examples")
+            return self._build_few_shot_examples()
+
+        if not similar_events:
+            return self._build_few_shot_examples()
+
+        # Format as few-shot examples
+        examples_text = """
+EXAMPLES FROM YOUR CALENDAR HISTORY (Learn from these real examples):
+
+Your formatting style based on similar events you've created:
+"""
+
+        for i, (event, score, breakdown) in enumerate(similar_events, 1):
+            # Extract relevant fields
+            title = event.get('summary', event.get('title', 'Untitled'))
+            calendar = event.get('calendar_name', 'Default')
+            color_id = event.get('colorId', '')
+            description = event.get('description', '')
+            location = event.get('location', '')
+
+            example = f"""
+EXAMPLE {i} (Similarity: {score:.2f}):
+Event from your history: "{title}"
+  • Calendar: {calendar}"""
+
+            if color_id:
+                example += f"\n  • Color ID: {color_id}"
+            if location:
+                example += f"\n  • Location: {location}"
+            if description and len(description) < 100:
+                example += f"\n  • Description: {description[:100]}"
+
+            # Add similarity breakdown to show why it matched
+            example += f"\n  • Why similar: "
+            reasons = []
+            if breakdown['semantic'] > 0.7:
+                reasons.append(f"semantically related ({breakdown['semantic']:.2f})")
+            if breakdown['keyword'] > 0.5:
+                reasons.append(f"shared keywords ({breakdown['keyword']:.2f})")
+            if breakdown['temporal'] == 1.0:
+                reasons.append("same type (all-day/timed)")
+
+            example += ", ".join(reasons) if reasons else "general match"
+            examples_text += example + "\n"
+
+        examples_text += """
+---
+
+Use these examples to understand how YOU format similar events. Apply the same style and patterns to the new event.
+"""
+        return examples_text
+
     def _build_few_shot_examples(self) -> str:
-        """Build few-shot examples for pattern application"""
+        """Build static few-shot examples as fallback when no history available"""
         return """
-EXAMPLES OF PATTERN APPLICATION (Learn from these):
+EXAMPLES OF PATTERN APPLICATION (Generic examples - use with caution):
 
 EXAMPLE 1 - Calendar Selection Based on Content:
 Input fact: {"summary": "UAPPLY team meeting", "start": "2024-03-15T14:00:00"}

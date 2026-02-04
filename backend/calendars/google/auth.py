@@ -9,7 +9,6 @@ from datetime import datetime
 import os
 
 from database.models import User
-from utils.encryption import decrypt_token
 
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
@@ -133,7 +132,8 @@ def store_google_tokens_from_supabase(user_id: str, provider_token: dict) -> Non
     """
     Store Google OAuth tokens from Supabase Auth session.
 
-    This should be called after the user first signs in with Google OAuth.
+    This should be called when the user connects their Google Calendar.
+    Ensures the provider connection exists and has 'calendar' in usage array.
 
     Args:
         user_id: User's Supabase user ID
@@ -152,17 +152,50 @@ def store_google_tokens_from_supabase(user_id: str, provider_token: dict) -> Non
     if not access_token:
         raise ValueError("No access_token in provider_token")
 
-    # Convert expires_at timestamp to datetime if present
-    expiry_datetime = None
+    # Get user to check provider connections
+    user = User.get_by_id(user_id)
+    if not user:
+        raise ValueError(f"User {user_id} not found")
+
+    # Check if Google provider connection exists
+    google_conn = User.get_provider_connection(user_id, 'google')
+
+    if not google_conn:
+        # No Google connection yet - create one
+        # This shouldn't normally happen since they sign in with Google first
+        User.add_provider_connection(
+            user_id=user_id,
+            provider='google',
+            provider_id=None,  # Will be populated from OAuth
+            email=user.get('email'),
+            usage=['calendar']
+        )
+    else:
+        # Update usage to include 'calendar' if not already present
+        usage = google_conn.get('usage', [])
+        if 'calendar' not in usage:
+            usage.append('calendar')
+            User.update_provider_usage(user_id, 'google', usage)
+
+    # Convert expires_at timestamp to ISO string if present
+    expires_at_iso = None
     if expires_at:
         if isinstance(expires_at, (int, float)):
-            expiry_datetime = datetime.fromtimestamp(expires_at)
+            expires_at_iso = datetime.fromtimestamp(expires_at).isoformat()
         elif isinstance(expires_at, str):
-            expiry_datetime = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+            expires_at_iso = expires_at
 
-    User.update_google_tokens(
+    # Store the encrypted tokens
+    User.update_provider_tokens(
         user_id=user_id,
-        access_token=access_token,
-        refresh_token=refresh_token,
-        expires_at=expiry_datetime
+        provider='google',
+        tokens={
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'expires_at': expires_at_iso
+        }
     )
+
+    # Set as primary calendar provider if none is set
+    if not user.get('primary_calendar_provider'):
+        User.set_primary_calendar(user_id, 'google')
