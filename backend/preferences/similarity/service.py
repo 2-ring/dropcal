@@ -22,7 +22,7 @@ from typing import List, Dict, Tuple, Optional, Set
 from functools import lru_cache
 from sentence_transformers import SentenceTransformer, util
 
-from .similarity_models import (
+from .models import (
     SimilarityBreakdown,
     SimilarityWeights,
     SimilarEvent,

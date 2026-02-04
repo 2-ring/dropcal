@@ -138,63 +138,114 @@ class User:
         return response.data[0]
 
     @staticmethod
-    def update_microsoft_tokens(
+    def update_provider_tokens(
         user_id: str,
-        access_token: str,
-        refresh_token: Optional[str] = None,
-        expires_at: Optional[datetime] = None
+        provider: str,
+        tokens: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Update user's Microsoft Graph API tokens.
+        Update encrypted tokens for a provider within provider_connections.
 
         Args:
             user_id: User's UUID
-            access_token: Microsoft access token
-            refresh_token: Microsoft refresh token (optional)
-            expires_at: Token expiration datetime (optional)
+            provider: Provider name ('google', 'microsoft', 'apple')
+            tokens: Dict of tokens to encrypt and store, e.g.:
+                {
+                    'access_token': 'token123',
+                    'refresh_token': 'refresh456',
+                    'expires_at': datetime or ISO string
+                }
 
         Returns:
             Dict containing updated user data
+
+        Raises:
+            ValueError: If provider connection doesn't exist
         """
         supabase = get_supabase()
+        user = User.get_by_id(user_id)
 
-        # Encrypt tokens before storing
-        data = {"microsoft_access_token": encrypt_token(access_token)}
-        if refresh_token:
-            data["microsoft_refresh_token"] = encrypt_token(refresh_token)
-        if expires_at:
-            data["microsoft_token_expires_at"] = expires_at.isoformat()
+        if not user:
+            raise ValueError(f"User {user_id} not found")
 
-        response = supabase.table("users").update(data).eq("id", user_id).execute()
+        connections = user.get('provider_connections', [])
+
+        # Find the provider connection
+        provider_idx = None
+        for idx, conn in enumerate(connections):
+            if conn.get('provider') == provider:
+                provider_idx = idx
+                break
+
+        if provider_idx is None:
+            raise ValueError(f"Provider connection for '{provider}' not found. Add connection first.")
+
+        # Encrypt all token values
+        encrypted_tokens = {}
+        for key, value in tokens.items():
+            if value is None:
+                continue
+            # If it's expires_at, don't encrypt (it's metadata)
+            if key == 'expires_at':
+                if isinstance(value, datetime):
+                    encrypted_tokens[key] = value.isoformat()
+                elif isinstance(value, str):
+                    encrypted_tokens[key] = value
+                else:
+                    encrypted_tokens[key] = str(value)
+            # Encrypt the actual token values
+            else:
+                encrypted_tokens[key] = encrypt_token(str(value))
+
+        # Update the connection with encrypted tokens
+        connections[provider_idx]['encrypted_tokens'] = encrypted_tokens
+
+        # Update database
+        response = supabase.table("users").update({
+            "provider_connections": connections
+        }).eq("id", user_id).execute()
+
         return response.data[0]
 
     @staticmethod
-    def update_apple_credentials(
+    def get_provider_tokens(
         user_id: str,
-        apple_id: str,
-        app_password: str
-    ) -> Dict[str, Any]:
+        provider: str
+    ) -> Optional[Dict[str, Any]]:
         """
-        Update user's Apple iCloud CalDAV credentials.
+        Get and decrypt tokens for a provider from provider_connections.
 
         Args:
             user_id: User's UUID
-            apple_id: Apple ID email address
-            app_password: App-specific password for CalDAV
+            provider: Provider name ('google', 'microsoft', 'apple')
 
         Returns:
-            Dict containing updated user data
+            Dict of decrypted tokens or None if not found, e.g.:
+            {
+                'access_token': 'decrypted_token',
+                'refresh_token': 'decrypted_refresh',
+                'expires_at': '2026-02-04T...'
+            }
         """
-        supabase = get_supabase()
+        conn = User.get_provider_connection(user_id, provider)
 
-        # Encrypt app-specific password before storing
-        data = {
-            "apple_id": apple_id,
-            "apple_app_password": encrypt_token(app_password)
-        }
+        if not conn or 'encrypted_tokens' not in conn:
+            return None
 
-        response = supabase.table("users").update(data).eq("id", user_id).execute()
-        return response.data[0]
+        encrypted_tokens = conn['encrypted_tokens']
+        decrypted_tokens = {}
+
+        for key, value in encrypted_tokens.items():
+            if value is None:
+                continue
+            # expires_at is not encrypted, just metadata
+            if key == 'expires_at':
+                decrypted_tokens[key] = value
+            # Decrypt actual token values
+            else:
+                decrypted_tokens[key] = decrypt_token(value)
+
+        return decrypted_tokens
 
     @staticmethod
     def create_or_update_from_provider(

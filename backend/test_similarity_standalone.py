@@ -15,10 +15,10 @@ if backend_path not in sys.path:
 # Import directly from module files to avoid circular imports
 import importlib.util
 
-# Load similarity_service module directly
+# Load similarity service module directly
 spec = importlib.util.spec_from_file_location(
     "similarity_service",
-    os.path.join(backend_path, "preferences/similarity_service.py")
+    os.path.join(backend_path, "preferences/similarity/service.py")
 )
 similarity_service = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(similarity_service)

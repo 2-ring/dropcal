@@ -10,7 +10,7 @@ from .models import (
     SimilarEvent,
     SimilaritySearchResult,
     SimilarityWeights,
-    EventEmbedding
+    SimilarityCacheStats
 )
 
 from .service import (
@@ -35,7 +35,7 @@ __all__ = [
     'SimilarEvent',
     'SimilaritySearchResult',
     'SimilarityWeights',
-    'EventEmbedding',
+    'SimilarityCacheStats',
     # Service
     'CalendarEventSimilarity',
     'TwoStageRetrieval',

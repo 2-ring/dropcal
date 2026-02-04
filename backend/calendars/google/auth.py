@@ -33,22 +33,20 @@ def load_credentials(user_id: str) -> Optional[Credentials]:
     if not user:
         raise ValueError(f"User {user_id} not found")
 
-    # Get encrypted tokens from database
-    encrypted_access_token = user.get('google_access_token')
-    encrypted_refresh_token = user.get('google_refresh_token')
-    token_expires_at = user.get('token_expires_at')
+    # Get decrypted tokens from provider_connections
+    tokens = User.get_provider_tokens(user_id, 'google')
 
-    if not encrypted_access_token:
+    if not tokens:
         # User hasn't connected Google Calendar yet
         return None
 
-    # Decrypt tokens
-    access_token = decrypt_token(encrypted_access_token)
-    refresh_token = decrypt_token(encrypted_refresh_token) if encrypted_refresh_token else None
+    access_token = tokens.get('access_token')
+    refresh_token = tokens.get('refresh_token')
+    token_expires_at = tokens.get('expires_at')
 
     if not access_token:
-        # Decryption failed
-        raise ValueError(f"Failed to decrypt Google Calendar tokens for user {user_id}")
+        # No valid access token
+        raise ValueError(f"No valid Google Calendar access token for user {user_id}")
 
     # Create credentials object
     client_id = os.getenv('GOOGLE_CLIENT_ID')
@@ -113,11 +111,14 @@ def refresh_if_needed(user_id: str, credentials: Credentials) -> bool:
             credentials.refresh(Request())
 
             # Save refreshed token to database
-            User.update_google_tokens(
+            User.update_provider_tokens(
                 user_id=user_id,
-                access_token=credentials.token,
-                refresh_token=credentials.refresh_token,
-                expires_at=credentials.expiry
+                provider='google',
+                tokens={
+                    'access_token': credentials.token,
+                    'refresh_token': credentials.refresh_token,
+                    'expires_at': credentials.expiry.isoformat() if credentials.expiry else None
+                }
             )
 
             return True
