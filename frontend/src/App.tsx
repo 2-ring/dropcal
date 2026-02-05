@@ -15,8 +15,7 @@ import {
   useNotifications,
   createValidationErrorNotification,
   createSuccessNotification,
-  createErrorNotification,
-  createWarningNotification
+  createErrorNotification
 } from './workspace/input/notifications'
 import type { CalendarEvent, LoadingStateConfig } from './workspace/events/types'
 import { LOADING_MESSAGES } from './workspace/events/types'
@@ -35,10 +34,6 @@ import {
 } from './api/backend-client'
 import { syncCalendar } from './api/sync'
 import './App.css'
-
-// Import all greeting images dynamically
-const greetingImages = import.meta.glob('./assets/greetings/*.{png,jpg,jpeg,svg}', { eager: true, as: 'url' })
-const greetingImagePaths = Object.values(greetingImages) as string[]
 
 type AppState = 'input' | 'loading' | 'review'
 
@@ -60,9 +55,6 @@ function AppContent() {
   const { sessionId } = useParams<{ sessionId?: string }>()
   const { addNotification } = useNotifications()
 
-  const [currentGreetingIndex] = useState(() =>
-    Math.floor(Math.random() * greetingImagePaths.length)
-  )
   const [appState, setAppState] = useState<AppState>('input')
   const [isProcessing, setIsProcessing] = useState(false)
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
@@ -276,7 +268,6 @@ function AppContent() {
       }
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
       setAppState('input')
     } finally {
@@ -355,7 +346,6 @@ function AppContent() {
       }
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
       setAppState('input')
     } finally {
@@ -514,7 +504,6 @@ function AppContent() {
           isProcessing={isProcessing}
           loadingConfig={[loadingConfig]}
           feedbackMessage={feedbackMessage}
-          greetingImage={greetingImagePaths[currentGreetingIndex]}
           isGuestMode={isGuestMode}
           calendarEvents={calendarEvents}
           expectedEventCount={calendarEvents.length}
@@ -522,7 +511,6 @@ function AppContent() {
           onAudioSubmit={handleAudioSubmit}
           onTextSubmit={handleTextSubmit}
           onClearFile={handleClearFile}
-          onClearFeedback={() => setFeedbackMessage('')}
           onConfirm={handleAddToCalendar}
           onMenuToggle={handleSidebarToggle}
           onNewSession={handleNewSession}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { SidebarSimple as SidebarIcon, CalendarBlank, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, CaretCircleRight, GoogleLogo, MicrosoftOutlookLogo, AppleLogo, Drop } from '@phosphor-icons/react'
+import { SidebarSimple as SidebarIcon, CalendarBlank, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, CaretCircleRight, GoogleLogo, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
 import type { SessionListItem } from '../sessions'
 import type { InputType } from '../sessions'
 import { Account } from './Account'
@@ -7,9 +7,8 @@ import { MenuButton } from './MenuButton'
 import { SkeletonSessionGroup } from '../components/skeletons'
 import { getCalendarProviders } from '../api/backend-client'
 import { Tooltip } from '../components/Tooltip'
-import { useAuth } from '../auth/AuthContext'
-import { GuestSessionManager } from '../auth/GuestSessionManager'
 import { useTheme } from '../theme/ThemeProvider'
+import { Logo } from '../components/Logo'
 import './Menu.css'
 import wordImageLight from '../assets/brand/light/word.png'
 import wordImageDark from '../assets/brand/dark/word.png'
@@ -34,7 +33,6 @@ export function Menu({
   onNewSession,
   isLoadingSessions = false,
 }: MenuProps) {
-  const { user } = useAuth()
   const { themeMode } = useTheme()
 
   // Select brand images based on theme
@@ -152,7 +150,7 @@ export function Menu({
         onClick={onToggle}
         title="DropCal"
       >
-        <Drop size={32} weight="fill" color="#1170C5" />
+        <Logo size={32} />
       </button>
 
       {/* Dock when sidebar is closed */}
@@ -179,7 +177,7 @@ export function Menu({
           onClick={onToggle}
           title="DropCal"
         >
-          <Drop size={32} weight="fill" color="#1170C5" />
+          <Logo size={32} />
         </button>
 
         <div className="sidebar-header">

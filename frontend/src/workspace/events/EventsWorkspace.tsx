@@ -9,8 +9,8 @@ import { Event } from './Event'
 import { DateHeader, MonthHeader } from './DateHeader'
 import { EventEditView } from './EventEditView'
 import { useTheme } from '../../theme/ThemeProvider'
-import wordmarkImageLight from '../../assets/brand/light/wordmark.png'
-import wordmarkImageDark from '../../assets/brand/dark/wordmark.png'
+import wordmarkImageLight from '../../assets/brand/light/word.png'
+import wordmarkImageDark from '../../assets/brand/dark/word.png'
 import './EventsWorkspace.css'
 import {
   listContainerVariants,

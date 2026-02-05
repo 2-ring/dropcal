@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion'
-import { Sidebar, CalendarStar, Drop } from '@phosphor-icons/react'
+import { Sidebar, CalendarStar } from '@phosphor-icons/react'
 import { InputWorkspace } from './input'
 import { EventsWorkspace } from './events/EventsWorkspace'
 import type { CalendarEvent } from './events/types'
 import type { LoadingStateConfig } from './events/types'
 import { getGreeting } from '../utils/greetings'
 import { useAuth } from '../auth/AuthContext'
+import { Logo } from '../components/Logo'
 
 type AppState = 'input' | 'loading' | 'review'
 
@@ -18,7 +19,6 @@ interface WorkspaceProps {
   isProcessing: boolean
   loadingConfig?: LoadingStateConfig | LoadingStateConfig[]
   feedbackMessage?: string
-  greetingImage?: string
   isGuestMode?: boolean
 
   // Events state props
@@ -30,7 +30,6 @@ interface WorkspaceProps {
   onAudioSubmit: (audioBlob: Blob) => void
   onTextSubmit: (text: string) => void
   onClearFile: () => void
-  onClearFeedback?: () => void
   onConfirm?: () => void
   onMenuToggle?: () => void
   onNewSession?: () => void
@@ -42,7 +41,6 @@ export function Workspace({
   isProcessing,
   loadingConfig,
   feedbackMessage,
-  greetingImage,
   isGuestMode,
   calendarEvents,
   expectedEventCount,
@@ -50,13 +48,12 @@ export function Workspace({
   onAudioSubmit,
   onTextSubmit,
   onClearFile,
-  onClearFeedback,
   onConfirm,
   onMenuToggle,
   onNewSession,
 }: WorkspaceProps) {
   const { user } = useAuth()
-  const greeting = getGreeting(user?.name)
+  const greeting = getGreeting(user?.user_metadata?.full_name || user?.user_metadata?.name)
 
   return (
     <>
@@ -81,10 +78,8 @@ export function Workspace({
           transition={{ duration: 0.4, ease: "easeOut" }}
         >
           <div className="greeting-row">
-            <Drop
+            <Logo
               size={48}
-              weight="fill"
-              color="#1170C5"
               className="greeting-logo"
             />
             <h1 className="greeting-text">{greeting}</h1>
