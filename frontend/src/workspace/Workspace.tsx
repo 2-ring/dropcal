@@ -1,12 +1,11 @@
 import { motion } from 'framer-motion'
-import { List as MenuIcon, PlusCircle } from '@phosphor-icons/react'
+import { List as MenuIcon, PlusCircle, Drop } from '@phosphor-icons/react'
 import { InputWorkspace } from './input'
 import { EventsWorkspace } from './events/EventsWorkspace'
 import type { CalendarEvent } from './events/types'
 import type { LoadingStateConfig } from './events/types'
 import { getGreeting } from '../utils/greetings'
 import { useAuth } from '../auth/AuthContext'
-import mark from '../assets/brand/light/mark.png'
 
 type AppState = 'input' | 'loading' | 'review'
 
@@ -82,9 +81,10 @@ export function Workspace({
           transition={{ duration: 0.4, ease: "easeOut" }}
         >
           <div className="greeting-row">
-            <img
-              src={mark}
-              alt="DropCal"
+            <Drop
+              size={48}
+              weight="fill"
+              color="#1170C5"
               className="greeting-logo"
             />
             <h1 className="greeting-text">{greeting}</h1>

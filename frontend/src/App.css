@@ -1,15 +1,15 @@
-/* Satoshi Font */
+/* Chillax Font */
 @font-face {
-  font-family: 'Satoshi';
-  src: url('./assets/fonts/Satoshi-Variable.woff2') format('woff2');
-  font-weight: 300 900;
+  font-family: 'Chillax';
+  src: url('./assets/fonts/Chillax-Variable.woff2') format('woff2');
+  font-weight: 200 700;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Satoshi';
-  src: url('./assets/fonts/Satoshi-Black.woff2') format('woff2');
-  font-weight: 900;
+  font-family: 'Chillax';
+  src: url('./assets/fonts/Chillax-Bold.woff2') format('woff2');
+  font-weight: 700;
   font-display: swap;
 }
 
@@ -90,32 +90,28 @@
 }
 
 .greeting-logo {
-  height: 44px;
-  width: auto;
-  object-fit: contain;
+  color: var(--text-primary);
 }
 
 .greeting-text {
-  font-family: 'Satoshi', sans-serif;
+  font-family: var(--display-font), sans-serif;
   font-size: 44px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 44px;
   text-align: center;
-  color: var(--primary-color);
+  color: var(--primary);
   margin: 0;
-  font-feature-settings: 'ss01' on, 'ss02' on;
   letter-spacing: -0.02em;
 }
 
 .greeting-hero-text {
-  font-family: 'Satoshi', sans-serif;
+  font-family: var(--display-font), sans-serif;
   font-size: 50px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.0;
   text-align: center;
-  color: var(--primary-color);
+  color: var(--primary);
   margin: 0;
-  font-feature-settings: 'ss01' on, 'ss02' on;
   letter-spacing: -0.02em;
   text-shadow: 0 2px 8px rgba(17, 112, 197, 0.15);
 }
@@ -667,7 +663,7 @@
   }
 
   .greeting-logo {
-    height: 36px;
+    /* Icon size is controlled by the Drop component */
   }
 
   .greeting-text {

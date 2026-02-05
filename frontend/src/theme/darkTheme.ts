@@ -70,4 +70,7 @@ export const darkTheme: Theme = {
   gradientFade65: 'rgba(26, 26, 26, 0.8)',
   gradientFade85: 'rgba(26, 26, 26, 0.95)',
   gradientFade100: 'rgba(26, 26, 26, 1)',
+
+  // Typography
+  displayFont: 'Chillax',
 };

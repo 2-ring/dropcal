@@ -68,6 +68,9 @@ export type Theme = {
   gradientFade65: string;
   gradientFade85: string;
   gradientFade100: string;
+
+  // Typography
+  displayFont: string;
 }
 
 export type ThemeMode = 'light' | 'dark';

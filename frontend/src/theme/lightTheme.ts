@@ -70,4 +70,7 @@ export const lightTheme: Theme = {
   gradientFade65: 'rgba(255, 255, 255, 0.8)',
   gradientFade85: 'rgba(255, 255, 255, 0.95)',
   gradientFade100: 'rgba(255, 255, 255, 1)',
+
+  // Typography
+  displayFont: 'Chillax',
 };

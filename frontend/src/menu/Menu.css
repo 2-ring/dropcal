@@ -21,10 +21,8 @@
   pointer-events: none;
 }
 
-.workspace-mark-logo img {
-  width: 26px;
-  height: 26px;
-  object-fit: contain;
+.workspace-mark-logo svg {
+  color: var(--text-primary);
 }
 
 /* Menu mark logo - inside sidebar, visible when sidebar is open */
@@ -50,10 +48,8 @@
   pointer-events: none;
 }
 
-.menu-mark-logo img {
-  width: 26px;
-  height: 26px;
-  object-fit: contain;
+.menu-mark-logo svg {
+  color: var(--text-primary);
 }
 
 .sidebar {
@@ -359,9 +355,8 @@
     z-index: 2001;
   }
 
-  .menu-mark-logo img {
-    width: 26px;
-    height: 26px;
+  .menu-mark-logo svg {
+    /* Icon size is controlled by the Drop component */
   }
 
   .sidebar.open {
