@@ -32,4 +32,10 @@ Current calendar tools require semi-structured input or manual entry. DropCal ha
 
 ---
 
+## AI Agent Guidelines
+
+**Documentation:** Only create markdown files for genuinely insightful information that will be useful an hour+ later. No completion reports, summaries of work just done, or self-evident documentation.
+
+---
+
 **Built for Hack@Brown 2026 | Marshall Wace Track**
