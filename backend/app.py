@@ -57,6 +57,9 @@ from auth.middleware import require_auth
 # Import session processor
 from processing.session_processor import SessionProcessor
 
+# Import rate limit configuration
+from config.rate_limit import RateLimitConfig
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -66,8 +69,8 @@ CORS(app)
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    storage_uri="memory://",
-    default_limits=["200 per day", "50 per hour"]
+    storage_uri=RateLimitConfig.get_storage_uri(),
+    default_limits=RateLimitConfig.DEFAULT_LIMITS
 )
 
 # Configure logging
@@ -76,6 +79,12 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Log rate limiting configuration
+if RateLimitConfig.is_production():
+    logger.info(f"Rate limiting: Using Redis at {RateLimitConfig.REDIS_URL}")
+else:
+    logger.warning("Rate limiting: Using in-memory storage (development only)")
 
 # Register blueprints
 app.register_blueprint(auth_bp)

@@ -325,15 +325,20 @@ function AppContent() {
         GuestSessionManager.addGuestSession(session.id)
       }
 
-      // Poll for completion
-      const completedSession = await pollSession(session.id, (updatedSession) => {
-        setCurrentSession(updatedSession)
+      // Poll for completion (use guest endpoint if not authenticated)
+      const completedSession = await pollSession(
+        session.id,
+        (updatedSession) => {
+          setCurrentSession(updatedSession)
 
-        // Update loading message based on status
-        if (updatedSession.status === 'processing') {
-          setLoadingConfig(LOADING_MESSAGES.EXTRACTING_EVENTS)
-        }
-      })
+          // Update loading message based on status
+          if (updatedSession.status === 'processing') {
+            setLoadingConfig(LOADING_MESSAGES.EXTRACTING_EVENTS)
+          }
+        },
+        2000,
+        !user // isGuest parameter
+      )
 
       // Check if events were found
       if (!completedSession.processed_events || completedSession.processed_events.length === 0) {
