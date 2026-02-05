@@ -5,6 +5,7 @@ Base Agent Interface for DropCal Pipeline
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 from pathlib import Path
+import inspect
 
 
 class BaseAgent(ABC):
@@ -35,7 +36,7 @@ class BaseAgent(ABC):
 
     def load_prompt(self, prompt_name: str) -> str:
         """
-        Load system prompt from prompts directory.
+        Load system prompt from prompts directory relative to the calling subclass.
 
         Args:
             prompt_name: Name of prompt file (e.g., 'context.txt')
@@ -43,7 +44,9 @@ class BaseAgent(ABC):
         Returns:
             Prompt text content
         """
-        prompt_path = Path(__file__).parent / "prompts" / prompt_name
+        # Get the file path of the calling subclass (not this base class)
+        subclass_file = Path(inspect.getfile(self.__class__))
+        prompt_path = subclass_file.parent / "prompts" / prompt_name
 
         if not prompt_path.exists():
             raise FileNotFoundError(f"Prompt file not found: {prompt_path}")

@@ -36,102 +36,6 @@ interface SessionListItem {
   eventCount: number
 }
 
-// TEMPORARY: Test data for events (spans two months to show month transition)
-const TEST_EVENTS: CalendarEvent[] = [
-  {
-    summary: 'Team Standup',
-    start: {
-      dateTime: '2026-02-04T10:00:00',
-      timeZone: 'America/New_York'
-    },
-    end: {
-      dateTime: '2026-02-04T10:30:00',
-      timeZone: 'America/New_York'
-    },
-    location: 'Conference Room A',
-    description: 'Daily team sync to discuss progress and blockers',
-    calendar: 'Work'
-  },
-  {
-    summary: 'Client Presentation',
-    start: {
-      dateTime: '2026-02-06T14:00:00',
-      timeZone: 'America/New_York'
-    },
-    end: {
-      dateTime: '2026-02-06T15:30:00',
-      timeZone: 'America/New_York'
-    },
-    location: 'Zoom Meeting',
-    calendar: 'Work'
-  },
-  {
-    summary: 'Hack@Brown 2026',
-    start: {
-      dateTime: '2026-02-07T09:00:00',
-      timeZone: 'America/New_York'
-    },
-    end: {
-      dateTime: '2026-02-08T18:00:00',
-      timeZone: 'America/New_York'
-    },
-    location: 'Brown University',
-    description: 'Annual hackathon - Marshall Wace Track',
-    calendar: 'School'
-  },
-  {
-    summary: 'Coffee with Alex',
-    start: {
-      dateTime: '2026-02-10T15:00:00',
-      timeZone: 'America/New_York'
-    },
-    end: {
-      dateTime: '2026-02-10T16:00:00',
-      timeZone: 'America/New_York'
-    },
-    calendar: 'Personal'
-  },
-  {
-    summary: 'Project Kickoff Meeting',
-    start: {
-      dateTime: '2026-03-02T09:00:00',
-      timeZone: 'America/New_York'
-    },
-    end: {
-      dateTime: '2026-03-02T11:00:00',
-      timeZone: 'America/New_York'
-    },
-    description: 'Q2 project planning and team alignment',
-    calendar: 'Work'
-  },
-  {
-    summary: 'Dentist Appointment',
-    start: {
-      dateTime: '2026-03-05T14:00:00',
-      timeZone: 'America/New_York'
-    },
-    end: {
-      dateTime: '2026-03-05T15:00:00',
-      timeZone: 'America/New_York'
-    },
-    location: 'Dr. Smith Dental',
-    calendar: 'Personal'
-  },
-  {
-    summary: 'Spring Break Trip',
-    start: {
-      dateTime: '2026-03-14T08:00:00',
-      timeZone: 'America/New_York'
-    },
-    end: {
-      dateTime: '2026-03-21T20:00:00',
-      timeZone: 'America/New_York'
-    },
-    location: 'Miami Beach',
-    description: 'Week-long vacation',
-    calendar: 'Personal'
-  }
-]
 
 // Main content component that handles all the business logic
 function AppContent() {
@@ -142,9 +46,8 @@ function AppContent() {
   const [currentGreetingIndex] = useState(() =>
     Math.floor(Math.random() * greetingImagePaths.length)
   )
-  // TEMPORARY: Start with loading state to show events workspace immediately
-  const [appState, setAppState] = useState<AppState>('loading')
-  const [isProcessing, setIsProcessing] = useState(true)
+  const [appState, setAppState] = useState<AppState>('input')
+  const [isProcessing, setIsProcessing] = useState(false)
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
   const [loadingConfig, setLoadingConfig] = useState<LoadingStateConfig>(LOADING_MESSAGES.READING_FILE)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -154,33 +57,6 @@ function AppContent() {
   const [currentSession, setCurrentSession] = useState<BackendSession | null>(null)
   const [sessionHistory, setSessionHistory] = useState<BackendSession[]>([])
 
-  // TEMPORARY: Show loading sequence for 5 seconds, then load test data (only when no sessionId)
-  useEffect(() => {
-    if (!sessionId) {
-      const loadingSequence = [
-        { config: LOADING_MESSAGES.READING_FILE, delay: 0 },
-        { config: LOADING_MESSAGES.UNDERSTANDING_CONTEXT, delay: 1000 },
-        { config: LOADING_MESSAGES.EXTRACTING_EVENTS, delay: 2000 },
-        { config: LOADING_MESSAGES.EXTRACTING_FACTS, delay: 3500 },
-        { config: LOADING_MESSAGES.FORMATTING_CALENDAR, delay: 4500 }
-      ]
-
-      const timers = loadingSequence.map(({ config, delay }) =>
-        setTimeout(() => setLoadingConfig(config), delay)
-      )
-
-      const finalTimer = setTimeout(() => {
-        setCalendarEvents(TEST_EVENTS)
-        setAppState('review')
-        setIsProcessing(false)
-      }, 5000)
-
-      return () => {
-        timers.forEach(clearTimeout)
-        clearTimeout(finalTimer)
-      }
-    }
-  }, [sessionId])
 
   // Load session from URL on mount or when sessionId changes
   useEffect(() => {
@@ -213,7 +89,6 @@ function AppContent() {
           setIsProcessing(false)
         })
     }
-    // TEMPORARY: When no sessionId, we let the test data loading sequence handle the state
   }, [sessionId, navigate])
 
   // Load session history and sync calendar when user logs in

@@ -109,7 +109,6 @@ class DataCollectionService:
                 sample_size=150
             )
             all_events.extend(historical)
-        else:
 
         # Deduplicate (in case of overlaps)
         all_events = self._deduplicate_events(all_events)
