@@ -134,17 +134,22 @@ export async function getUserSessions(limit: number = 50): Promise<Session[]> {
  * @param sessionId - ID of the session to poll
  * @param onUpdate - Callback function called with updated session data
  * @param intervalMs - Polling interval in milliseconds (default: 2000)
+ * @param isGuest - Whether this is a guest session (uses guest endpoint)
  * @returns Promise that resolves with final session when processed or rejects on error
  */
 export async function pollSession(
   sessionId: string,
   onUpdate?: (session: Session) => void,
-  intervalMs: number = 2000
+  intervalMs: number = 2000,
+  isGuest: boolean = false
 ): Promise<Session> {
   return new Promise((resolve, reject) => {
     const poll = async () => {
       try {
-        const session = await getSession(sessionId);
+        // Route to correct endpoint based on guest status
+        const session = isGuest
+          ? await getGuestSession(sessionId)
+          : await getSession(sessionId);
 
         // Call update callback if provided
         if (onUpdate) {

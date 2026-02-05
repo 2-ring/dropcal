@@ -7,9 +7,14 @@ import { MenuButton } from './MenuButton'
 import { SkeletonSessionGroup } from '../components/skeletons'
 import { getCalendarProviders } from '../api/backend-client'
 import { Tooltip } from '../components/Tooltip'
+import { useAuth } from '../auth/AuthContext'
+import { GuestSessionManager } from '../auth/GuestSessionManager'
+import { useTheme } from '../theme/ThemeProvider'
 import './Menu.css'
-import markImage from '../assets/brand/optimized/mark-optimized.png'
-import wordImage from '../assets/brand/optimized/word-optimized.png'
+import markImageLight from '../assets/brand/light/mark.png'
+import wordImageLight from '../assets/brand/light/word.png'
+import markImageDark from '../assets/brand/dark/mark.png'
+import wordImageDark from '../assets/brand/dark/word.png'
 
 interface MenuProps {
   isOpen: boolean
@@ -31,6 +36,13 @@ export function Menu({
   onNewSession,
   isLoadingSessions = false,
 }: MenuProps) {
+  const { user } = useAuth()
+  const { themeMode } = useTheme()
+
+  // Select brand images based on theme
+  const markImage = themeMode === 'dark' ? markImageDark : markImageLight
+  const wordImage = themeMode === 'dark' ? wordImageDark : wordImageLight
+
   // State for primary calendar provider
   const [primaryProvider, setPrimaryProvider] = useState<'google' | 'microsoft' | 'apple' | null>(null)
 
@@ -195,6 +207,12 @@ export function Menu({
               Start new
             </MenuButton>
           </Tooltip>
+
+          {!user && (
+            <div className="guest-session-counter">
+              {GuestSessionManager.getRemainingCount()} free sessions left
+            </div>
+          )}
 
           <MenuButton
             onClick={() => window.open(getCalendarUrl(), '_blank')?.focus()}

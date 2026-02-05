@@ -13,18 +13,39 @@ interface AuthModalProps {
   title?: string;
   message?: string;
   showCloseButton?: boolean;
+  reason?: 'calendar' | 'session_limit' | 'view_session';
 }
 
 export function AuthModal({
   isOpen,
   onClose,
-  title = 'Sign In Required',
-  message = 'Please sign in to continue using DropCal and access all features.',
+  title,
+  message,
   showCloseButton = false,
+  reason = 'calendar',
 }: AuthModalProps) {
   const { signIn, loading } = useAuth();
 
   if (!isOpen) return null;
+
+  // Default messages based on reason
+  const defaults = {
+    calendar: {
+      title: 'Sign In to Add to Calendar',
+      message: 'Connect your Google Calendar to automatically add these events.',
+    },
+    session_limit: {
+      title: 'Free Sessions Used Up',
+      message: "You've used your 3 free sessions. Sign in to continue using DropCal.",
+    },
+    view_session: {
+      title: 'Sign In Required',
+      message: 'Please sign in to view this session.',
+    },
+  };
+
+  const finalTitle = title || defaults[reason].title;
+  const finalMessage = message || defaults[reason].message;
 
   const handleSignIn = async () => {
     try {
@@ -54,8 +75,8 @@ export function AuthModal({
           <SignIn size={48} weight="regular" />
         </div>
 
-        <h2 className="auth-modal-title">{title}</h2>
-        <p className="auth-modal-message">{message}</p>
+        <h2 className="auth-modal-title">{finalTitle}</h2>
+        <p className="auth-modal-message">{finalMessage}</p>
 
         <button
           className="auth-modal-button"

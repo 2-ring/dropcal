@@ -6,6 +6,9 @@ import { Workspace } from './workspace/Workspace'
 import { Menu } from './menu/Menu'
 import { Plans } from './payment/Plans'
 import { useAuth } from './auth/AuthContext'
+import { GuestSessionManager } from './auth/GuestSessionManager'
+import { AuthModal } from './auth/AuthModal'
+import { GuestModeToast } from './workspace/GuestModeToast'
 import type { CalendarEvent, LoadingStateConfig } from './workspace/events/types'
 import { LOADING_MESSAGES } from './workspace/events/types'
 import type { Session as BackendSession } from './api/types'
@@ -15,7 +18,11 @@ import {
   getUserSessions,
   getSession,
   pollSession,
-  addSessionToCalendar
+  addSessionToCalendar,
+  createGuestTextSession,
+  uploadGuestFile,
+  getGuestSession,
+  migrateGuestSessions
 } from './api/backend-client'
 import { syncCalendar } from './api/sync'
 import './App.css'
@@ -57,15 +64,74 @@ function AppContent() {
   const [currentSession, setCurrentSession] = useState<BackendSession | null>(null)
   const [sessionHistory, setSessionHistory] = useState<BackendSession[]>([])
 
+  // Guest mode state
+  const [isGuestMode, setIsGuestMode] = useState(false)
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authModalReason, setAuthModalReason] = useState<'calendar' | 'session_limit' | 'view_session'>('calendar')
+  const [showGuestToast, setShowGuestToast] = useState(false)
+
+  // Check guest mode on mount
+  useEffect(() => {
+    if (!user) {
+      setIsGuestMode(true)
+
+      // Show guest toast if not dismissed
+      if (!GuestSessionManager.isToastDismissed()) {
+        setShowGuestToast(true)
+      }
+    } else {
+      setIsGuestMode(false)
+    }
+  }, [user])
+
+  // Migrate guest sessions after sign-in
+  useEffect(() => {
+    if (user && isGuestMode) {
+      const guestSessionIds = GuestSessionManager.getSessionIds()
+      if (guestSessionIds.length > 0) {
+        migrateGuestSessions(guestSessionIds)
+          .then(() => {
+            GuestSessionManager.clearGuestSessions()
+            console.log('Guest sessions migrated to user account')
+            toast.success('Guest Sessions Saved', {
+              description: 'Your guest sessions have been saved to your account!',
+              duration: 4000,
+            })
+            // Refresh session history to show migrated sessions
+            getUserSessions().then(setSessionHistory).catch(console.error)
+          })
+          .catch(error => {
+            console.error('Failed to migrate guest sessions:', error)
+          })
+      }
+      setIsGuestMode(false)
+    }
+  }, [user, isGuestMode])
 
   // Load session from URL on mount or when sessionId changes
   useEffect(() => {
     if (sessionId) {
+      // Check if guest can access this session
+      const isGuestSession = GuestSessionManager.getSessionIds().includes(sessionId)
+
+      if (!user && !isGuestSession) {
+        // Not authenticated and not their guest session
+        setAuthModalReason('view_session')
+        setShowAuthModal(true)
+        navigate('/')
+        return
+      }
+
       setIsProcessing(true)
       setAppState('loading')
       setLoadingConfig(LOADING_MESSAGES.READING_FILE)
 
-      getSession(sessionId)
+      // Use guest endpoint if not authenticated and is a guest session
+      const fetchSession = (!user && isGuestSession)
+        ? getGuestSession(sessionId)
+        : getSession(sessionId)
+
+      fetchSession
         .then(session => {
           setCurrentSession(session)
 
@@ -78,10 +144,17 @@ function AppContent() {
         })
         .catch(error => {
           console.error('Failed to load session:', error)
-          toast.error('Failed to Load Session', {
-            description: 'The session could not be found.',
-            duration: 5000,
-          })
+
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          if (errorMessage.includes('authentication') || errorMessage.includes('requires authentication')) {
+            setAuthModalReason('view_session')
+            setShowAuthModal(true)
+          } else {
+            toast.error('Failed to Load Session', {
+              description: 'The session could not be found.',
+              duration: 5000,
+            })
+          }
           navigate('/')
           setAppState('input')
         })
@@ -89,7 +162,7 @@ function AppContent() {
           setIsProcessing(false)
         })
     }
-  }, [sessionId, navigate])
+  }, [sessionId, navigate, user])
 
   // Load session history and sync calendar when user logs in
   useEffect(() => {
@@ -130,6 +203,13 @@ function AppContent() {
       return
     }
 
+    // Check if guest and at limit
+    if (!user && GuestSessionManager.hasReachedLimit()) {
+      setAuthModalReason('session_limit')
+      setShowAuthModal(true)
+      return
+    }
+
     const validation = validateFile(file)
     if (!validation.valid) {
       toast.error('Invalid File', {
@@ -149,20 +229,34 @@ function AppContent() {
       // Determine file type
       const fileType = file.type.startsWith('audio/') ? 'audio' : 'image'
 
-      // Upload file and create session
-      const { session } = await apiUploadFile(file, fileType)
+      // Route to guest or authenticated endpoint
+      const { session } = user
+        ? await apiUploadFile(file, fileType)
+        : await uploadGuestFile(file, fileType)
+
       setCurrentSession(session)
+
+      // Track guest session
+      if (!user) {
+        GuestSessionManager.addGuestSession(session.id)
+      }
+
       setLoadingConfig(LOADING_MESSAGES.PROCESSING_FILE)
 
-      // Poll for completion
-      const completedSession = await pollSession(session.id, (updatedSession) => {
-        setCurrentSession(updatedSession)
+      // Poll for completion (use guest endpoint if not authenticated)
+      const completedSession = await pollSession(
+        session.id,
+        (updatedSession) => {
+          setCurrentSession(updatedSession)
 
-        // Update loading message based on status
-        if (updatedSession.status === 'processing') {
-          setLoadingConfig(LOADING_MESSAGES.EXTRACTING_EVENTS)
-        }
-      })
+          // Update loading message based on status
+          if (updatedSession.status === 'processing') {
+            setLoadingConfig(LOADING_MESSAGES.EXTRACTING_EVENTS)
+          }
+        },
+        2000,
+        !user // isGuest parameter
+      )
 
       // Check if events were found
       if (!completedSession.processed_events || completedSession.processed_events.length === 0) {
@@ -178,8 +272,10 @@ function AppContent() {
       // Navigate to the session URL
       navigate(`/s/${completedSession.id}`)
 
-      // Refresh session history
-      getUserSessions().then(setSessionHistory).catch(console.error)
+      // Refresh session history (only for authenticated users)
+      if (user) {
+        getUserSessions().then(setSessionHistory).catch(console.error)
+      }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -191,7 +287,7 @@ function AppContent() {
     } finally {
       setIsProcessing(false)
     }
-  }, [isProcessing, navigate])
+  }, [isProcessing, navigate, user])
 
   // Process text input
   const processText = useCallback(async (text: string) => {
@@ -203,6 +299,13 @@ function AppContent() {
       return
     }
 
+    // Check if guest and at limit
+    if (!user && GuestSessionManager.hasReachedLimit()) {
+      setAuthModalReason('session_limit')
+      setShowAuthModal(true)
+      return
+    }
+
     setIsProcessing(true)
     setAppState('loading')
     setCalendarEvents([])
@@ -210,9 +313,17 @@ function AppContent() {
     setLoadingConfig(LOADING_MESSAGES.PROCESSING_TEXT)
 
     try {
-      // Create text session
-      const session = await createTextSession(text)
+      // Route to guest or authenticated endpoint
+      const session = user
+        ? await createTextSession(text)
+        : await createGuestTextSession(text)
+
       setCurrentSession(session)
+
+      // Track guest session
+      if (!user) {
+        GuestSessionManager.addGuestSession(session.id)
+      }
 
       // Poll for completion
       const completedSession = await pollSession(session.id, (updatedSession) => {
@@ -238,8 +349,10 @@ function AppContent() {
       // Navigate to the session URL
       navigate(`/s/${completedSession.id}`)
 
-      // Refresh session history
-      getUserSessions().then(setSessionHistory).catch(console.error)
+      // Refresh session history (only for authenticated users)
+      if (user) {
+        getUserSessions().then(setSessionHistory).catch(console.error)
+      }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -251,7 +364,7 @@ function AppContent() {
     } finally {
       setIsProcessing(false)
     }
-  }, [isProcessing, navigate])
+  }, [isProcessing, navigate, user])
 
   // Handle file upload
   const handleFileUpload = useCallback((file: File) => {
@@ -298,6 +411,13 @@ function AppContent() {
 
   // Handle adding events to Google Calendar
   const handleAddToCalendar = useCallback(async (editedEvents?: CalendarEvent[]) => {
+    // Require auth for calendar operations
+    if (!user) {
+      setAuthModalReason('calendar')
+      setShowAuthModal(true)
+      return
+    }
+
     if (!currentSession) {
       toast.error('No Session', {
         description: 'No session available to add to calendar.',
@@ -353,7 +473,7 @@ function AppContent() {
         })
       }
     }
-  }, [currentSession])
+  }, [user, currentSession])
 
   // Convert backend sessions to menu format
   const menuSessions: SessionListItem[] = sessionHistory.map(session => ({
@@ -367,6 +487,11 @@ function AppContent() {
 
   return (
     <div className="app">
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        reason={authModalReason}
+      />
       <Menu
         isOpen={sidebarOpen}
         onToggle={handleSidebarToggle}
@@ -386,6 +511,9 @@ function AppContent() {
         }}
       />
       <div className={`content ${sidebarOpen ? 'with-sidebar' : ''} ${appState === 'loading' || appState === 'review' ? 'events-view' : ''}`}>
+        {isGuestMode && showGuestToast && (
+          <GuestModeToast onDismiss={() => setShowGuestToast(false)} />
+        )}
         <Workspace
           appState={appState}
           uploadedFile={null}
