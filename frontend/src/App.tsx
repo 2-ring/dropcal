@@ -9,6 +9,14 @@ import { Welcome } from './welcome/Welcome'
 import { useAuth } from './auth/AuthContext'
 import { GuestSessionManager } from './auth/GuestSessionManager'
 import { AuthModal } from './auth/AuthModal'
+import {
+  NotificationProvider,
+  useNotifications,
+  createValidationErrorNotification,
+  createSuccessNotification,
+  createErrorNotification,
+  createWarningNotification
+} from './workspace/input/notifications'
 import type { CalendarEvent, LoadingStateConfig } from './workspace/events/types'
 import { LOADING_MESSAGES } from './workspace/events/types'
 import type { Session as BackendSession } from './api/types'
@@ -49,6 +57,7 @@ function AppContent() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { sessionId } = useParams<{ sessionId?: string }>()
+  const { addNotification } = useNotifications()
 
   const [currentGreetingIndex] = useState(() =>
     Math.floor(Math.random() * greetingImagePaths.length)
@@ -87,10 +96,7 @@ function AppContent() {
           .then(() => {
             GuestSessionManager.clearGuestSessions()
             console.log('Guest sessions migrated to user account')
-            toast.success('Guest Sessions Saved', {
-              description: 'Your guest sessions have been saved to your account!',
-              duration: 4000,
-            })
+            addNotification(createSuccessNotification('Your guest sessions have been saved to your account!'))
             // Refresh session history to show migrated sessions
             getUserSessions().then(setSessionHistory).catch(console.error)
           })
@@ -206,10 +212,7 @@ function AppContent() {
 
     const validation = validateFile(file)
     if (!validation.valid) {
-      toast.error('Invalid File', {
-        description: validation.error,
-        duration: 5000,
-      })
+      addNotification(createValidationErrorNotification(validation.error || 'Invalid file'))
       return
     }
 
@@ -254,7 +257,7 @@ function AppContent() {
 
       // Check if events were found
       if (!completedSession.processed_events || completedSession.processed_events.length === 0) {
-        setFeedbackMessage("The file doesn't appear to contain any calendar events.")
+        setFeedbackMessage("Hmm, we couldn't find any events in there. Try a different file!")
         setAppState('input')
         return
       }
@@ -273,10 +276,7 @@ function AppContent() {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      toast.error('Processing Failed', {
-        description: errorMessage,
-        duration: 6000,
-      })
+      addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
       setAppState('input')
     } finally {
       setIsProcessing(false)
@@ -355,10 +355,7 @@ function AppContent() {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      toast.error('Processing Failed', {
-        description: errorMessage,
-        duration: 6000,
-      })
+      addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
       setAppState('input')
     } finally {
       setIsProcessing(false)
@@ -537,12 +534,14 @@ function AppContent() {
 // Router wrapper component
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<AppContent />} />
-      <Route path="/s/:sessionId" element={<AppContent />} />
-      <Route path="/plans" element={<Plans />} />
-      <Route path="/welcome" element={<Welcome />} />
-    </Routes>
+    <NotificationProvider>
+      <Routes>
+        <Route path="/" element={<AppContent />} />
+        <Route path="/s/:sessionId" element={<AppContent />} />
+        <Route path="/plans" element={<Plans />} />
+        <Route path="/welcome" element={<Welcome />} />
+      </Routes>
+    </NotificationProvider>
   )
 }
 

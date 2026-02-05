@@ -10,10 +10,11 @@ interface NotificationBarProps {
 
 export function NotificationBar({ notification, onDismiss }: NotificationBarProps) {
   const Icon = notification.icon
+  const variant = notification.variant || 'info'
 
   return (
     <motion.div
-      className="notification-bar"
+      className={`notification-bar notification-bar--${variant}`}
       initial={{ y: 20, scale: 0.95, opacity: 0 }}
       animate={{ y: 0, scale: 1, opacity: 1 }}
       exit={{ y: -20, scale: 0.95, opacity: 0 }}

@@ -6,17 +6,76 @@
   margin-top: 24px;
 }
 
-.notification-bar-icon {
+/* Info variant (default - grey) */
+.notification-bar--info .notification-bar-icon {
   flex-shrink: 0;
-  color: var(--color-primary);
+  color: var(--info);
 }
 
-.notification-bar-text {
+.notification-bar--info .notification-bar-text {
   flex: 1;
   margin: 0;
-  color: var(--color-text-secondary);
+  color: var(--info);
   font-size: 14px;
   line-height: 1.5;
+}
+
+.notification-bar--info .notification-bar-close {
+  color: var(--text-tertiary);
+}
+
+/* Success variant (green) */
+.notification-bar--success .notification-bar-icon {
+  flex-shrink: 0;
+  color: var(--success);
+}
+
+.notification-bar--success .notification-bar-text {
+  flex: 1;
+  margin: 0;
+  color: var(--success);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.notification-bar--success .notification-bar-close {
+  color: var(--text-tertiary);
+}
+
+/* Warning variant (orange/yellow) */
+.notification-bar--warning .notification-bar-icon {
+  flex-shrink: 0;
+  color: var(--warning);
+}
+
+.notification-bar--warning .notification-bar-text {
+  flex: 1;
+  margin: 0;
+  color: var(--warning);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.notification-bar--warning .notification-bar-close {
+  color: var(--text-tertiary);
+}
+
+/* Error variant (red) */
+.notification-bar--error .notification-bar-icon {
+  flex-shrink: 0;
+  color: var(--error);
+}
+
+.notification-bar--error .notification-bar-text {
+  flex: 1;
+  margin: 0;
+  color: var(--error);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.notification-bar--error .notification-bar-close {
+  color: var(--text-tertiary);
 }
 
 .notification-bar-close {
@@ -29,6 +88,5 @@
   padding: 0;
   background: none;
   border: none;
-  color: var(--color-text-tertiary);
   cursor: pointer;
 }

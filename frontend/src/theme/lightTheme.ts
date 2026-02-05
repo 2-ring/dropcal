@@ -33,9 +33,17 @@ export const lightTheme: Theme = {
   successBorder: '#a5d6a7',
   successBackground: '#e8f5e9',
 
-  error: '#dc3545',
-  errorLight: '#d32f2f',
-  errorBackground: 'rgba(220, 53, 69, 0.1)',
+  error: '#c41e3a',
+  errorLight: '#a01729',
+  errorBackground: 'rgba(196, 30, 58, 0.1)',
+
+  warning: '#f59e0b',
+  warningLight: '#fbbf24',
+  warningBackground: 'rgba(245, 158, 11, 0.1)',
+
+  info: '#666666',
+  infoLight: '#999999',
+  infoBackground: 'rgba(102, 102, 102, 0.05)',
 
   // Interactive Colors
   interactive: '#7C8FFF',

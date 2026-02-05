@@ -4,6 +4,9 @@ import { InputWorkspace } from './input'
 import { EventsWorkspace } from './events/EventsWorkspace'
 import type { CalendarEvent } from './events/types'
 import type { LoadingStateConfig } from './events/types'
+import { getGreeting } from '../utils/greetings'
+import { useAuth } from '../auth/AuthContext'
+import mark from '../assets/brand/light/mark.png'
 
 type AppState = 'input' | 'loading' | 'review'
 
@@ -53,6 +56,9 @@ export function Workspace({
   onMenuToggle,
   onNewSession,
 }: WorkspaceProps) {
+  const { user } = useAuth()
+  const greeting = getGreeting(user?.name)
+
   return (
     <>
       {/* Mobile Header - only show in input state */}
@@ -67,19 +73,22 @@ export function Workspace({
         </div>
       )}
 
-      {/* Show greeting only in input state */}
-      {appState === 'input' && greetingImage && (
+      {/* Show logo and greeting in input state */}
+      {appState === 'input' && (
         <motion.div
           className="greeting-container"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
         >
-          <img
-            src={greetingImage}
-            alt="Greeting"
-            className="greeting-image"
-          />
+          <div className="greeting-row">
+            <img
+              src={mark}
+              alt="DropCal"
+              className="greeting-logo"
+            />
+            <h1 className="greeting-text">{greeting}</h1>
+          </div>
         </motion.div>
       )}
 

@@ -1,3 +1,18 @@
+/* Satoshi Font */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('./assets/fonts/Satoshi-Variable.woff2') format('woff2');
+  font-weight: 300 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('./assets/fonts/Satoshi-Black.woff2') format('woff2');
+  font-weight: 900;
+  font-display: swap;
+}
+
 /* Drop Area Content Component Sizing Variables */
 :root {
   /* Button sizes */
@@ -55,10 +70,49 @@
 
 .greeting-container {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   animation: fadeIn 0.5s ease-in;
   margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.greeting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.greeting-logo {
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+}
+
+.greeting-text {
+  font-family: 'Satoshi', sans-serif;
+  font-size: 44px;
+  font-weight: 900;
+  line-height: 44px;
+  text-align: center;
+  color: var(--primary-color);
+  margin: 0;
+  font-feature-settings: 'ss01' on, 'ss02' on;
+  letter-spacing: -0.02em;
+}
+
+.greeting-hero-text {
+  font-family: 'Satoshi', sans-serif;
+  font-size: 50px;
+  font-weight: 900;
+  line-height: 1.0;
+  text-align: center;
+  color: var(--primary-color);
+  margin: 0;
+  font-feature-settings: 'ss01' on, 'ss02' on;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 8px rgba(17, 112, 197, 0.15);
 }
 
 .greeting-image {
@@ -91,24 +145,24 @@
   width: 100%;
   max-width: 700px;
   min-height: 180px;
-  border-radius: 32px;
+  border-radius: 64px;
   background-color: var(--primary-faint);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='32' ry='32' stroke='%231170C5FF' stroke-width='9' stroke-dasharray='28 22' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='64' ry='64' stroke='%231170C5FF' stroke-width='9' stroke-dasharray='28 22' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
 }
 
 .drop-area:hover {
   background-color: rgba(17, 112, 197, 0.12);
-  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='32' ry='32' stroke='%231170C5' stroke-width='9' stroke-dasharray='28 22' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='64' ry='64' stroke='%231170C5' stroke-width='9' stroke-dasharray='28 22' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
 }
 
 .drop-area.dragging {
   background-color: rgba(17, 112, 197, 0.18);
-  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='32' ry='32' stroke='%231170C5FF' stroke-width='9' stroke-dasharray='28 22' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='64' ry='64' stroke='%231170C5FF' stroke-width='9' stroke-dasharray='28 22' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
   transform: scale(1.02);
 }
 
@@ -148,7 +202,8 @@
   justify-content: center;
   border-radius: 50%;
   background-color: var(--background);
-  box-shadow: var(--shadow-light);
+  box-shadow: 0 4px 12px var(--shadow-light),
+              0 2px 6px var(--shadow-medium);
   color: var(--text-secondary);
 }
 
@@ -162,13 +217,15 @@
 }
 
 .icon-circle.clickable:hover {
-  box-shadow: var(--shadow-medium);
+  box-shadow: 0 8px 20px var(--shadow-medium),
+              0 4px 12px var(--shadow-heavy);
   background-color: var(--background);
   color: var(--primary);
 }
 
 .icon-circle.clickable:active {
-  box-shadow: var(--shadow-light);
+  box-shadow: 0 2px 8px var(--shadow-light),
+              0 1px 4px var(--shadow-medium);
 }
 
 .icon-circle.small {
@@ -185,7 +242,8 @@
   width: var(--droparea-btn-large);
   height: var(--droparea-btn-large);
   background-color: var(--primary);
-  box-shadow: var(--shadow-medium);
+  box-shadow: 0 6px 16px var(--shadow-medium),
+              0 3px 8px var(--shadow-heavy);
   color: var(--background);
 }
 
@@ -590,6 +648,19 @@
     padding: 5.5rem 1rem 2rem;
   }
 
+  .greeting-row {
+    gap: 10px;
+  }
+
+  .greeting-logo {
+    height: 36px;
+  }
+
+  .greeting-text {
+    font-size: 36px;
+    line-height: 36px;
+  }
+
   .greeting-image {
     max-width: 82%;
     margin-bottom: 0.75rem;
@@ -602,18 +673,18 @@
   .drop-area {
     min-height: 150px;
     max-width: 88%;
-    border-radius: 24px;
-    background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='24' ry='24' stroke='%231170C5FF' stroke-width='6' stroke-dasharray='20 16' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
+    border-radius: 48px;
+    background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='48' ry='48' stroke='%231170C5FF' stroke-width='6' stroke-dasharray='20 16' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
   }
 
   .drop-area:hover {
     background-color: rgba(17, 112, 197, 0.12);
-    background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='24' ry='24' stroke='%231170C5' stroke-width='6' stroke-dasharray='20 16' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
+    background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='48' ry='48' stroke='%231170C5' stroke-width='6' stroke-dasharray='20 16' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
   }
 
   .drop-area.dragging {
     background-color: rgba(17, 112, 197, 0.18);
-    background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='24' ry='24' stroke='%231170C5FF' stroke-width='6' stroke-dasharray='20 16' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
+    background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='48' ry='48' stroke='%231170C5FF' stroke-width='6' stroke-dasharray='20 16' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
   }
 
   .events-container {

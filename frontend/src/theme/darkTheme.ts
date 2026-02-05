@@ -33,9 +33,17 @@ export const darkTheme: Theme = {
   successBorder: '#4a7c4e',
   successBackground: '#1b3a1f',
 
-  error: '#ef5350',
-  errorLight: '#f44336',
-  errorBackground: 'rgba(239, 83, 80, 0.15)',
+  error: '#d32f2f',
+  errorLight: '#e57373',
+  errorBackground: 'rgba(211, 47, 47, 0.15)',
+
+  warning: '#fbbf24',
+  warningLight: '#fcd34d',
+  warningBackground: 'rgba(251, 191, 36, 0.15)',
+
+  info: '#b8b8b8',
+  infoLight: '#e8e8e8',
+  infoBackground: 'rgba(184, 184, 184, 0.1)',
 
   // Interactive Colors - bright purple for dark backgrounds
   interactive: '#9BA8FF',

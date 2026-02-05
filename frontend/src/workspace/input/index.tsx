@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { HandWaving, Warning } from '@phosphor-icons/react'
 import { DropArea } from './droparea'
-import { NotificationBar, useNotificationQueue } from './notifications'
+import { NotificationBar, useNotifications } from './notifications'
 
 interface InputWorkspaceProps {
   uploadedFile: File | null
@@ -31,7 +31,7 @@ export function InputWorkspace({
     currentNotification,
     addNotification,
     dismissNotification,
-  } = useNotificationQueue()
+  } = useNotifications()
 
   // Add guest mode notification (persistent)
   useEffect(() => {
@@ -41,6 +41,7 @@ export function InputWorkspace({
         icon: HandWaving,
         iconWeight: 'duotone',
         message: 'Hey! Welcome to dropcal. Keep in mind you need an account to sync your calender.',
+        variant: 'info',
         persistent: true,
         priority: -1, // Low priority, shows when no other notifications
       })
@@ -55,6 +56,7 @@ export function InputWorkspace({
         icon: Warning,
         iconWeight: 'duotone',
         message: feedbackMessage,
+        variant: 'warning',
         persistent: false,
         priority: 10, // High priority
       })

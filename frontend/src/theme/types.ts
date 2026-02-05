@@ -35,6 +35,14 @@ export type Theme = {
   errorLight: string;
   errorBackground: string;
 
+  warning: string;
+  warningLight: string;
+  warningBackground: string;
+
+  info: string;
+  infoLight: string;
+  infoBackground: string;
+
   // Interactive Colors
   interactive: string;
   interactiveLight: string;
