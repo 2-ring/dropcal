@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { List as MenuIcon, PlusCircle, Drop } from '@phosphor-icons/react'
+import { Sidebar, CalendarStar, Drop } from '@phosphor-icons/react'
 import { InputWorkspace } from './input'
 import { EventsWorkspace } from './events/EventsWorkspace'
 import type { CalendarEvent } from './events/types'
@@ -64,10 +64,10 @@ export function Workspace({
       {appState === 'input' && (
         <div className="mobile-input-header">
           <button className="mobile-header-button" onClick={onMenuToggle} title="Menu">
-            <MenuIcon size={24} weight="regular" />
+            <Sidebar size={24} weight="duotone" />
           </button>
           <button className="mobile-header-button new-event" onClick={onNewSession} title="New event">
-            <PlusCircle size={24} weight="regular" />
+            <CalendarStar size={24} weight="duotone" />
           </button>
         </div>
       )}

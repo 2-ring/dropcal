@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { SidebarSimple as SidebarIcon, CalendarBlank, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, CaretCircleLeft, GoogleLogo, MicrosoftOutlookLogo, AppleLogo, Drop } from '@phosphor-icons/react'
+import { SidebarSimple as SidebarIcon, CalendarBlank, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, CaretCircleRight, GoogleLogo, MicrosoftOutlookLogo, AppleLogo, Drop } from '@phosphor-icons/react'
 import type { SessionListItem } from '../sessions'
 import type { InputType } from '../sessions'
 import { Account } from './Account'
@@ -189,7 +189,7 @@ export function Menu({
           <Tooltip content="Close sidebar">
             <button className="sidebar-toggle" onClick={onToggle}>
               <SidebarIcon size={20} weight="duotone" className="sidebar-icon" />
-              <CaretCircleLeft size={20} weight="duotone" className="sidebar-chevron" />
+              <CaretCircleRight size={26} weight="duotone" className="sidebar-chevron" />
             </button>
           </Tooltip>
         </div>

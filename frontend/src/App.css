@@ -671,8 +671,8 @@
   }
 
   .greeting-text {
-    font-size: 36px;
-    line-height: 36px;
+    font-size: 26px;
+    line-height: 26px;
   }
 
   .greeting-image {
@@ -686,7 +686,7 @@
 
   .drop-area {
     min-height: 150px;
-    max-width: 88%;
+    max-width: 94%;
     border-radius: 48px;
     background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='48' ry='48' stroke='%231170C5FF' stroke-width='6' stroke-dasharray='20 16' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
   }
