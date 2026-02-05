@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Mailbox, FingerprintSimple, ShootingStar, Link } from '@phosphor-icons/react'
 import { WordMark } from '../components/WordMark'
+import { FunnelAnimation } from './FunnelAnimation'
 import './Welcome.css'
 
 export function Welcome() {
@@ -29,7 +30,7 @@ export function Welcome() {
             <br />
             Get events out.
           </h1>
-          <div className="welcome-demo-placeholder" />
+          <FunnelAnimation />
           <button onClick={() => navigate('/')} className="welcome-cta">
             <ShootingStar size={22} weight="duotone" />
             See the magic

@@ -1,0 +1,37 @@
+.event-display {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.event-display-card {
+  background-color: var(--background);
+  border-left: 6px solid;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  width: 280px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08),
+              0 2px 6px rgba(0, 0, 0, 0.04);
+  opacity: 0.9;
+}
+
+.event-display-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.event-display-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.event-display-meta svg {
+  flex-shrink: 0;
+}
