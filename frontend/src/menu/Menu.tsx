@@ -7,11 +7,9 @@ import { MenuButton } from './MenuButton'
 import { SkeletonSessionGroup } from '../components/skeletons'
 import { getCalendarProviders } from '../api/backend-client'
 import { Tooltip } from '../components/Tooltip'
-import { useTheme } from '../theme/ThemeProvider'
 import { Logo } from '../components/Logo'
+import { WordMark } from '../components/WordMark'
 import './Menu.css'
-import wordImageLight from '../assets/brand/light/word.png'
-import wordImageDark from '../assets/brand/dark/word.png'
 
 interface MenuProps {
   isOpen: boolean
@@ -33,11 +31,6 @@ export function Menu({
   onNewSession,
   isLoadingSessions = false,
 }: MenuProps) {
-  const { themeMode } = useTheme()
-
-  // Select brand images based on theme
-  const wordImage = themeMode === 'dark' ? wordImageDark : wordImageLight
-
   // State for primary calendar provider
   const [primaryProvider, setPrimaryProvider] = useState<'google' | 'microsoft' | 'apple' | null>(null)
 
@@ -171,19 +164,8 @@ export function Menu({
 
       {/* Sidebar that slides in next to the mark */}
       <div className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
-        {/* Menu mark logo - visible when sidebar is open */}
-        <button
-          className={`menu-mark-logo ${isOpen ? '' : 'hidden'}`}
-          onClick={onToggle}
-          title="DropCal"
-        >
-          <Logo size={32} />
-        </button>
-
         <div className="sidebar-header">
-          <div className="sidebar-logo">
-            <img src={wordImage} alt="DropCal" className="word-logo" />
-          </div>
+          <WordMark size={32} className="sidebar-logo" />
           <Tooltip content="Close sidebar">
             <button className="sidebar-toggle" onClick={onToggle}>
               <SidebarIcon size={20} weight="duotone" className="sidebar-icon" />

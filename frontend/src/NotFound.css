@@ -1,7 +1,7 @@
 .not-found {
   width: 100vw;
   height: 100vh;
-  background-color: white;
+  background-color: var(--background);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11,24 +11,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 32px;
-}
-
-.not-found-logo {
-  display: flex;
-  align-items: center;
-  gap: var(--brand-logo-gap);
-}
-
-.not-found-word {
-  height: 26px;
-  width: auto;
-  object-fit: contain;
+  gap: 20px;
 }
 
 .not-found-title {
   font-family: var(--display-font), sans-serif;
-  font-size: 120px;
+  font-size: 200px;
   font-weight: 700;
   line-height: 1.0;
   text-align: center;

@@ -1,0 +1,9 @@
+.wordmark {
+  display: flex;
+  align-items: center;
+}
+
+.wordmark-word {
+  width: auto;
+  object-fit: contain;
+}

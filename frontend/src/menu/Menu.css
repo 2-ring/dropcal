@@ -102,21 +102,7 @@
   z-index: 1;
 }
 
-.sidebar-logo {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding-left: calc(26px + var(--brand-logo-gap));
-  height: 26px;
-}
-
-.word-logo {
-  height: 26px;
-  width: auto;
-  object-fit: contain;
-  margin: 0;
-  display: block;
-}
+/* .sidebar-logo is now applied directly to WordMark component */
 
 .sidebar-toggle {
   display: flex;

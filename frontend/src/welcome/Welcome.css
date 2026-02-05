@@ -15,7 +15,7 @@
 .welcome {
   width: 100vw;
   height: 100vh;
-  background-color: white;
+  background-color: var(--background);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -30,17 +30,6 @@
   background-color: transparent;
   position: relative;
   z-index: 10;
-}
-
-.welcome-logo {
-  display: flex;
-  align-items: center;
-  gap: var(--brand-logo-gap);
-}
-
-.welcome-word {
-  height: 32px;
-  width: auto;
 }
 
 .welcome-nav {

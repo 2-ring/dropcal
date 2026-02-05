@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Lifebuoy, Link } from '@phosphor-icons/react'
-import { Logo } from './components/Logo'
-import wordImageLight from './assets/brand/light/word.png'
+import { WordMark } from './components/WordMark'
 import './NotFound.css'
 
 export function NotFound() {
@@ -10,10 +9,7 @@ export function NotFound() {
   return (
     <div className="not-found">
       <div className="not-found-content">
-        <div className="not-found-logo">
-          <Logo size={32} />
-          <img src={wordImageLight} alt="DropCal" className="not-found-word" />
-        </div>
+        <WordMark size={48} />
         <h1 className="not-found-title">404</h1>
         <button onClick={() => navigate('/')} className="not-found-button">
           <Lifebuoy size={22} weight="duotone" />
