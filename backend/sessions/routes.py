@@ -45,11 +45,12 @@ def stream_session_updates(session_id: str):
             return
 
         # Send initial state
-        yield f"event: init\ndata: {json.dumps({
+        init_data = {
             'id': session_id,
             'status': session.get('status'),
             'title': session.get('title')
-        })}\n\n"
+        }
+        yield f"event: init\ndata: {json.dumps(init_data)}\n\n"
 
         # Poll for updates (title generation usually takes 50-400ms)
         last_title = session.get('title')

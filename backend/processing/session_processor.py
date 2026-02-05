@@ -63,7 +63,7 @@ class SessionProcessor:
         # Check user's event history
         user_id = session['user_id']
         try:
-            event_count = Event.count_by_user(user_id)
+            event_count = Event.count_user_events(user_id)
             if event_count < self.MIN_HISTORY_THRESHOLD:
                 print(f"Using guest formatting: User has only {event_count} events (threshold: {self.MIN_HISTORY_THRESHOLD})")
                 return True
