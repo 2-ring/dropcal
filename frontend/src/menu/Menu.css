@@ -98,9 +98,9 @@
 
 .sidebar-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  padding: 1rem 1rem 0.75rem 1rem;
+  padding: 1rem;
   min-height: 56px;
   position: relative;
   z-index: 1;
@@ -109,8 +109,8 @@
 .sidebar-logo {
   display: flex;
   align-items: center;
-  gap: 0;
-  padding-left: 29px;
+  gap: 0.25rem;
+  padding-left: calc(26px + 0.25rem);
   height: 26px;
 }
 
