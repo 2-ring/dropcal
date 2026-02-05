@@ -71,12 +71,29 @@ export function createSession(
     extractedEvents: [],
     calendarEvents: [],
     status: 'active',
-    title: generateSessionTitle(content, actualType),
+    // Use placeholder title - real title will be streamed from backend
+    title: generatePlaceholderTitle(actualType),
     eventCount: 0,
   }
 }
 
-// Generate a readable title from input
+// Generate a placeholder title while real title is being generated
+function generatePlaceholderTitle(type: InputType): string {
+  switch (type) {
+    case 'image':
+      return 'Image Analysis'
+    case 'document':
+      return 'Document Processing'
+    case 'audio':
+      return 'Audio Transcription'
+    case 'text':
+      return 'New Session'
+    default:
+      return 'Processing...'
+  }
+}
+
+// Generate a readable title from input (legacy - kept for backward compatibility)
 function generateSessionTitle(content: string, type: InputType): string {
   // For image and document files, use the file name
   if (type === 'image' || type === 'document') {

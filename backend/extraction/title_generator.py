@@ -22,23 +22,27 @@ class TitleGenerator:
         # Compile regex patterns for common event entities
         self.course_code_pattern = re.compile(r'\b[A-Z]{2,4}\s*\d{3,4}\b')
         self.event_type_pattern = re.compile(
-            r'\b(exam|midterm|final|quiz|homework|assignment|project|'
+            r'\b(exams?|midterm|final|quiz|quizzes|homework|assignment|project|'
             r'meeting|standup|sync|review|presentation|lecture|discussion|'
             r'deadline|due|submission|dinner|lunch|breakfast|coffee|talk|'
-            r'seminar|workshop|conference)\b',
+            r'seminar|workshop|conference|schedule|syllabus)\b',
             re.IGNORECASE
         )
 
-        # Patterns to filter out (times, dates, days, etc.)
+        # Patterns to filter out (times, dates, days, navigation, etc.)
         self.filter_patterns = [
             re.compile(r'\d+[ap]m\b', re.IGNORECASE),  # 2pm, 10am
             re.compile(r'\d{1,2}:\d{2}'),  # 14:00, 2:30
             re.compile(r'\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b', re.IGNORECASE),
-            re.compile(r'\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b', re.IGNORECASE),
+            re.compile(r'\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|spring|fall|winter|summer)\b', re.IGNORECASE),
             re.compile(r'\b(tomorrow|today|tonight|tmrw)\b', re.IGNORECASE),
             re.compile(r'\b\d{1,2}th\b'),  # 25th, 3rd
             re.compile(r'\b(meet|meets|mwf|tth)\b', re.IGNORECASE),  # Generic meeting words
             re.compile(r'\b(rsvp)\b', re.IGNORECASE),
+            # Canvas/navigation terms
+            re.compile(r'\b(dashboard|calendar|inbox|history|help|pages|home|skip|content|links|external|site)\b', re.IGNORECASE),
+            # Generic academic terms that add no value
+            re.compile(r'\b(homework|textbook|notes)\b', re.IGNORECASE),
         ]
 
     def generate(

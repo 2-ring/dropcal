@@ -5,3 +5,4 @@
  */
 
 export { Tooltip } from './Tooltip'
+export { TypingText } from './TypingText'

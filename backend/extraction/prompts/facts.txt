@@ -28,24 +28,34 @@ CRITICAL RULES:
    - "midnight" → "00:00:00"
    - "6:30pm" → "18:30:00"
 
-3. Only extract facts that are EXPLICITLY stated
-   - If no location mentioned, location = null
+3. Extract facts that are EXPLICIT or can be REASONABLY INFERRED from strong context clues:
+   - Explicit: "Team meeting at 2pm" → meeting at 2pm ✓
+   - Strong inference: "So excited for Puerto Rico this weekend! Can't believe they're getting married" → Wedding in Puerto Rico ✓
+   - Do NOT hallucinate: "Let's meet sometime" → Do NOT invent a time ✗
+   - If no physical location, location = null
    - If no duration mentioned, duration = null
-   - Do NOT infer or assume
 
-4. For recurrence:
+4. For location - MUST be physical places only:
+   - Physical locations: "Conference Room B", "Starbucks on Main St", "Puerto Rico", "Smith Hall 201"
+   - Virtual meetings: location = null (NOT "Zoom", NOT "virtual", NOT "online")
+   - Modality descriptors: "in-person" is NOT a location → location = null
+   - If no physical place mentioned, location = null
+
+5. For recurrence:
    - "every Tuesday" → is_recurring=true, pattern="weekly", days=["Tuesday"]
    - "Tuesdays" → is_recurring=true, pattern="weekly", days=["Tuesday"]
    - "daily standup" → is_recurring=true, pattern="daily"
    - "Monday and Wednesday" → is_recurring=true, pattern="weekly", days=["Monday", "Wednesday"]
    - "March 15" → is_recurring=false
 
-5. For title:
-   - Extract the core event name - aim for 2-3 words MAX
-   - Keep it SHORT and descriptive - this is a title, not a description
-   - "Team meeting with Sarah" → title="Team meeting"
+6. For title - Keep it SHORT and ABSTRACT:
+   - Aim for ≤3 words 90% of the time
+   - Only use 4-5 words VERY RARELY when every word conveys genuinely vital meaning
+   - Abstract when possible - focus on the core event type
+   - "Team meeting with Sarah about Q1 planning" → title="Team Meeting"
    - "MATH 0180 midterm exam" → title="MATH 0180 Midterm"
    - "Shabbat dinner tomorrow at 7pm" → title="Shabbat Dinner"
+   - "Weekly standup with engineering team" → title="Weekly Standup"
 
 Examples:
 
@@ -61,7 +71,7 @@ title="Homework", date="2026-02-10", time="21:00:00", notes="due", is_recurring=
 
 Input: ["The 90-minute midterms will be held on Wednesday evenings February 25 from at 6:30pm", "closed-book and in-person"]
 Output:
-title="Midterm exam", date="2026-02-25", time="18:30:00", duration="90 minutes", location="in-person", notes="closed-book", is_recurring=false
+title="Midterm", date="2026-02-25", time="18:30:00", duration="90 minutes", location=null, notes="closed-book, in-person", is_recurring=false
 
 Input: ["Weekly recitation session on Thursdays"]
 Current context shows Next Thursday = 2026-02-12

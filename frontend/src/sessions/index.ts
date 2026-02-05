@@ -13,3 +13,5 @@ export * from './backend'
 
 // React hooks
 export * from './hooks'
+export * from './useSessionTitleStream'
+export { SessionTitleDisplay } from './SessionTitleDisplay'
