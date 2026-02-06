@@ -6,12 +6,12 @@ import {
   StyleSheet,
   Pressable,
   Platform,
-  SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Logo, Icon, Card, Modal, toast } from '../components';
+import { Logo, Icon, Card, Modal, toast, CalendarEvent } from '../components';
 import {
   TextInputScreen,
   LinkInputScreen,
@@ -22,9 +22,31 @@ import { useTheme } from '../theme';
 import { pickImage, pickDocument, pickAudio, createFormData } from '../utils/fileUpload';
 import * as backendClient from '../api/backend-client';
 import { getGreeting } from '../utils/greetings';
+import type { AppState, LoadingStateConfig } from '../AppContainer';
 
 // Navigation type (will be properly typed when navigation structure is finalized)
 type NavigationProp = any;
+
+/**
+ * HomeScreen Props - ALL state and handlers from AppContainer
+ * This matches the web App.tsx WorkspaceProps pattern
+ */
+interface HomeScreenProps {
+  // State from AppContainer
+  appState: AppState;
+  isProcessing: boolean;
+  calendarEvents: CalendarEvent[];
+  loadingConfig: LoadingStateConfig;
+  feedbackMessage: string;
+
+  // Handlers from AppContainer
+  onFileUpload: (file: File) => Promise<void>;
+  onAudioSubmit: (audioBlob: Blob) => Promise<void>;
+  onTextSubmit: (text: string) => Promise<void>;
+  onClearFile: () => void;
+  onAddToCalendar: (editedEvents?: CalendarEvent[]) => Promise<void>;
+  onNewSession: () => void;
+}
 
 /**
  * Button position in the circular layout
@@ -37,105 +59,60 @@ interface ButtonPosition {
 }
 
 /**
- * HomeScreen - Main screen with input options
- * Task 36: Create Home Screen
+ * HomeScreen - Main screen with COMPLETE state management from AppContainer
+ * Translated from web Workspace component pattern
+ * Now receives ALL state and handlers as props (no local state for processing)
  */
-export function HomeScreen() {
+export function HomeScreen({
+  appState,
+  isProcessing,
+  calendarEvents,
+  loadingConfig,
+  feedbackMessage,
+  onFileUpload,
+  onAudioSubmit,
+  onTextSubmit,
+  onClearFile,
+  onAddToCalendar,
+  onNewSession,
+}: HomeScreenProps) {
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
-  const [isProcessing, setIsProcessing] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [showEmailInput, setShowEmailInput] = useState(false);
   const [showAudioRecorder, setShowAudioRecorder] = useState(false);
 
   // Get randomized greeting (can be personalized with user name in the future)
+  // TODO: Pass user name when auth is implemented (matches web Workspace.tsx)
   const greeting = getGreeting();
 
   /**
-   * Handle text submission
+   * Handle text submission - uses handler from AppContainer
    */
-  const handleTextSubmit = useCallback(async (text: string) => {
-    try {
-      setIsProcessing(true);
-      setShowTextInput(false);
-
-      const session = await backendClient.createTextSession(text);
-
-      // Navigate to events list with session data
-      // TODO: Implement navigation to EventsList screen with session
-      toast.success('Processing Complete', {
-        description: `Found ${session.processed_events?.length || 0} events`,
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Error processing text:', error);
-      toast.error('Processing Failed', {
-        description: error instanceof Error ? error.message : 'Could not process text',
-        duration: 4000,
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  }, []);
+  const handleLocalTextSubmit = useCallback(async (text: string) => {
+    setShowTextInput(false);
+    await onTextSubmit(text);
+  }, [onTextSubmit]);
 
   /**
-   * Handle link submission
+   * Handle link submission - uses handler from AppContainer
    */
   const handleLinkSubmit = useCallback(async (url: string) => {
-    try {
-      setIsProcessing(true);
-      setShowLinkInput(false);
-
-      // Use createTextSession for URLs as well
-      const session = await backendClient.createTextSession(url);
-
-      toast.success('Processing Complete', {
-        description: `Found ${session.processed_events?.length || 0} events`,
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Error processing link:', error);
-      toast.error('Processing Failed', {
-        description: error instanceof Error ? error.message : 'Could not process link',
-        duration: 4000,
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  }, []);
+    setShowLinkInput(false);
+    await onTextSubmit(url); // Links are processed as text
+  }, [onTextSubmit]);
 
   /**
-   * Handle audio submission
+   * Handle audio submission - uses handler from AppContainer
    */
-  const handleAudioSubmit = useCallback(async (audioBlob: Blob) => {
-    try {
-      setIsProcessing(true);
-      setShowAudioRecorder(false);
-
-      // Convert blob to FormData
-      // Create a File object from the Blob
-      const audioFile = new File([audioBlob], 'recording.wav', { type: 'audio/wav' });
-
-      const result = await backendClient.uploadFile(audioFile, 'audio');
-
-      toast.success('Processing Complete', {
-        description: `Found ${result.session.processed_events?.length || 0} events`,
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Error processing audio:', error);
-      toast.error('Processing Failed', {
-        description: error instanceof Error ? error.message : 'Could not process audio',
-        duration: 4000,
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  }, []);
+  const handleLocalAudioSubmit = useCallback(async (audioBlob: Blob) => {
+    setShowAudioRecorder(false);
+    await onAudioSubmit(audioBlob);
+  }, [onAudioSubmit]);
 
   /**
-   * Handle audio file upload (not recording)
+   * Handle audio file upload (not recording) - uses handler from AppContainer
    */
   const handleAudioUpload = useCallback(async () => {
     try {
@@ -146,7 +123,6 @@ export function HomeScreen() {
       const file = Array.isArray(result) ? result[0] : result;
       if (!file) return;
 
-      setIsProcessing(true);
       setShowAudioRecorder(false);
 
       // Create File object from the picked file
@@ -156,25 +132,18 @@ export function HomeScreen() {
         { type: file.type || 'audio/m4a' }
       );
 
-      const uploadResult = await backendClient.uploadFile(audioFile, 'audio');
-
-      toast.success('Processing Complete', {
-        description: `Found ${uploadResult.session.processed_events?.length || 0} events`,
-        duration: 3000,
-      });
+      await onFileUpload(audioFile);
     } catch (error) {
       console.error('Error processing audio file:', error);
       toast.error('Processing Failed', {
         description: error instanceof Error ? error.message : 'Could not process audio',
         duration: 4000,
       });
-    } finally {
-      setIsProcessing(false);
     }
-  }, []);
+  }, [onFileUpload]);
 
   /**
-   * Handle image upload
+   * Handle image upload - uses handler from AppContainer
    */
   const handleImageUpload = useCallback(async () => {
     try {
@@ -185,8 +154,6 @@ export function HomeScreen() {
       const file = Array.isArray(result) ? result[0] : result;
       if (!file) return;
 
-      setIsProcessing(true);
-
       // Create File object from the picked file
       const imageFile = new File(
         [await fetch(file.uri).then(r => r.blob())],
@@ -194,25 +161,18 @@ export function HomeScreen() {
         { type: file.type || 'image/jpeg' }
       );
 
-      const uploadResult = await backendClient.uploadFile(imageFile, 'image');
-
-      toast.success('Processing Complete', {
-        description: `Found ${uploadResult.session.processed_events?.length || 0} events`,
-        duration: 3000,
-      });
+      await onFileUpload(imageFile);
     } catch (error) {
       console.error('Error uploading image:', error);
       toast.error('Upload Failed', {
         description: error instanceof Error ? error.message : 'Could not upload image',
         duration: 4000,
       });
-    } finally {
-      setIsProcessing(false);
     }
-  }, []);
+  }, [onFileUpload]);
 
   /**
-   * Handle document upload
+   * Handle document upload - uses handler from AppContainer
    */
   const handleDocumentUpload = useCallback(async () => {
     try {
@@ -225,8 +185,6 @@ export function HomeScreen() {
       const file = Array.isArray(result) ? result[0] : result;
       if (!file) return;
 
-      setIsProcessing(true);
-
       // Create File object from the picked document
       const docFile = new File(
         [await fetch(file.uri).then(r => r.blob())],
@@ -234,25 +192,78 @@ export function HomeScreen() {
         { type: file.type || 'application/pdf' }
       );
 
-      const uploadResult = await backendClient.uploadFile(docFile, 'image'); // Using 'image' type as backend handles it
-
-      toast.success('Processing Complete', {
-        description: `Found ${uploadResult.session.processed_events?.length || 0} events`,
-        duration: 3000,
-      });
+      await onFileUpload(docFile);
     } catch (error) {
       console.error('Error uploading document:', error);
       toast.error('Upload Failed', {
         description: error instanceof Error ? error.message : 'Could not upload document',
         duration: 4000,
       });
-    } finally {
-      setIsProcessing(false);
     }
-  }, []);
+  }, [onFileUpload]);
+
+  // Handle loading state
+  if (appState === 'loading') {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={[styles.loadingText, { color: theme.colors.textPrimary }]}>
+            {loadingConfig.message}
+          </Text>
+          {loadingConfig.submessage && (
+            <Text style={[styles.loadingSubtext, { color: theme.colors.textSecondary }]}>
+              {loadingConfig.submessage}
+            </Text>
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Handle review state
+  if (appState === 'review') {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <ScrollView style={styles.scrollView}>
+          <View style={styles.reviewContainer}>
+            <Text style={[styles.reviewTitle, { color: theme.colors.textPrimary }]}>
+              Found {calendarEvents.length} event{calendarEvents.length !== 1 ? 's' : ''}
+            </Text>
+
+            <View style={styles.eventsPlaceholder}>
+              <Text style={[styles.placeholderText, { color: theme.colors.textSecondary }]}>
+                Events list UI coming soon
+              </Text>
+            </View>
+
+            <View style={styles.actionButtons}>
+              <Pressable
+                style={[styles.actionButton, { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }]}
+                onPress={onClearFile}
+              >
+                <Text style={[styles.actionButtonText, { color: theme.colors.textPrimary }]}>
+                  Start Over
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.actionButton, styles.primaryButton, { backgroundColor: theme.colors.primary }]}
+                onPress={() => onAddToCalendar()}
+              >
+                <Text style={[styles.actionButtonText, { color: '#ffffff' }]}>
+                  Add to Calendar
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   /**
-   * Define button positions in circular layout
+   * Define button positions in circular layout (for input state)
    */
   const buttons: ButtonPosition[] = [
     { id: 'link', icon: 'Link', position: 'btn-left-1', onPress: () => setShowLinkInput(true) },
@@ -315,15 +326,14 @@ export function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header with Logo and Greeting */}
+        {/* Header with Logo and Greeting - matches web Workspace.tsx */}
         <View style={styles.header}>
-          <Logo size={48} />
-          <Text style={[styles.greeting, { color: theme.colors.textPrimary }]}>
-            {greeting}
-          </Text>
-          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-            Drop anything in. Get calendar events out.
-          </Text>
+          <View style={styles.greetingRow}>
+            <Logo size={48} color={theme.colors.textPrimary} />
+            <Text style={[styles.greetingText, { color: theme.colors.primary }]}>
+              {greeting}
+            </Text>
+          </View>
         </View>
 
         {/* Circular Button Menu */}
@@ -360,7 +370,7 @@ export function HomeScreen() {
       <Modal visible={showTextInput} onClose={() => setShowTextInput(false)} animationType="fade" height="full">
         <TextInputScreen
           onClose={() => setShowTextInput(false)}
-          onSubmit={handleTextSubmit}
+          onSubmit={handleLocalTextSubmit}
         />
       </Modal>
 
@@ -383,7 +393,7 @@ export function HomeScreen() {
       <Modal visible={showAudioRecorder} onClose={() => setShowAudioRecorder(false)} animationType="fade" height="full">
         <AudioRecorder
           onClose={() => setShowAudioRecorder(false)}
-          onSubmit={handleAudioSubmit}
+          onSubmit={handleLocalAudioSubmit}
           onUploadFile={handleAudioUpload}
         />
       </Modal>
@@ -402,25 +412,83 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
+  // Loading state
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 20,
+    fontWeight: '600' as const,
+    marginTop: 24,
+    textAlign: 'center' as const,
+  },
+  loadingSubtext: {
+    fontSize: 16,
+    marginTop: 8,
+    textAlign: 'center' as const,
+  },
+  // Review state
+  reviewContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  reviewTitle: {
+    fontSize: 24,
+    fontWeight: '700' as const,
+    marginBottom: 20,
+    textAlign: 'center' as const,
+  },
+  eventsPlaceholder: {
+    flex: 1,
+    minHeight: 200,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    marginVertical: 40,
+  },
+  placeholderText: {
+    fontSize: 16,
+  },
+  actionButtons: {
+    flexDirection: 'row' as const,
+    gap: 12,
+    marginTop: 24,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center' as const,
+  },
+  primaryButton: {},
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+  },
+  // Input state
   header: {
     alignItems: 'center',
     marginBottom: 40,
     marginTop: 20,
   },
-  greeting: {
-    fontFamily: 'Chillax',
-    fontSize: 44,
-    fontWeight: '700',
-    lineHeight: 44,
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
+  // Greeting row - EXACT match to web .greeting-row (desktop)
+  greetingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12, // EXACT: web gap: 12px
   },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '400',
+  // Greeting text - EXACT match to web .greeting-text (desktop)
+  // Web CSS: font-size: 44px, line-height: 44px, font-weight: 700, letter-spacing: -0.02em
+  greetingText: {
+    fontFamily: 'Chillax',
+    fontSize: 44, // EXACT: web desktop 44px
+    fontWeight: '700',
+    lineHeight: 44, // EXACT: web desktop 44px
     textAlign: 'center',
-    paddingHorizontal: 20,
+    letterSpacing: -0.88, // -0.02em × 44px = -0.88px
   },
   // Circular button menu container
   buttonMenuContainer: {

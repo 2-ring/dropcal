@@ -4,7 +4,6 @@
  */
 
 import { getAccessToken } from '../auth/supabase';
-import { GuestSessionManager } from '../auth/GuestSessionManager';
 
 import type {
   Session,
@@ -537,84 +536,3 @@ export async function refineEvents(
   return handleResponse(response);
 }
 
-// ============================================================================
-// Guest Mode API Functions (No Authentication Required)
-// ============================================================================
-
-/**
- * Create guest text session (no auth).
- */
-export async function createGuestTextSession(text: string): Promise<Session> {
-  const response = await fetch(`${API_URL}/api/sessions/guest`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      input_type: 'text',
-      input_content: text,
-    }),
-  });
-
-  const data = await handleResponse<CreateSessionResponse>(response);
-  return data.session;
-}
-
-/**
- * Upload file as guest (no auth).
- */
-export async function uploadGuestFile(
-  file: File,
-  type: 'image' | 'audio'
-): Promise<{ session: Session; file_url: string }> {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('input_type', type);
-
-  const response = await fetch(`${API_URL}/api/upload/guest`, {
-    method: 'POST',
-    body: formData,
-  });
-
-  const data = await handleResponse<UploadFileResponse>(response);
-  return {
-    session: data.session,
-    file_url: data.file_url,
-  };
-}
-
-/**
- * Get guest session by ID with access token verification.
- * Retrieves the access token from AsyncStorage and includes it in the request.
- */
-export async function getGuestSession(sessionId: string): Promise<Session> {
-  // Retrieve the access token for this session from AsyncStorage
-  const accessToken = await GuestSessionManager.getAccessTokenAsync(sessionId);
-
-  if (!accessToken) {
-    throw new Error('Access token not found for guest session. Please create a new session.');
-  }
-
-  const response = await fetch(
-    `${API_URL}/api/sessions/guest/${sessionId}?access_token=${encodeURIComponent(accessToken)}`,
-    {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    }
-  );
-
-  const data = await handleResponse<GetSessionResponse>(response);
-  return data.session;
-}
-
-/**
- * Migrate guest sessions to user account.
- * Called automatically after sign-in.
- */
-export async function migrateGuestSessions(sessionIds: string[]): Promise<void> {
-  const headers = await getAuthHeaders();
-
-  await fetch(`${API_URL}/api/auth/sync-profile`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ guest_session_ids: sessionIds }),
-  });
-}

@@ -17,6 +17,8 @@ import {
   eventItemVariants
 } from './animations'
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+
 interface GoogleCalendar {
   id: string
   summary: string
@@ -54,7 +56,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
     const fetchCalendars = async () => {
       setIsLoadingCalendars(true)
       try {
-        const response = await fetch('http://localhost:5000/api/calendar/list-calendars')
+        const response = await fetch(`${API_URL}/api/calendar/list-calendars`)
         if (response.ok) {
           const data = await response.json()
           setCalendars(data.calendars || [])
@@ -154,7 +156,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
             if (!event) return null
 
             try {
-              const response = await fetch('http://localhost:5000/api/edit-event', {
+              const response = await fetch(`${API_URL}/api/edit-event`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',

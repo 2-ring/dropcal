@@ -6,9 +6,9 @@ import {
   StyleSheet,
   Pressable,
   Switch,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon, PhosphorIconName } from '../components';
 import { useTheme } from '../theme';
 

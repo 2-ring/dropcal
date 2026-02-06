@@ -9,6 +9,7 @@ import {
   Modal,
   Image,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme';
 import { Icon } from '../components/Icon';
 import { Logo } from '../components/Logo';
@@ -16,9 +17,10 @@ import { Logo } from '../components/Logo';
 interface Session {
   id: string;
   title: string;
-  event_count: number;
-  created_at: string;
-  status?: 'processing' | 'completed' | 'error';
+  timestamp: Date;
+  inputType: 'text' | 'image' | 'audio' | 'document';
+  status: 'active' | 'completed' | 'error';
+  eventCount: number;
 }
 
 interface SidebarProps {
@@ -52,6 +54,7 @@ export function Sidebar({
   sessions = [],
 }: SidebarProps) {
   const { theme, themeMode, toggleTheme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [slideAnim] = useState(new Animated.Value(isOpen ? 0 : -280));
 
   // Animate sidebar open/close
@@ -83,7 +86,7 @@ export function Sidebar({
     };
 
     sessions.forEach((session) => {
-      const sessionDate = new Date(session.created_at);
+      const sessionDate = session.timestamp;
 
       if (sessionDate >= today) {
         grouped.today.push(session);
@@ -124,6 +127,9 @@ export function Sidebar({
             backgroundColor: theme.colors.backgroundSecondary || theme.colors.background,
             borderRightColor: theme.colors.border,
             transform: [{ translateX: slideAnim }],
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+            paddingLeft: insets.left,
           },
         ]}
       >
@@ -196,7 +202,7 @@ export function Sidebar({
                     >
                       {session.title}
                     </Text>
-                    {session.event_count > 0 && (
+                    {session.eventCount > 0 && (
                       <View
                         style={[
                           styles.eventBadge,
@@ -204,7 +210,7 @@ export function Sidebar({
                         ]}
                       >
                         <Text style={[styles.eventBadgeText, { color: '#ffffff' }]}>
-                          {session.event_count}
+                          {session.eventCount}
                         </Text>
                       </View>
                     )}

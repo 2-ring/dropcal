@@ -17,6 +17,3 @@ export {
 
 // Auth context and hooks
 export { AuthProvider, useAuth } from './AuthContext';
-
-// Guest session management
-export { GuestSessionManager } from './GuestSessionManager';

@@ -179,15 +179,8 @@ export function AudioRecorder({ onClose, onSubmit, onUploadFile }: AudioRecorder
 
   // Convert recording to Blob
   const convertToBlob = async (uri: string): Promise<Blob> => {
-    if (Platform.OS === 'web') {
-      const response = await fetch(uri);
-      return await response.blob();
-    }
-
-    // For native platforms, we need to read the file
     const response = await fetch(uri);
-    const blob = await response.blob();
-    return blob;
+    return await response.blob();
   };
 
   // Handle submit

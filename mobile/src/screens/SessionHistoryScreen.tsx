@@ -6,8 +6,8 @@ import {
   StyleSheet,
   Pressable,
   RefreshControl,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon, Skeleton, PhosphorIconName } from '../components';
 import { useTheme } from '../theme';
 

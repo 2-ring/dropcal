@@ -168,31 +168,25 @@ export const pickAudio = async (
 };
 
 /**
- * Convert a file URI to a Blob (for web compatibility)
+ * Convert a file URI to a Blob (native only)
  */
 export const uriToBlob = async (uri: string): Promise<Blob> => {
-  if (Platform.OS === 'web') {
-    // On web, fetch the URI and convert to blob
-    const response = await fetch(uri);
-    return await response.blob();
-  } else {
-    // On native platforms, read the file as base64 and create blob
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: 'base64',
-    });
+  // Read the file as base64 and create blob
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: 'base64',
+  });
 
-    // Detect mime type from URI
-    const mimeType = getMimeTypeFromUri(uri);
+  // Detect mime type from URI
+  const mimeType = getMimeTypeFromUri(uri);
 
-    // Convert base64 to blob
-    const byteCharacters = atob(base64);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    return new Blob([byteArray], { type: mimeType });
+  // Convert base64 to blob
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
   }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type: mimeType });
 };
 
 /**
@@ -217,7 +211,7 @@ const getMimeTypeFromUri = (uri: string): string => {
 };
 
 /**
- * Create FormData for file upload
+ * Create FormData for file upload (native only)
  */
 export const createFormData = async (
   file: FilePickResult,
@@ -226,18 +220,12 @@ export const createFormData = async (
 ): Promise<FormData> => {
   const formData = new FormData();
 
-  // Add the file
-  if (Platform.OS === 'web') {
-    const blob = await uriToBlob(file.uri);
-    formData.append(fieldName, blob, file.name);
-  } else {
-    // On native platforms, FormData accepts uri directly
-    formData.append(fieldName, {
-      uri: file.uri,
-      type: file.type,
-      name: file.name,
-    } as any);
-  }
+  // On native platforms, FormData accepts uri directly
+  formData.append(fieldName, {
+    uri: file.uri,
+    type: file.type,
+    name: file.name,
+  } as any);
 
   // Add additional data
   if (additionalData) {
@@ -250,7 +238,7 @@ export const createFormData = async (
 };
 
 /**
- * Create FormData for multiple files upload
+ * Create FormData for multiple files upload (native only)
  */
 export const createMultiFileFormData = async (
   files: FilePickResult[],
@@ -261,16 +249,11 @@ export const createMultiFileFormData = async (
 
   // Add all files
   for (const file of files) {
-    if (Platform.OS === 'web') {
-      const blob = await uriToBlob(file.uri);
-      formData.append(fieldName, blob, file.name);
-    } else {
-      formData.append(fieldName, {
-        uri: file.uri,
-        type: file.type,
-        name: file.name,
-      } as any);
-    }
+    formData.append(fieldName, {
+      uri: file.uri,
+      type: file.type,
+      name: file.name,
+    } as any);
   }
 
   // Add additional data

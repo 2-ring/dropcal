@@ -63,7 +63,20 @@ from config.rate_limit import RateLimitConfig
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS to allow frontend origins
+allowed_origins = [
+    'http://localhost:3000',      # Local frontend dev
+    'http://localhost:5173',      # Vite default dev port
+    'https://www.dropcal.ai',     # Production frontend
+    'https://dropcal.ai',         # Production frontend (without www)
+]
+
+CORS(app,
+     origins=allowed_origins,
+     supports_credentials=True,
+     allow_headers=['Content-Type', 'Authorization'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 
 # Configure rate limiting (for guest endpoints)
 limiter = Limiter(

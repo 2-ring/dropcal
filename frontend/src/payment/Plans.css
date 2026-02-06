@@ -36,25 +36,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2rem;
+  padding-top: 2rem;
   position: relative;
-}
-
-.plans-greeting {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  /* TEMPORARY: Very large negative margins to remove extra space from temporary greeting image */
-  margin-top: -6rem;
-  margin-bottom: -6rem;
-}
-
-.plans-greeting-image {
-  /* TEMPORARY: Much larger size while using temporary greeting image */
-  max-width: 500px;
-  width: 100%;
-  height: auto;
-  object-fit: contain;
 }
 
 .plan-tabs {
@@ -95,11 +78,13 @@
 }
 
 .plans-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
   gap: 2rem;
   width: 100%;
   max-width: 1000px;
+  margin: 0 auto;
 }
 
 .plan-card {
@@ -113,6 +98,8 @@
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-medium);
+  flex: 1;
+  max-width: 480px;
 }
 
 .plan-card:hover {
@@ -302,18 +289,6 @@
     padding: 3rem 0.5rem 1rem;
     height: auto;
     justify-content: flex-start;
-    gap: 1.5rem;
-  }
-
-  .plans-greeting {
-    /* TEMPORARY: Reduced negative margins on mobile */
-    margin-top: -2rem;
-    margin-bottom: -2rem;
-  }
-
-  .plans-greeting-image {
-    max-width: 82%;
-    margin-bottom: 1rem;
   }
 
   .plan-tabs {
@@ -328,8 +303,12 @@
   }
 
   .plans-grid {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     gap: 1.5rem;
+  }
+
+  .plan-card {
+    max-width: 100%;
   }
 
   .plans-disclaimer {
@@ -352,10 +331,6 @@
 }
 
 @media (max-width: 480px) {
-  .plans-greeting-image {
-    max-width: 90%;
-  }
-
   .plan-card {
     padding: 1.5rem 1.25rem;
   }

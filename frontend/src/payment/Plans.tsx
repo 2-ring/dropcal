@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { CaretLeft, Calendar, Sparkle, Check } from '@phosphor-icons/react'
-import greetingImage from '../assets/greetings/2.png'
+import { CaretLeft, CalendarBlank, Sparkle, Check } from '@phosphor-icons/react'
 import './Plans.css'
 
 interface PlanFeature {
@@ -31,7 +30,7 @@ export function Plans() {
       priceSubtext: 'forever',
       ctaText: 'Get started',
       ctaVariant: 'secondary',
-      icon: <Calendar size={28} />,
+      icon: <CalendarBlank size={28} weight="duotone" />,
       features: [
         { text: 'Up to 10 events per month', included: true },
         { text: 'Text and image input', included: true },
@@ -49,7 +48,7 @@ export function Plans() {
       priceSubtext: '/month billed annually',
       ctaText: 'Get Pro plan',
       ctaVariant: 'primary',
-      icon: <Sparkle size={28} />,
+      icon: <Sparkle size={28} weight="duotone" />,
       popular: true,
       features: [
         { text: 'Everything in Free, plus:', included: true },
@@ -70,10 +69,6 @@ export function Plans() {
       </button>
 
       <div className="plans-container">
-        <div className="plans-greeting">
-          <img src={greetingImage} alt="DropCal" className="plans-greeting-image" />
-        </div>
-
         <div className="plans-grid">
           {plans.map((plan) => (
             <div key={plan.name} className={`plan-card ${plan.popular ? 'popular' : ''}`}>
@@ -100,6 +95,7 @@ export function Plans() {
                   <div key={index} className={`feature-item ${!feature.included ? 'disabled' : ''}`}>
                     <Check
                       size={18}
+                      weight="bold"
                       className={`feature-check ${!feature.included ? 'disabled' : ''}`}
                     />
                     <span className="feature-text">{feature.text}</span>

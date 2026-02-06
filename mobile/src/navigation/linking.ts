@@ -18,13 +18,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
 
   config: {
     screens: {
-      Main: {
-        screens: {
-          Home: '',
-          Sessions: 'sessions',
-          Settings: 'settings',
-        },
-      },
+      Main: '',
       Settings: 'settings',
       Plans: 'plans',
       EventEdit: {

@@ -4,21 +4,19 @@ import { Platform, Dimensions } from 'react-native';
  * Platform detection and utility functions
  */
 
-// Basic platform detection
+// Basic platform detection (native only)
 export const isIOS = Platform.OS === 'ios';
 export const isAndroid = Platform.OS === 'android';
-export const isWeb = Platform.OS === 'web';
 export const isMobile = isIOS || isAndroid;
 export const isNative = isMobile;
 
 // Platform version
 export const platformVersion = Platform.Version;
 
-// Get platform-specific value
+// Get platform-specific value (native only)
 export const platformSelect = <T>(options: {
   ios?: T;
   android?: T;
-  web?: T;
   native?: T;
   default?: T;
 }): T | undefined => {
@@ -27,9 +25,6 @@ export const platformSelect = <T>(options: {
   }
   if (isAndroid && options.android !== undefined) {
     return options.android;
-  }
-  if (isWeb && options.web !== undefined) {
-    return options.web;
   }
   if (isMobile && options.native !== undefined) {
     return options.native;
@@ -132,11 +127,10 @@ export const platformStyles = {
   }),
 };
 
-// Default export with all utilities
+// Default export with all utilities (native only)
 export const platform = {
   isIOS,
   isAndroid,
-  isWeb,
   isMobile,
   isNative,
   version: platformVersion,
