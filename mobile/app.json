@@ -1,0 +1,75 @@
+{
+  "expo": {
+    "name": "DropCal",
+    "slug": "dropcal",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "scheme": "dropcal",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1170C5"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dropcal.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "DropCal needs access to your camera to scan event flyers and documents.",
+        "NSPhotoLibraryUsageDescription": "DropCal needs access to your photo library to extract event information from images.",
+        "NSMicrophoneUsageDescription": "DropCal needs access to your microphone to record audio notes about events.",
+        "NSCalendarsUsageDescription": "DropCal needs access to your calendar to create and manage events.",
+        "NSCalendarsWriteOnlyAccessUsageDescription": "DropCal needs permission to add events to your calendar.",
+        "NSRemindersUsageDescription": "DropCal can optionally create reminders for your events."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1170C5"
+      },
+      "package": "com.dropcal.app",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO",
+        "READ_CALENDAR",
+        "WRITE_CALENDAR"
+      ],
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-image-picker",
+      "expo-document-picker",
+      "expo-av",
+      "expo-file-system",
+      "@react-native-async-storage/async-storage",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0"
+          },
+          "ios": {
+            "deploymentTarget": "15.0"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "dropcal-mobile"
+      }
+    }
+  }
+}
