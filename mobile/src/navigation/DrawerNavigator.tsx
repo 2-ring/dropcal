@@ -19,24 +19,25 @@ const Drawer = createDrawerNavigator<DrawerParamList>();
 
 // Custom drawer content with header and sections
 function CustomDrawerContent(props: DrawerContentComponentProps) {
-  const { theme, isDark, toggleTheme } = useTheme();
+  const { theme, themeMode, toggleTheme } = useTheme();
+  const isDark = themeMode === 'dark';
 
   return (
     <DrawerContentScrollView
       {...props}
-      style={{ backgroundColor: theme.background }}
+      style={{ backgroundColor: theme.colors.background }}
     >
       {/* Header with logo and app name */}
-      <View style={[styles.drawerHeader, { borderBottomColor: theme.border }]}>
+      <View style={[styles.drawerHeader, { borderBottomColor: theme.colors.border }]}>
         <Logo size={32} />
-        <Text style={[styles.appName, { color: theme.text }]}>DropCal</Text>
+        <Text style={[styles.appName, { color: theme.colors.textPrimary }]}>DropCal</Text>
       </View>
 
       {/* Main navigation items */}
       <DrawerItemList {...props} />
 
       {/* Footer with theme toggle */}
-      <View style={[styles.drawerFooter, { borderTopColor: theme.border }]}>
+      <View style={[styles.drawerFooter, { borderTopColor: theme.colors.border }]}>
         <TouchableOpacity
           onPress={toggleTheme}
           style={styles.themeToggle}
@@ -44,9 +45,9 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
           <Icon
             name={isDark ? 'Sun' : 'Moon'}
             size={20}
-            color={theme.textSecondary}
+            color={theme.colors.textSecondary}
           />
-          <Text style={[styles.themeText, { color: theme.textSecondary }]}>
+          <Text style={[styles.themeText, { color: theme.colors.textSecondary }]}>
             {isDark ? 'Light Mode' : 'Dark Mode'}
           </Text>
         </TouchableOpacity>
@@ -64,19 +65,19 @@ export default function DrawerNavigator() {
       screenOptions={{
         headerShown: true,
         headerStyle: {
-          backgroundColor: theme.background,
+          backgroundColor: theme.colors.background,
         },
-        headerTintColor: theme.text,
+        headerTintColor: theme.colors.textPrimary,
         headerTitleStyle: {
           fontWeight: '600',
         },
         drawerStyle: {
-          backgroundColor: theme.background,
+          backgroundColor: theme.colors.background,
           width: 280,
         },
-        drawerActiveTintColor: theme.primary,
-        drawerInactiveTintColor: theme.textSecondary,
-        drawerActiveBackgroundColor: theme.primaryLight,
+        drawerActiveTintColor: theme.colors.primary,
+        drawerInactiveTintColor: theme.colors.textSecondary,
+        drawerActiveBackgroundColor: theme.colors.primaryLight,
         drawerItemStyle: {
           borderRadius: 8,
           marginHorizontal: 8,

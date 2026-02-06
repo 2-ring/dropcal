@@ -35,7 +35,7 @@ export default function RootNavigator({ isAuthenticated }: RootNavigatorProps) {
           screenOptions={{
             headerShown: false,
             cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
-            cardStyle: { backgroundColor: theme.background },
+            cardStyle: { backgroundColor: theme.colors.background },
           }}
         >
           <Stack.Screen name="SignIn" component={SignInScreen} />
@@ -50,7 +50,7 @@ export default function RootNavigator({ isAuthenticated }: RootNavigatorProps) {
         screenOptions={{
           headerShown: false,
           cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
-          cardStyle: { backgroundColor: theme.background },
+          cardStyle: { backgroundColor: theme.colors.background },
         }}
       >
         {/* Main Tab Navigator */}
@@ -63,9 +63,9 @@ export default function RootNavigator({ isAuthenticated }: RootNavigatorProps) {
             cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
             headerShown: true,
             headerStyle: {
-              backgroundColor: theme.background,
+              backgroundColor: theme.colors.background,
             },
-            headerTintColor: theme.text,
+            headerTintColor: theme.colors.textPrimary,
             headerTitleStyle: {
               fontWeight: '600',
             },

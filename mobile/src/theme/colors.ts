@@ -73,6 +73,10 @@ export const lightColors = {
   gradientFade65: 'rgba(255, 255, 255, 0.8)',
   gradientFade85: 'rgba(255, 255, 255, 0.95)',
   gradientFade100: 'rgba(255, 255, 255, 1)',
+
+  // Additional colors for input screens
+  surface: '#fafafa',
+  disabled: '#cccccc',
 };
 
 export const darkColors = {
@@ -145,6 +149,10 @@ export const darkColors = {
   gradientFade65: 'rgba(26, 26, 26, 0.8)',
   gradientFade85: 'rgba(26, 26, 26, 0.95)',
   gradientFade100: 'rgba(26, 26, 26, 1)',
+
+  // Additional colors for input screens
+  surface: '#2a2a2a',
+  disabled: '#555555',
 };
 
 export type ColorScheme = typeof lightColors;

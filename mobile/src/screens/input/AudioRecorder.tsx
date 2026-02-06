@@ -13,7 +13,7 @@ import { Audio } from 'expo-av';
 import { Icon } from '../../components/Icon';
 import { useTheme } from '../../theme';
 
-interface AudioRecorderProps {
+export interface AudioRecorderProps {
   /** Callback when recording is cancelled */
   onClose: () => void;
   /** Callback when recording is submitted with audio blob */
@@ -30,6 +30,37 @@ const NUM_BARS = 32;
  *
  * Uses expo-av for audio recording with decorative visualization.
  * Auto-starts recording on mount.
+ *
+ * @example
+ * ```tsx
+ * import { AudioRecorder } from '@/screens/input';
+ * import { pickAudio } from '@/utils/fileUpload';
+ *
+ * function MyScreen() {
+ *   const handleSubmit = async (audioBlob: Blob) => {
+ *     // Send blob to backend API
+ *     const formData = new FormData();
+ *     formData.append('audio', audioBlob, 'recording.m4a');
+ *     await fetch('/api/upload', { method: 'POST', body: formData });
+ *   };
+ *
+ *   const handleUpload = async () => {
+ *     // Let user pick an existing audio file
+ *     const file = await pickAudio();
+ *     if (file) {
+ *       // Process the uploaded file
+ *     }
+ *   };
+ *
+ *   return (
+ *     <AudioRecorder
+ *       onClose={() => navigation.goBack()}
+ *       onSubmit={handleSubmit}
+ *       onUploadFile={handleUpload}
+ *     />
+ *   );
+ * }
+ * ```
  */
 export function AudioRecorder({ onClose, onSubmit, onUploadFile }: AudioRecorderProps) {
   const { theme } = useTheme();
@@ -327,7 +358,6 @@ export function AudioRecorder({ onClose, onSubmit, onUploadFile }: AudioRecorder
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: lightColors.background,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -338,18 +368,29 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: lightColors.textSecondary,
     textAlign: 'center',
+  },
+  closeButtonError: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   // Dock
   dock: {
     width: '100%',
     maxWidth: 400,
-    backgroundColor: lightColors.backgroundElevated,
     borderRadius: 24,
     padding: 24,
-    shadowColor: lightColors.shadowLight,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -366,15 +407,10 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: lightColors.border,
-  },
-  recordingDotActive: {
-    backgroundColor: lightColors.error,
   },
   durationText: {
     fontSize: 18,
     fontWeight: '600',
-    color: lightColors.textPrimary,
     fontVariant: ['tabular-nums'],
   },
 
@@ -393,7 +429,6 @@ const styles = StyleSheet.create({
   },
   bar: {
     flex: 1,
-    backgroundColor: lightColors.primary,
     borderRadius: 8,
     minHeight: 4,
   },
@@ -401,7 +436,6 @@ const styles = StyleSheet.create({
   // Instructions
   instructionText: {
     fontSize: 14,
-    color: lightColors.textSecondary,
     textAlign: 'center',
   },
 
@@ -411,8 +445,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: lightColors.backgroundElevated,
-    shadowColor: lightColors.shadowLight,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -424,7 +457,7 @@ const styles = StyleSheet.create({
     top: 60,
     left: 20,
   },
-  closeButton: {
+  closeButtonStyle: {
     top: 60,
     right: 20,
   },
@@ -441,14 +474,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 28,
   },
-  submitButtonContent: {
-    backgroundColor: lightColors.primary,
-  },
   buttonPressed: {
     opacity: 0.7,
     transform: [{ scale: 0.95 }],
-  },
-  buttonDisabled: {
-    opacity: 0.5,
   },
 });

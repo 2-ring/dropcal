@@ -82,7 +82,11 @@ export type PhosphorIconName =
   | 'Leaf'
   | 'Ghost'
   | 'Coffee'
-  | 'Tree';
+  | 'Tree'
+  // Additional icons
+  | 'Moon'
+  | 'Home'
+  | 'Settings';
 
 export interface IconProps {
   /** Icon name from Phosphor Icons */
@@ -195,6 +199,11 @@ export function Icon({
     Ghost: { family: 'Ionicons', name: 'logo-ghost' },
     Coffee: { family: 'Feather', name: 'coffee' },
     Tree: { family: 'MaterialCommunityIcons', name: 'pine-tree' },
+
+    // Additional icons
+    Moon: { family: 'Feather', name: 'moon' },
+    Home: { family: 'Feather', name: 'home' },
+    Settings: { family: 'Feather', name: 'settings' },
   };
 
   const iconConfig = iconMap[name];

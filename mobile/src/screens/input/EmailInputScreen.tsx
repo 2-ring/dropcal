@@ -3,7 +3,7 @@ import { View, StyleSheet, Pressable, Text, Linking, Alert } from 'react-native'
 import { Icon } from '../../components/Icon';
 import { useTheme } from '../../theme';
 
-interface EmailInputScreenProps {
+export interface EmailInputScreenProps {
   /** Close handler */
   onClose: () => void;
   /** Optional user email (from auth context if available) */

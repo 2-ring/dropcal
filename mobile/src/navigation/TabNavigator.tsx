@@ -1,11 +1,11 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../theme';
-import { Icon } from '../components';
+import { Icon, PhosphorIconName } from '../components';
 import { Platform } from 'react-native';
+import { HomeScreen } from '../screens';
 
-// Placeholder screens - will be implemented by other agents
-const HomeScreen = () => null;
+// Placeholder screens - will be implemented by Agent 9
 const SessionHistoryScreen = () => null;
 const SettingsScreen = () => null;
 
@@ -25,7 +25,7 @@ export default function TabNavigator() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: string;
+          let iconName: PhosphorIconName;
 
           switch (route.name) {
             case 'Home':
@@ -43,11 +43,11 @@ export default function TabNavigator() {
 
           return <Icon name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: theme.primary,
-        tabBarInactiveTintColor: theme.textSecondary,
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: theme.background,
-          borderTopColor: theme.border,
+          backgroundColor: theme.colors.background,
+          borderTopColor: theme.colors.border,
           borderTopWidth: 1,
           paddingBottom: Platform.OS === 'ios' ? 20 : 5,
           paddingTop: 5,
