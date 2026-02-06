@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { View, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider } from './src/theme';
 import { RootNavigator } from './src/navigation';

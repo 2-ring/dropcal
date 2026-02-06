@@ -35,13 +35,14 @@ export default function RootNavigator({ isAuthenticated }: RootNavigatorProps) {
   const [fontsLoaded] = useFonts(fonts);
 
   // Show loading indicator while fonts are loading
-  if (!fontsLoaded) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
+  // Temporarily disabled for web debugging
+  // if (!fontsLoaded) {
+  //   return (
+  //     <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+  //       <ActivityIndicator size="large" color={theme.colors.primary} />
+  //     </View>
+  //   );
+  // }
 
   if (!isAuthenticated) {
     return (

@@ -11,7 +11,7 @@ import type { BaseToastProps } from 'react-native-toast-message';
 /**
  * Toast configuration with theme support
  */
-export const ToastProvider: React.FC = () => {
+export const ToastProvider: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const { theme } = useTheme();
 
   const toastConfig = {
@@ -105,7 +105,12 @@ export const ToastProvider: React.FC = () => {
     ),
   };
 
-  return <RNToast config={toastConfig} />;
+  return (
+    <>
+      {children}
+      <RNToast config={toastConfig} />
+    </>
+  );
 };
 
 /**
