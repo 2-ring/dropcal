@@ -52,7 +52,7 @@ export const Card: React.FC<CardProps> = ({
   variant = 'default',
   padding = 16,
   margin,
-  borderRadius = 12,
+  borderRadius = 16,
   shadow = true,
   style,
   contentStyle,

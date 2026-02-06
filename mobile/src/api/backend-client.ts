@@ -3,10 +3,8 @@
  * Handles all API requests with authentication.
  */
 
-// TODO: Replace these placeholder imports once auth is ported (Task 41: Port AuthContext)
-// These functions will be implemented in /mobile/src/auth/ directory
-// import { getAccessToken } from '../auth/supabase';
-// import { GuestSessionManager } from '../auth/GuestSessionManager';
+import { getAccessToken } from '../auth/supabase';
+import { GuestSessionManager } from '../auth/GuestSessionManager';
 
 import type {
   Session,
@@ -17,32 +15,6 @@ import type {
   ApiError,
 } from './types';
 import { API_URL } from './config';
-
-// ============================================================================
-// Temporary Auth Stubs (to be replaced by Task 41)
-// ============================================================================
-
-/**
- * Temporary stub for getAccessToken.
- * Will be replaced when AuthContext is ported (Task 41).
- */
-async function getAccessToken(): Promise<string | null> {
-  // TODO: Replace with actual implementation from Task 41
-  console.warn('getAccessToken stub called - auth not yet implemented');
-  return null;
-}
-
-/**
- * Temporary stub for GuestSessionManager.
- * Will be replaced when AuthContext is ported (Task 41).
- */
-const GuestSessionManager = {
-  getAccessToken: (sessionId: string): string | null => {
-    // TODO: Replace with actual implementation from Task 41
-    console.warn('GuestSessionManager.getAccessToken stub called - auth not yet implemented');
-    return null;
-  },
-};
 
 // ============================================================================
 // API Client Functions
@@ -486,6 +458,55 @@ export async function getUserPreferences(): Promise<{
 }
 
 // ============================================================================
+// Event Editing with AI
+// ============================================================================
+
+/**
+ * Edit an event using AI instructions.
+ *
+ * @param event - The calendar event to edit
+ * @param instruction - Natural language instruction for how to modify the event
+ * @returns Promise with the modified event
+ */
+export async function editEvent(
+  event: {
+    summary: string;
+    start: { dateTime: string; timeZone: string };
+    end: { dateTime: string; timeZone: string };
+    location?: string;
+    description?: string;
+    recurrence?: string[];
+    attendees?: string[];
+    calendar?: string;
+  },
+  instruction: string
+): Promise<{
+  modified_event: {
+    summary: string;
+    start: { dateTime: string; timeZone: string };
+    end: { dateTime: string; timeZone: string };
+    location?: string;
+    description?: string;
+    recurrence?: string[];
+    attendees?: string[];
+    calendar?: string;
+  };
+}> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_URL}/api/edit-event`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      event,
+      instruction,
+    }),
+  });
+
+  return handleResponse(response);
+}
+
+// ============================================================================
 // Guest Mode API Functions (No Authentication Required)
 // ============================================================================
 
@@ -531,11 +552,11 @@ export async function uploadGuestFile(
 
 /**
  * Get guest session by ID with access token verification.
- * Retrieves the access token from localStorage and includes it in the request.
+ * Retrieves the access token from AsyncStorage and includes it in the request.
  */
 export async function getGuestSession(sessionId: string): Promise<Session> {
-  // Retrieve the access token for this session from localStorage
-  const accessToken = GuestSessionManager.getAccessToken(sessionId);
+  // Retrieve the access token for this session from AsyncStorage
+  const accessToken = await GuestSessionManager.getAccessTokenAsync(sessionId);
 
   if (!accessToken) {
     throw new Error('Access token not found for guest session. Please create a new session.');

@@ -16,6 +16,20 @@ export const formatDate = (date: Date | string): string => {
 };
 
 /**
+ * Format a date with weekday (e.g., "Wed, Jan 15, 2026")
+ */
+export const formatDateWithWeekday = (date: Date | string): string => {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  };
+  return d.toLocaleDateString('en-US', options);
+};
+
+/**
  * Format a date to a full string (e.g., "Monday, January 15, 2024")
  */
 export const formatDateFull = (date: Date | string): string => {
@@ -305,6 +319,7 @@ export const dateTime = {
   format: formatDate,
   formatFull: formatDateFull,
   formatShort: formatDateShort,
+  formatWithWeekday: formatDateWithWeekday,
   formatTime,
   formatTime24,
   formatDateTime,

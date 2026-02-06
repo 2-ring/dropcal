@@ -4,11 +4,10 @@ import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/
 import { useTheme } from '../theme';
 import TabNavigator from './TabNavigator';
 import { linking } from './linking';
+import { EventEditScreen, SettingsScreen } from '../screens';
 
 // Placeholder screens - will be implemented by other agents
-const SettingsScreen = () => null;
 const PlansScreen = () => null;
-const EventEditScreen = () => null;
 const SignInScreen = () => null;
 
 export type RootStackParamList = {

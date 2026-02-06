@@ -7,6 +7,7 @@ import {
   Pressable,
   Platform,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -25,13 +26,12 @@ import * as backendClient from '../api/backend-client';
 type NavigationProp = any;
 
 /**
- * Input option card type
+ * Button position in the circular layout
  */
-interface InputOption {
+interface ButtonPosition {
   id: string;
-  title: string;
   icon: string;
-  color: string;
+  position: 'btn-left-1' | 'btn-left-2' | 'btn-left-3' | 'btn-right-1' | 'btn-right-2' | 'btn-right-3' | 'center';
   onPress: () => void;
 }
 
@@ -198,52 +198,61 @@ export function HomeScreen() {
   }, []);
 
   /**
-   * Define input options
+   * Define button positions in circular layout
    */
-  const inputOptions: InputOption[] = [
-    {
-      id: 'text',
-      title: 'Text',
-      icon: 'Pen',
-      color: theme.colors.primary,
-      onPress: () => setShowTextInput(true),
-    },
-    {
-      id: 'link',
-      title: 'Link',
-      icon: 'Link',
-      color: '#10B981', // Green
-      onPress: () => setShowLinkInput(true),
-    },
-    {
-      id: 'image',
-      title: 'Image',
-      icon: 'Image',
-      color: '#8B5CF6', // Purple
-      onPress: handleImageUpload,
-    },
-    {
-      id: 'document',
-      title: 'Document',
-      icon: 'File',
-      color: '#F59E0B', // Amber
-      onPress: handleDocumentUpload,
-    },
-    {
-      id: 'audio',
-      title: 'Audio',
-      icon: 'Microphone',
-      color: '#EF4444', // Red
-      onPress: () => setShowAudioRecorder(true),
-    },
-    {
-      id: 'email',
-      title: 'Email',
-      icon: 'Envelope',
-      color: '#3B82F6', // Blue
-      onPress: () => setShowEmailInput(true),
-    },
+  const buttons: ButtonPosition[] = [
+    { id: 'link', icon: 'Link', position: 'btn-left-1', onPress: () => setShowLinkInput(true) },
+    { id: 'image', icon: 'Image', position: 'btn-left-2', onPress: handleImageUpload },
+    { id: 'document', icon: 'File', position: 'btn-left-3', onPress: handleDocumentUpload },
+    { id: 'audio', icon: 'Microphone', position: 'btn-right-1', onPress: () => setShowAudioRecorder(true) },
+    { id: 'text', icon: 'Pen', position: 'btn-right-2', onPress: () => setShowTextInput(true) },
+    { id: 'email', icon: 'Envelope', position: 'btn-right-3', onPress: () => setShowEmailInput(true) },
   ];
+
+  /**
+   * Render a small circular button
+   */
+  const renderSmallButton = (button: ButtonPosition) => {
+    const getButtonStyle = () => {
+      switch (button.position) {
+        case 'btn-left-1':
+          return styles.btnLeft1;
+        case 'btn-left-2':
+          return styles.btnLeft2;
+        case 'btn-left-3':
+          return styles.btnLeft3;
+        case 'btn-right-1':
+          return styles.btnRight1;
+        case 'btn-right-2':
+          return styles.btnRight2;
+        case 'btn-right-3':
+          return styles.btnRight3;
+        default:
+          return {};
+      }
+    };
+
+    return (
+      <Pressable
+        key={button.id}
+        style={({ pressed }) => [
+          styles.smallButton,
+          { backgroundColor: theme.colors.background },
+          getButtonStyle(),
+          pressed && styles.buttonPressed,
+          isProcessing && styles.buttonDisabled,
+        ]}
+        onPress={button.onPress}
+        disabled={isProcessing}
+      >
+        <Icon
+          name={button.icon as any}
+          size={24}
+          color={theme.colors.textSecondary}
+        />
+      </Pressable>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -263,40 +272,29 @@ export function HomeScreen() {
           </Text>
         </View>
 
-        {/* Input Options Grid */}
-        <View style={styles.optionsGrid}>
-          {inputOptions.map((option, index) => (
+        {/* Circular Button Menu */}
+        <View style={styles.buttonMenuContainer}>
+          <View style={styles.buttonGrid}>
+            {/* Small buttons (6 outer buttons) */}
+            {buttons.map(renderSmallButton)}
+
+            {/* Center button */}
             <Pressable
-              key={option.id}
               style={({ pressed }) => [
-                styles.optionCard,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.border,
-                  opacity: pressed ? 0.7 : 1,
-                },
+                styles.centerButton,
+                { backgroundColor: theme.colors.primary },
+                pressed && styles.centerButtonPressed,
               ]}
-              onPress={option.onPress}
-              disabled={isProcessing}
             >
-              <View
-                style={[
-                  styles.iconContainer,
-                  { backgroundColor: `${option.color}15` },
-                ]}
-              >
-                <Icon name={option.icon} size={32} color={option.color} />
-              </View>
-              <Text style={[styles.optionTitle, { color: theme.colors.textPrimary }]}>
-                {option.title}
-              </Text>
+              <Icon name="ArrowFatUp" size={32} color="#ffffff" />
             </Pressable>
-          ))}
+          </View>
         </View>
 
         {/* Processing Indicator */}
         {isProcessing && (
           <View style={styles.processingContainer}>
+            <ActivityIndicator size="small" color={theme.colors.textSecondary} />
             <Text style={[styles.processingText, { color: theme.colors.textSecondary }]}>
               Processing...
             </Text>
@@ -367,39 +365,99 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 20,
   },
-  optionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 16,
-  },
-  optionCard: {
-    width: '47%',
-    aspectRatio: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 20,
+  // Circular button menu container
+  buttonMenuContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
+  },
+  // Button grid - using relative positioning to simulate CSS Grid
+  buttonGrid: {
+    width: 320,
+    height: 188.8, // 60 + 14.4 + 60 + 14.4 + 60
+    paddingHorizontal: 8,
+    position: 'relative',
+  },
+  // Small button base styles (60x60 circles)
+  smallButton: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // iOS shadows
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    // Android elevation
+    elevation: 4,
+  },
+  // Pressed state for small buttons
+  buttonPressed: {
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     elevation: 2,
   },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  // Disabled state
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  // Left column buttons
+  btnLeft1: {
+    top: 0,
+    left: 68, // Positioned to align right in column 1
+  },
+  btnLeft2: {
+    top: 74.4, // 60 + 14.4 gap
+    left: 54, // 68 - 14 (translateX offset)
+  },
+  btnLeft3: {
+    top: 148.8, // (60 + 14.4) * 2
+    left: 68,
+  },
+  // Right column buttons
+  btnRight1: {
+    top: 0,
+    right: 68, // Positioned to align left in column 3
+  },
+  btnRight2: {
+    top: 74.4,
+    right: 54, // 68 - 14 (translateX offset)
+  },
+  btnRight3: {
+    top: 148.8,
+    right: 68,
+  },
+  // Center button (80x80 circle, spans all rows)
+  centerButton: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    // Center horizontally and vertically
+    left: 120, // (320 - 80) / 2
+    top: 54.4, // (188.8 - 80) / 2
+    // iOS shadows (heavier than small buttons)
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    // Android elevation
+    elevation: 8,
   },
-  optionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
+  // Pressed state for center button
+  centerButtonPressed: {
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
+  // Processing indicator
   processingContainer: {
     marginTop: 24,
     alignItems: 'center',
@@ -407,5 +465,6 @@ const styles = StyleSheet.create({
   processingText: {
     fontSize: 14,
     fontWeight: '500',
+    marginTop: 8,
   },
 });

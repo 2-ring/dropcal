@@ -24,6 +24,7 @@ export type PhosphorIconName =
   | 'ArrowSquareUpRight'
   | 'ArrowsClockwise'
   | 'ArrowFatUp'
+  | 'ArrowLeft'
   | 'Equals'
   // Calendar & Time
   | 'Calendar'
@@ -41,12 +42,14 @@ export type PhosphorIconName =
   | 'Globe'
   // Files & Documents
   | 'Files'
+  | 'File'
   | 'BookOpenText'
   | 'ClipboardText'
   | 'Pen'
   | 'TextAlignLeft'
   // Media
   | 'Images'
+  | 'Image'
   | 'Microphone'
   // User & Auth
   | 'User'
@@ -59,6 +62,7 @@ export type PhosphorIconName =
   | 'Warning'
   | 'Info'
   | 'FirstAid'
+  | 'Bell'
   // Branding
   | 'GoogleLogo'
   | 'MicrosoftOutlookLogo'
@@ -130,6 +134,7 @@ export function Icon({
     ArrowSquareUpRight: { family: 'Feather', name: 'external-link' },
     ArrowsClockwise: { family: 'Feather', name: 'refresh-cw' },
     ArrowFatUp: { family: 'Feather', name: 'arrow-up' },
+    ArrowLeft: { family: 'Feather', name: 'arrow-left' },
     Equals: { family: 'Feather', name: 'minus' },
 
     // Calendar & Time
@@ -151,6 +156,7 @@ export function Icon({
 
     // Files & Documents
     Files: { family: 'Feather', name: 'file-text' },
+    File: { family: 'Feather', name: 'file' },
     BookOpenText: { family: 'Feather', name: 'book-open' },
     ClipboardText: { family: 'Feather', name: 'clipboard' },
     Pen: { family: 'Feather', name: 'edit-3' },
@@ -158,6 +164,7 @@ export function Icon({
 
     // Media
     Images: { family: 'Feather', name: 'image' },
+    Image: { family: 'Feather', name: 'image' },
     Microphone: { family: 'Feather', name: 'mic' },
 
     // User & Auth
@@ -172,6 +179,7 @@ export function Icon({
     Warning: { family: 'Feather', name: 'alert-triangle' },
     Info: { family: 'Feather', name: 'info' },
     FirstAid: { family: 'MaterialCommunityIcons', name: 'medical-bag' },
+    Bell: { family: 'Feather', name: 'bell' },
 
     // Branding
     GoogleLogo: { family: 'AntDesign', name: 'google' },

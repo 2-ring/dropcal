@@ -146,7 +146,7 @@ export const Modal: React.FC<ModalProps> = ({
   return (
     <RNModal
       visible={visible}
-      transparent
+      transparent={true}
       animationType="none"
       onRequestClose={onClose}
       statusBarTranslucent
@@ -228,18 +228,23 @@ export const Modal: React.FC<ModalProps> = ({
 const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContainer: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
     overflow: 'hidden',
     maxHeight: SCREEN_HEIGHT * 0.9,
-    shadowOffset: { width: 0, height: -4 },
+    maxWidth: '90%',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 10,

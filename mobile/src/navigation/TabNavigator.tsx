@@ -3,11 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../theme';
 import { Icon, PhosphorIconName } from '../components';
 import { Platform } from 'react-native';
-import { HomeScreen } from '../screens';
-
-// Placeholder screens - will be implemented by Agent 9
-const SessionHistoryScreen = () => null;
-const SettingsScreen = () => null;
+import { HomeScreen, SessionHistoryScreen, SettingsScreen } from '../screens';
 
 export type TabParamList = {
   Home: undefined;
