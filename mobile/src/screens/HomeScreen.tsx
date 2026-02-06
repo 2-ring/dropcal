@@ -71,7 +71,7 @@ export function HomeScreen() {
       // Navigate to events list with session data
       // TODO: Implement navigation to EventsList screen with session
       toast.success('Processing Complete', {
-        description: `Found ${session.events?.length || 0} events`,
+        description: `Found ${session.processed_events?.length || 0} events`,
         duration: 3000,
       });
     } catch (error) {
@@ -93,10 +93,11 @@ export function HomeScreen() {
       setIsProcessing(true);
       setShowLinkInput(false);
 
-      const session = await backendClient.createLinkSession(url);
+      // Use createTextSession for URLs as well
+      const session = await backendClient.createTextSession(url);
 
       toast.success('Processing Complete', {
-        description: `Found ${session.events?.length || 0} events`,
+        description: `Found ${session.processed_events?.length || 0} events`,
         duration: 3000,
       });
     } catch (error) {
@@ -119,13 +120,13 @@ export function HomeScreen() {
       setShowAudioRecorder(false);
 
       // Convert blob to FormData
-      const formData = new FormData();
-      formData.append('file', audioBlob, 'recording.wav');
+      // Create a File object from the Blob
+      const audioFile = new File([audioBlob], 'recording.wav', { type: 'audio/wav' });
 
-      const session = await backendClient.uploadFile(formData);
+      const result = await backendClient.uploadFile(audioFile, 'audio');
 
       toast.success('Processing Complete', {
-        description: `Found ${session.events?.length || 0} events`,
+        description: `Found ${result.session.processed_events?.length || 0} events`,
         duration: 3000,
       });
     } catch (error) {
@@ -149,11 +150,17 @@ export function HomeScreen() {
 
       setIsProcessing(true);
 
-      const formData = await createFormData(file);
-      const session = await backendClient.uploadFile(formData);
+      // Create File object from the picked file
+      const imageFile = new File(
+        [await fetch(file.uri).then(r => r.blob())],
+        file.name || 'image.jpg',
+        { type: file.type || 'image/jpeg' }
+      );
+
+      const result = await backendClient.uploadFile(imageFile, 'image');
 
       toast.success('Processing Complete', {
-        description: `Found ${session.events?.length || 0} events`,
+        description: `Found ${result.session.processed_events?.length || 0} events`,
         duration: 3000,
       });
     } catch (error) {
@@ -179,11 +186,17 @@ export function HomeScreen() {
 
       setIsProcessing(true);
 
-      const formData = await createFormData(file);
-      const session = await backendClient.uploadFile(formData);
+      // Create File object from the picked document
+      const docFile = new File(
+        [await fetch(file.uri).then(r => r.blob())],
+        file.name || 'document.pdf',
+        { type: file.type || 'application/pdf' }
+      );
+
+      const result = await backendClient.uploadFile(docFile, 'image'); // Using 'image' type as backend handles it
 
       toast.success('Processing Complete', {
-        description: `Found ${session.events?.length || 0} events`,
+        description: `Found ${result.session.processed_events?.length || 0} events`,
         duration: 3000,
       });
     } catch (error) {
@@ -303,7 +316,7 @@ export function HomeScreen() {
       </ScrollView>
 
       {/* Text Input Modal */}
-      <Modal visible={showTextInput} transparent animationType="slide">
+      <Modal visible={showTextInput} onClose={() => setShowTextInput(false)} animationType="slide" height="full">
         <TextInputScreen
           onClose={() => setShowTextInput(false)}
           onSubmit={handleTextSubmit}
@@ -311,7 +324,7 @@ export function HomeScreen() {
       </Modal>
 
       {/* Link Input Modal */}
-      <Modal visible={showLinkInput} transparent animationType="slide">
+      <Modal visible={showLinkInput} onClose={() => setShowLinkInput(false)} animationType="slide" height="full">
         <LinkInputScreen
           onClose={() => setShowLinkInput(false)}
           onSubmit={handleLinkSubmit}
@@ -319,17 +332,18 @@ export function HomeScreen() {
       </Modal>
 
       {/* Email Input Modal */}
-      <Modal visible={showEmailInput} transparent animationType="slide">
+      <Modal visible={showEmailInput} onClose={() => setShowEmailInput(false)} animationType="slide" height="full">
         <EmailInputScreen
           onClose={() => setShowEmailInput(false)}
         />
       </Modal>
 
       {/* Audio Recorder Modal */}
-      <Modal visible={showAudioRecorder} transparent animationType="slide">
+      <Modal visible={showAudioRecorder} onClose={() => setShowAudioRecorder(false)} animationType="slide" height="full">
         <AudioRecorder
           onClose={() => setShowAudioRecorder(false)}
           onSubmit={handleAudioSubmit}
+          onUploadFile={handleAudioSubmit}
         />
       </Modal>
     </SafeAreaView>
@@ -353,8 +367,9 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   greeting: {
-    fontSize: 32,
+    fontSize: 44,
     fontWeight: '700',
+    lineHeight: 44,
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',

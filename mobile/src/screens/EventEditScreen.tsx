@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Switch,
-  SafeAreaView,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -38,23 +37,19 @@ interface EventEditScreenProps {
   onClose?: () => void;
 }
 
-type RouteParams = {
-  EventEdit: {
-    event?: CalendarEvent;
-    calendars?: GoogleCalendar[];
-  };
-};
-
 /**
- * EventEditScreen - Event editing form
+ * EventEditScreen - Event editing form (used as modal)
  * Task 37: Create EventEditView Screen
  */
-export function EventEditScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<RouteParams, 'EventEdit'>>();
+export function EventEditScreen({
+  event: propEvent,
+  calendars: propCalendars = [],
+  onSave,
+  onClose,
+}: EventEditScreenProps) {
   const { theme } = useTheme();
 
-  const initialEvent: CalendarEvent = route.params?.event || {
+  const initialEvent: CalendarEvent = propEvent || {
     summary: '',
     start: {
       dateTime: new Date().toISOString(),
@@ -69,7 +64,7 @@ export function EventEditScreen() {
     calendar: undefined,
   };
 
-  const calendars = route.params?.calendars || [];
+  const calendars = propCalendars;
 
   const [editedEvent, setEditedEvent] = useState<CalendarEvent>(initialEvent);
   const [isAllDay, setIsAllDay] = useState(false);
@@ -100,9 +95,10 @@ export function EventEditScreen() {
   /**
    * Handle start date change
    */
-  const handleStartDateChange = (date: Date) => {
+  const handleStartDateChange = (date: string) => {
+    const dateObj = new Date(date);
     const newDateTime = new Date(editedEvent.start.dateTime);
-    newDateTime.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+    newDateTime.setFullYear(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
     handleChange('start', {
       ...editedEvent.start,
       dateTime: newDateTime.toISOString(),
@@ -113,9 +109,10 @@ export function EventEditScreen() {
   /**
    * Handle start time change
    */
-  const handleStartTimeChange = (time: Date) => {
+  const handleStartTimeChange = (time: string) => {
+    const timeObj = new Date(time);
     const newDateTime = new Date(editedEvent.start.dateTime);
-    newDateTime.setHours(time.getHours(), time.getMinutes());
+    newDateTime.setHours(timeObj.getHours(), timeObj.getMinutes());
     handleChange('start', {
       ...editedEvent.start,
       dateTime: newDateTime.toISOString(),
@@ -126,9 +123,10 @@ export function EventEditScreen() {
   /**
    * Handle end date change
    */
-  const handleEndDateChange = (date: Date) => {
+  const handleEndDateChange = (date: string) => {
+    const dateObj = new Date(date);
     const newDateTime = new Date(editedEvent.end.dateTime);
-    newDateTime.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+    newDateTime.setFullYear(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
     handleChange('end', {
       ...editedEvent.end,
       dateTime: newDateTime.toISOString(),
@@ -139,9 +137,10 @@ export function EventEditScreen() {
   /**
    * Handle end time change
    */
-  const handleEndTimeChange = (time: Date) => {
+  const handleEndTimeChange = (time: string) => {
+    const timeObj = new Date(time);
     const newDateTime = new Date(editedEvent.end.dateTime);
-    newDateTime.setHours(time.getHours(), time.getMinutes());
+    newDateTime.setHours(timeObj.getHours(), timeObj.getMinutes());
     handleChange('end', {
       ...editedEvent.end,
       dateTime: newDateTime.toISOString(),
@@ -153,16 +152,14 @@ export function EventEditScreen() {
    * Handle save
    */
   const handleSave = () => {
-    // TODO: Implement save logic (call backend API)
-    console.log('Saving event:', editedEvent);
-    navigation.goBack();
+    onSave?.(editedEvent);
   };
 
   /**
    * Handle cancel
    */
   const handleCancel = () => {
-    navigation.goBack();
+    onClose?.();
   };
 
   /**
@@ -173,7 +170,7 @@ export function EventEditScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoid}
@@ -183,9 +180,7 @@ export function EventEditScreen() {
           <Pressable onPress={handleCancel} style={styles.headerButton}>
             <Icon name="X" size={24} color={theme.colors.textPrimary} />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
-            {route.params?.event ? 'Edit Event' : 'New Event'}
-          </Text>
+          <View style={styles.headerSpacer} />
           <Pressable onPress={handleSave} style={styles.headerButton}>
             <Icon name="Check" size={24} color={theme.colors.primary} />
           </Pressable>
@@ -398,7 +393,7 @@ export function EventEditScreen() {
           startTime={new Date(editedEvent.start.dateTime)}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -423,9 +418,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+  headerSpacer: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,

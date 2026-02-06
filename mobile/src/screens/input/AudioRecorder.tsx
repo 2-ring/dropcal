@@ -251,106 +251,99 @@ export function AudioRecorder({ onClose, onSubmit, onUploadFile }: AudioRecorder
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Upload Button - Top Left */}
+    <View style={[styles.container, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+      {/* Backdrop overlay */}
       <Pressable
-        style={[
-          styles.externalButton,
-          styles.uploadButton,
-          { backgroundColor: theme.colors.surface },
-        ]}
-        onPress={onUploadFile}
-      >
-        {({ pressed }) => (
-          <View style={[styles.buttonContent, pressed && styles.buttonPressed]}>
-            <Icon name="FirstAid" size={24} color={theme.colors.primary} />
-          </View>
-        )}
-      </Pressable>
-
-      {/* Close Button - Top Right */}
-      <Pressable
-        style={[
-          styles.externalButton,
-          styles.closeButtonStyle,
-          { backgroundColor: theme.colors.surface },
-        ]}
+        style={StyleSheet.absoluteFill}
         onPress={handleClose}
-      >
-        {({ pressed }) => (
-          <View style={[styles.buttonContent, pressed && styles.buttonPressed]}>
-            <Icon name="X" size={24} color={theme.colors.error} />
-          </View>
-        )}
-      </Pressable>
+      />
 
-      {/* Main Recording Dock */}
-      <View style={[styles.dock, { backgroundColor: theme.colors.surface }]}>
-        {/* Recording Status */}
-        <View style={styles.statusContainer}>
-          <View
+      {/* Input Container - Centered */}
+      <View style={styles.inputContainer}>
+        {/* Upload Button - Outside dock (left) */}
+        <Animated.View style={styles.externalButtonWrapper}>
+          <Pressable
+            style={[styles.externalButton, { backgroundColor: theme.colors.background }]}
+            onPress={onUploadFile}
+          >
+            <Icon name="FirstAid" size={24} color={theme.colors.primary} weight="duotone" />
+          </Pressable>
+        </Animated.View>
+
+        {/* Close Button - Outside dock (left of dock) */}
+        <Animated.View style={styles.externalButtonWrapper}>
+          <Pressable
+            style={[styles.closeButton, {
+              backgroundColor: theme.colors.background,
+              borderColor: theme.colors.border,
+            }]}
+            onPress={handleClose}
+          >
+            <Icon
+              name="FirstAid"
+              size={24}
+              color={theme.colors.textSecondary}
+              weight="duotone"
+              style={{ transform: [{ rotate: '45deg' }] }}
+            />
+          </Pressable>
+        </Animated.View>
+
+        {/* Dock - 100px border-radius pill with auto height */}
+        <Animated.View
+          style={[
+            styles.dock,
+            {
+              backgroundColor: theme.colors.background,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          {/* Audio Visualization */}
+          <View style={styles.visualizerWrapper}>
+            <View style={styles.visualizer}>
+              {barAnimations.map((anim, index) => (
+                <Animated.View
+                  key={index}
+                  style={[
+                    styles.bar,
+                    { backgroundColor: theme.colors.primary },
+                    {
+                      height: anim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [4, 40],
+                      }),
+                    },
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* Submit Button - Outside dock (right) */}
+        <Animated.View style={styles.externalButtonWrapper}>
+          <Pressable
             style={[
-              styles.recordingDot,
-              { backgroundColor: theme.colors.border },
-              isRecording && { backgroundColor: theme.colors.error },
+              styles.submitButton,
+              {
+                backgroundColor: isRecording || recording
+                  ? theme.colors.primary
+                  : theme.colors.disabled,
+              },
             ]}
-          />
-          <Text style={[styles.durationText, { color: theme.colors.textPrimary }]}>
-            {formatDuration(duration)}
-          </Text>
-        </View>
-
-        {/* Audio Visualization */}
-        <View style={styles.visualizerWrapper}>
-          <View style={styles.visualizer}>
-            {barAnimations.map((anim, index) => (
-              <Animated.View
-                key={index}
-                style={[
-                  styles.bar,
-                  { backgroundColor: theme.colors.primary },
-                  {
-                    height: anim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [4, 40],
-                    }),
-                  },
-                ]}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* Recording Instructions */}
-        <Text style={[styles.instructionText, { color: theme.colors.textSecondary }]}>
-          {isRecording ? 'Recording...' : 'Tap submit when ready'}
-        </Text>
-      </View>
-
-      {/* Submit Button - Bottom Center */}
-      <Pressable
-        style={[
-          styles.externalButton,
-          styles.submitButton,
-          {
-            backgroundColor: isRecording || recording
-              ? theme.colors.primary
-              : theme.colors.disabled,
-          },
-        ]}
-        onPress={handleSubmit}
-        disabled={!isRecording && !recording}
-      >
-        {({ pressed }) => (
-          <View style={[styles.buttonContent, pressed && styles.buttonPressed]}>
+            onPress={handleSubmit}
+            disabled={!isRecording && !recording}
+          >
             <Icon
               name="ArrowFatUp"
               size={28}
-              color={isRecording || recording ? '#ffffff' : theme.colors.textSecondary}
+              color="#ffffff"
+              weight="bold"
             />
-          </View>
-        )}
-      </Pressable>
+          </Pressable>
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -360,7 +353,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   errorContainer: {
     alignItems: 'center',
@@ -384,41 +376,40 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
-  // Dock
-  dock: {
-    width: '100%',
-    maxWidth: 400,
-    borderRadius: 24,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  statusContainer: {
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
     gap: 12,
+    width: '100%',
+    maxWidth: 600,
+    paddingHorizontal: 20,
   },
-  recordingDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  externalButtonWrapper: {
+    // Animation wrapper
   },
-  durationText: {
-    fontSize: 18,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
+
+  // Dock - 100px border-radius pill (auto height for visualizer)
+  dock: {
+    flex: 1,
+    minHeight: 64,
+    borderRadius: 100,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
 
   // Visualizer
   visualizerWrapper: {
-    width: '100%',
-    height: 60,
-    marginBottom: 20,
+    flex: 1,
+    height: 40,
   },
   visualizer: {
     flex: 1,
@@ -433,49 +424,44 @@ const styles = StyleSheet.create({
     minHeight: 4,
   },
 
-  // Instructions
-  instructionText: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-
-  // External Buttons
+  // External Buttons (outside dock)
   externalButton: {
-    position: 'absolute',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  uploadButton: {
-    top: 60,
-    left: 20,
-  },
-  closeButtonStyle: {
-    top: 60,
-    right: 20,
-  },
-  submitButton: {
-    bottom: 60,
-    alignSelf: 'center',
   },
 
-  // Button States
-  buttonContent: {
-    width: '100%',
-    height: '100%',
+  closeButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 28,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  buttonPressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.95 }],
+
+  submitButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
   },
 });

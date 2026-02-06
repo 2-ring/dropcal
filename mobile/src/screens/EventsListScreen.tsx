@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  Modal,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import {
   EventCard,
@@ -24,6 +26,7 @@ import type { CalendarEvent } from '../components';
 import { useTheme } from '../theme';
 import { formatTimeRange } from '../utils/dateTime';
 import { editEvent } from '../api/backend-client';
+import { EventEditScreen } from './EventEditScreen';
 
 interface GoogleCalendar {
   id: string;
@@ -54,6 +57,50 @@ interface EventListItem {
 }
 
 type BottomBarState = 'default' | 'chat' | 'editing' | 'editing-chat';
+
+/**
+ * Animated loading dots component
+ */
+function LoadingDots({ color }: { color: string }) {
+  const opacity1 = useRef(new Animated.Value(0.3)).current;
+  const opacity2 = useRef(new Animated.Value(0.3)).current;
+  const opacity3 = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const animate = () => {
+      Animated.sequence([
+        Animated.timing(opacity1, { toValue: 1, duration: 250, useNativeDriver: true }),
+        Animated.timing(opacity1, { toValue: 0.3, duration: 250, useNativeDriver: true }),
+      ]).start();
+
+      setTimeout(() => {
+        Animated.sequence([
+          Animated.timing(opacity2, { toValue: 1, duration: 250, useNativeDriver: true }),
+          Animated.timing(opacity2, { toValue: 0.3, duration: 250, useNativeDriver: true }),
+        ]).start();
+      }, 166);
+
+      setTimeout(() => {
+        Animated.sequence([
+          Animated.timing(opacity3, { toValue: 1, duration: 250, useNativeDriver: true }),
+          Animated.timing(opacity3, { toValue: 0.3, duration: 250, useNativeDriver: true }),
+        ]).start();
+      }, 333);
+    };
+
+    animate();
+    const interval = setInterval(animate, 1500);
+    return () => clearInterval(interval);
+  }, [opacity1, opacity2, opacity3]);
+
+  return (
+    <View style={styles.loadingDotsContainer}>
+      <Animated.View style={[styles.loadingDot, { backgroundColor: color, opacity: opacity1 }]} />
+      <Animated.View style={[styles.loadingDot, { backgroundColor: color, opacity: opacity2 }]} />
+      <Animated.View style={[styles.loadingDot, { backgroundColor: color, opacity: opacity3 }]} />
+    </View>
+  );
+}
 
 /**
  * Helper function to group events by date
@@ -149,11 +196,8 @@ export function EventsListScreen({
     (event: CalendarEvent, index: number) => {
       setEditingEventIndex(index);
       setBottomBarState('editing');
-      // Navigate to event edit screen
-      // @ts-ignore - Navigation types are not yet defined
-      navigation.navigate('EventEdit', { event, calendars });
     },
-    [navigation, calendars]
+    []
   );
 
   /**
@@ -202,6 +246,19 @@ export function EventsListScreen({
     setEditingEventIndex(null);
     setBottomBarState('default');
   }, []);
+
+  /**
+   * Handle save event from modal
+   */
+  const handleSaveEvent = useCallback((event: CalendarEvent) => {
+    if (editingEventIndex !== null) {
+      const updatedEvents = [...localEvents];
+      updatedEvents[editingEventIndex] = event;
+      setLocalEvents(updatedEvents);
+    }
+    setEditingEventIndex(null);
+    setBottomBarState('default');
+  }, [editingEventIndex, localEvents]);
 
   /**
    * Handle sending AI edit request
@@ -349,29 +406,26 @@ export function EventsListScreen({
     // Loading state
     if (isLoading && loadingConfig) {
       return (
-        <View style={[styles.bottomBar, {
-          backgroundColor: theme.colors.background,
-          borderTopColor: theme.colors.border,
-        }]}>
-          {loadingConfig.map((step, index) => (
-            <View key={index} style={styles.loadingStep}>
-              <Icon
-                name={step.icon as any}
-                size={20}
-                color={theme.colors.primary}
-                weight="duotone"
-              />
-              <Text style={[styles.loadingStepText, { color: theme.colors.textPrimary }]}>
-                {step.message}
+        <>
+          {/* Gradient Fade */}
+          <LinearGradient
+            colors={['transparent', theme.colors.background]}
+            style={styles.gradientFade}
+            pointerEvents="none"
+          />
+
+          <View style={[styles.bottomBar, {
+            backgroundColor: theme.colors.background,
+            borderTopColor: theme.colors.border,
+          }]}>
+            <View style={styles.bottomBarContent}>
+              <LoadingDots color={theme.colors.primary} />
+              <Text style={[styles.processingText, { color: theme.colors.textSecondary }]}>
+                Processing...
               </Text>
-              {step.count !== undefined && (
-                <Text style={[styles.loadingStepCount, { color: theme.colors.textSecondary }]}>
-                  {step.count}
-                </Text>
-              )}
             </View>
-          ))}
-        </View>
+          </View>
+        </>
       );
     }
 
@@ -524,6 +578,33 @@ export function EventsListScreen({
 
       {/* BottomBar */}
       {renderBottomBar()}
+
+      {/* Event Edit Modal */}
+      <Modal
+        visible={editingEventIndex !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancelEditing}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={handleCancelEditing}
+        >
+          <Pressable
+            style={[styles.modalContainer, { backgroundColor: theme.colors.background }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {editingEventIndex !== null && (
+              <EventEditScreen
+                event={localEvents[editingEventIndex]}
+                calendars={calendars}
+                onSave={handleSaveEvent}
+                onClose={handleCancelEditing}
+              />
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -702,5 +783,26 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalContainer: {
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '90%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 16,
   },
 });

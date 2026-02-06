@@ -38,7 +38,7 @@ interface SessionHistoryScreenProps {
 /**
  * Get icon name for input type
  */
-const getInputIcon = (inputType: InputType): string => {
+const getInputIcon = (inputType: InputType): PhosphorIconName => {
   switch (inputType) {
     case 'image':
       return 'Image';

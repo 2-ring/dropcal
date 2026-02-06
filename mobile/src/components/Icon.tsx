@@ -19,6 +19,7 @@ export type PhosphorIconName =
   | 'CaretDown'
   | 'CaretUp'
   | 'CaretLeft'
+  | 'CaretRight'
   | 'CaretCircleRight'
   | 'ArrowSquareOut'
   | 'ArrowSquareUpRight'
@@ -90,7 +91,8 @@ export type PhosphorIconName =
   // Additional icons
   | 'Moon'
   | 'Home'
-  | 'Settings';
+  | 'Settings'
+  | 'Question';
 
 export interface IconProps {
   /** Icon name from Phosphor Icons */
@@ -129,6 +131,7 @@ export function Icon({
     CaretDown: { family: 'Feather', name: 'chevron-down' },
     CaretUp: { family: 'Feather', name: 'chevron-up' },
     CaretLeft: { family: 'Feather', name: 'chevron-left' },
+    CaretRight: { family: 'Feather', name: 'chevron-right' },
     CaretCircleRight: { family: 'Ionicons', name: 'chevron-forward-circle-outline' },
     ArrowSquareOut: { family: 'Feather', name: 'external-link' },
     ArrowSquareUpRight: { family: 'Feather', name: 'external-link' },
@@ -212,6 +215,7 @@ export function Icon({
     Moon: { family: 'Feather', name: 'moon' },
     Home: { family: 'Feather', name: 'home' },
     Settings: { family: 'Feather', name: 'settings' },
+    Question: { family: 'Feather', name: 'help-circle' },
   };
 
   const iconConfig = iconMap[name];

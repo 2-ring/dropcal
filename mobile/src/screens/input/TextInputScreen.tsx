@@ -3,10 +3,9 @@ import {
   View,
   StyleSheet,
   Pressable,
-  KeyboardAvoidingView,
-  Platform,
+  TextInput as RNTextInput,
+  Animated,
 } from 'react-native';
-import { TextInput } from '../../components/TextInput';
 import { Icon } from '../../components/Icon';
 import { readFromClipboard } from '../../utils/clipboard';
 import { toast } from '../../components/Toast';
@@ -20,8 +19,8 @@ export interface TextInputScreenProps {
 }
 
 /**
- * Text Input Screen
- * Allows user to paste or type event details
+ * Text Input Screen - Dock Layout (1:1 Web Conversion)
+ * 100px border-radius pill with horizontal layout
  */
 export function TextInputScreen({ onClose, onSubmit }: TextInputScreenProps) {
   const [text, setText] = useState('');
@@ -54,46 +53,70 @@ export function TextInputScreen({ onClose, onSubmit }: TextInputScreenProps) {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
-      <View style={styles.content}>
-        {/* Close Button */}
-        <Pressable
-          style={[styles.iconButton, { backgroundColor: theme.colors.surface }]}
-          onPress={onClose}
-        >
-          <Icon name="X" size={24} color={theme.colors.textPrimary} />
-        </Pressable>
+    <View style={[styles.container, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+      {/* Backdrop overlay */}
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={onClose}
+      />
 
-        {/* Main Input Area */}
-        <View style={styles.inputArea}>
-          <TextInput
+      {/* Input Container - Centered */}
+      <View style={styles.inputContainer}>
+        {/* Paste Button - Outside dock (left) */}
+        <Animated.View style={styles.externalButtonWrapper}>
+          <Pressable
+            style={[styles.externalButton, { backgroundColor: theme.colors.background }]}
+            onPress={handlePaste}
+          >
+            <Icon name="ClipboardText" size={24} color={theme.colors.primary} weight="duotone" />
+          </Pressable>
+        </Animated.View>
+
+        {/* Close Button - Outside dock (left of dock) */}
+        <Animated.View style={styles.externalButtonWrapper}>
+          <Pressable
+            style={[styles.closeButton, {
+              backgroundColor: theme.colors.background,
+              borderColor: theme.colors.border,
+            }]}
+            onPress={onClose}
+          >
+            <Icon
+              name="FirstAid"
+              size={24}
+              color={theme.colors.textSecondary}
+              weight="duotone"
+              style={{ transform: [{ rotate: '45deg' }] }}
+            />
+          </Pressable>
+        </Animated.View>
+
+        {/* Dock - 100px border-radius pill */}
+        <Animated.View
+          style={[
+            styles.dock,
+            {
+              backgroundColor: theme.colors.background,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          {/* Text Input Field */}
+          <RNTextInput
             value={text}
             onChangeText={setText}
             placeholder="Paste or type event details here..."
-            multiline
-            numberOfLines={6}
-            returnKeyType="default"
-            blurOnSubmit={false}
+            placeholderTextColor={theme.colors.textTertiary}
+            style={[styles.textInput, { color: theme.colors.textPrimary }]}
             autoFocus
-            fullWidth
-            inputStyle={styles.textInput}
+            multiline={false}
+            returnKeyType="done"
+            onSubmitEditing={handleSubmit}
           />
-        </View>
+        </Animated.View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          {/* Paste Button */}
-          <Pressable
-            style={[styles.actionButton, { backgroundColor: theme.colors.surface }]}
-            onPress={handlePaste}
-          >
-            <Icon name="ClipboardText" size={24} color={theme.colors.primary} />
-          </Pressable>
-
-          {/* Submit Button */}
+        {/* Submit Button - Outside dock (right) */}
+        <Animated.View style={styles.externalButtonWrapper}>
           <Pressable
             style={[
               styles.submitButton,
@@ -109,25 +132,66 @@ export function TextInputScreen({ onClose, onSubmit }: TextInputScreenProps) {
             <Icon
               name="ArrowFatUp"
               size={28}
-              color={text.trim() ? '#ffffff' : theme.colors.textSecondary}
+              color="#ffffff"
+              weight="bold"
             />
           </Pressable>
-        </View>
+        </Animated.View>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  content: {
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    width: '100%',
+    maxWidth: 600,
+    paddingHorizontal: 20,
+  },
+  externalButtonWrapper: {
+    // Animation wrapper
+  },
+
+  // Dock - 100px border-radius pill
+  dock: {
     flex: 1,
-    justifyContent: 'space-between',
+    height: 64,
+    borderRadius: 100,
+    borderWidth: 1,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  iconButton: {
+
+  // Text Input - Transparent, no border
+  textInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 16,
+    fontFamily: 'Inter',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    padding: 0,
+    margin: 0,
+    outlineWidth: 0,
+  },
+
+  // External Buttons (outside dock)
+  externalButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -136,36 +200,24 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    marginBottom: 20,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  inputArea: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  textInput: {
-    minHeight: 150,
-    textAlignVertical: 'top',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  actionButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+
+  closeButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 3,
     elevation: 2,
   },
+
   submitButton: {
     width: 64,
     height: 64,
@@ -175,7 +227,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowRadius: 8,
+    elevation: 6,
   },
 });

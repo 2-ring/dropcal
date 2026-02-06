@@ -3,11 +3,10 @@ import {
   View,
   StyleSheet,
   Pressable,
-  KeyboardAvoidingView,
-  Platform,
+  TextInput as RNTextInput,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
-import { TextInput } from '../../components/TextInput';
 import { Icon } from '../../components/Icon';
 import { toast } from '../../components/Toast';
 import { useTheme } from '../../theme';
@@ -33,8 +32,8 @@ const isValidUrl = (url: string): boolean => {
 };
 
 /**
- * Link Input Screen
- * Allows user to submit a URL to scrape content
+ * Link Input Screen - Dock Layout (1:1 Web Conversion)
+ * 100px border-radius pill with horizontal layout
  */
 export function LinkInputScreen({
   onClose,
@@ -109,26 +108,59 @@ export function LinkInputScreen({
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
-      <View style={styles.content}>
-        {/* Close Button */}
-        <Pressable
-          style={[styles.iconButton, { backgroundColor: theme.colors.surface }]}
-          onPress={onClose}
-          disabled={isLoading}
-        >
-          <Icon name="X" size={24} color={theme.colors.textPrimary} />
-        </Pressable>
+    <View style={[styles.container, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+      {/* Backdrop overlay */}
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={isLoading ? undefined : onClose}
+      />
 
-        {/* Main Input Area */}
-        <View style={styles.inputArea}>
-          <TextInput
+      {/* Input Container - Centered */}
+      <View style={styles.inputContainer}>
+        {/* Close Button - Outside dock (left of dock) */}
+        <Animated.View style={styles.externalButtonWrapper}>
+          <Pressable
+            style={[styles.closeButton, {
+              backgroundColor: theme.colors.background,
+              borderColor: theme.colors.border,
+            }]}
+            onPress={onClose}
+            disabled={isLoading}
+          >
+            <Icon
+              name="FirstAid"
+              size={24}
+              color={theme.colors.textSecondary}
+              weight="duotone"
+              style={{ transform: [{ rotate: '45deg' }] }}
+            />
+          </Pressable>
+        </Animated.View>
+
+        {/* Dock - 100px border-radius pill */}
+        <Animated.View
+          style={[
+            styles.dock,
+            {
+              backgroundColor: theme.colors.background,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          {/* Link Input Field */}
+          <RNTextInput
             value={url}
             onChangeText={handleUrlChange}
             placeholder="Paste URL here..."
+            placeholderTextColor={theme.colors.textTertiary}
+            style={[
+              styles.textInput,
+              {
+                color: theme.colors.textPrimary,
+                textDecorationLine: isValid ? 'underline' : 'none',
+                textDecorationColor: isValid ? theme.colors.primary : 'transparent',
+              },
+            ]}
             keyboardType="url"
             autoCapitalize="none"
             autoCorrect={false}
@@ -136,17 +168,12 @@ export function LinkInputScreen({
             onSubmitEditing={isValid && !isLoading ? handleSubmit : undefined}
             editable={!isLoading}
             autoFocus
-            fullWidth
-            icon={<Icon name="Link" size={20} color={theme.colors.textSecondary} />}
-            helperText={
-              url && !isValid ? 'Please enter a valid URL' : undefined
-            }
-            error={url && !isValid ? 'Invalid URL format' : undefined}
+            multiline={false}
           />
-        </View>
+        </Animated.View>
 
-        {/* Submit Button */}
-        <View style={styles.actionButtons}>
+        {/* Submit Button - Outside dock (right) */}
+        <Animated.View style={styles.externalButtonWrapper}>
           <Pressable
             style={[
               styles.submitButton,
@@ -166,48 +193,79 @@ export function LinkInputScreen({
               <Icon
                 name="ArrowFatUp"
                 size={28}
-                color={isValid ? '#ffffff' : theme.colors.textSecondary}
+                color="#ffffff"
+                weight="bold"
               />
             )}
           </Pressable>
-        </View>
+        </Animated.View>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  content: {
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    width: '100%',
+    maxWidth: 600,
+    paddingHorizontal: 20,
+  },
+  externalButtonWrapper: {
+    // Animation wrapper
+  },
+
+  // Dock - 100px border-radius pill
+  dock: {
     flex: 1,
-    justifyContent: 'space-between',
+    height: 64,
+    borderRadius: 100,
+    borderWidth: 1,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  iconButton: {
+
+  // Text Input - Transparent, no border
+  textInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 16,
+    fontFamily: 'Inter',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    padding: 0,
+    margin: 0,
+    outlineWidth: 0,
+  },
+
+  closeButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 3,
     elevation: 2,
-    marginBottom: 20,
   },
-  inputArea: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    marginTop: 20,
-  },
+
   submitButton: {
     width: 64,
     height: 64,
@@ -217,7 +275,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowRadius: 8,
+    elevation: 6,
   },
 });

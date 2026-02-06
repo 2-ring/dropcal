@@ -134,8 +134,8 @@ const styles = StyleSheet.create({
   },
   baseText: {
     fontFamily: 'System',
-    fontSize: 14,
-    fontWeight: '400',
+    fontSize: 16,
+    fontWeight: '500',
   },
 
   // Variants
@@ -188,13 +188,13 @@ const styles = StyleSheet.create({
 
   // Size text
   smallText: {
-    fontSize: 13,
-  },
-  mediumText: {
     fontSize: 14,
   },
-  largeText: {
+  mediumText: {
     fontSize: 16,
+  },
+  largeText: {
+    fontSize: 18,
   },
 
   // States
