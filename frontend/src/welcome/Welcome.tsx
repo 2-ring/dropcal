@@ -12,7 +12,7 @@ export function Welcome() {
       <header className="welcome-header">
         <WordMark size={32} />
         <nav className="welcome-nav">
-          <a href="mailto:contact@dropcal.app" className="welcome-link">
+          <a href="mailto:lucas@dropcal.ai" className="welcome-link">
             <Mailbox size={20} weight="duotone" />
             Contact
           </a>
