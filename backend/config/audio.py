@@ -11,7 +11,7 @@ from dataclasses import dataclass
 # AUDIO PROVIDER OPTIONS
 # ============================================================================
 
-AudioProvider = Literal['deepgram', 'openai', 'grok']
+AudioProvider = Literal['deepgram', 'openai', 'grok', 'vapi']
 
 # ============================================================================
 # AUDIO CONFIGURATION
@@ -38,6 +38,11 @@ class AudioConfig:
         """Use Grok's Whisper - uses Grok credits"""
         return cls(provider='grok')
 
+    @classmethod
+    def use_vapi(cls):
+        """Use Vapi - voice AI platform"""
+        return cls(provider='vapi')
+
 
 # ============================================================================
 # ACTIVE CONFIGURATION - CHANGE THIS LINE TO SWITCH
@@ -46,6 +51,7 @@ class AudioConfig:
 AUDIO_CONFIG = AudioConfig.use_deepgram()
 # AUDIO_CONFIG = AudioConfig.use_openai()
 # AUDIO_CONFIG = AudioConfig.use_grok()
+# AUDIO_CONFIG = AudioConfig.use_vapi()
 
 
 # ============================================================================
@@ -73,6 +79,14 @@ AUDIO_MODEL_SPECS: Dict[AudioProvider, Dict[str, Any]] = {
         'supports_timestamps': True,
         'max_file_size_mb': 25,
         'cost': 'low'  # Using credits
+    },
+    'vapi': {
+        'model_name': 'vapi-transcription',
+        'api_key_env': 'VAPI_PRIVATE_KEY',
+        'public_key_env': 'VAPI_PUBLIC_KEY',
+        'supports_timestamps': True,
+        'max_file_size_mb': None,  # No limit
+        'cost': 'low'
     }
 }
 

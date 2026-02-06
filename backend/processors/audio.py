@@ -50,6 +50,11 @@ class AudioProcessor(BaseInputProcessor):
                 api_key=self.api_key,
                 base_url="https://api.x.ai/v1"
             )
+        elif self.provider == 'vapi':
+            # Vapi client initialization
+            # Note: Vapi typically uses REST API calls
+            self.public_key = os.getenv('VAPI_PUBLIC_KEY')
+            self.client = None  # Will use requests library for API calls
 
     def supports_file(self, file_path: str) -> bool:
         """Check if file is a supported audio format"""
@@ -88,6 +93,8 @@ class AudioProcessor(BaseInputProcessor):
             return self._process_deepgram(file_path, **kwargs)
         elif self.provider in ['openai', 'grok']:
             return self._process_openai_compatible(file_path, **kwargs)
+        elif self.provider == 'vapi':
+            return self._process_vapi(file_path, **kwargs)
         else:
             return ProcessingResult(
                 text="",
@@ -310,6 +317,70 @@ class AudioProcessor(BaseInputProcessor):
                 input_type=InputType.AUDIO,
                 success=False,
                 error=f"Timestamp transcription failed: {str(e)}"
+            )
+
+    def _process_vapi(self, file_path: str, **kwargs) -> ProcessingResult:
+        """Process audio using Vapi"""
+        try:
+            import requests
+
+            language = kwargs.get('language', 'en')
+
+            # Read audio file
+            with open(file_path, 'rb') as audio_file:
+                file_data = audio_file.read()
+
+            # Prepare Vapi API request
+            # Note: This is a basic implementation - adjust based on Vapi's actual API
+            url = "https://api.vapi.ai/v1/transcribe"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/octet-stream"
+            }
+            params = {
+                "language": language
+            }
+
+            # Make API request
+            response = requests.post(
+                url,
+                headers=headers,
+                params=params,
+                data=file_data
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                text = result.get('text', result.get('transcript', ''))
+
+                metadata = {
+                    'provider': 'vapi',
+                    'model': self.model,
+                    'language': language,
+                    'file_name': Path(file_path).name,
+                    'file_size_mb': round(os.path.getsize(file_path) / (1024 * 1024), 2)
+                }
+
+                return ProcessingResult(
+                    text=text,
+                    input_type=InputType.AUDIO,
+                    metadata=metadata,
+                    success=True
+                )
+            else:
+                return ProcessingResult(
+                    text="",
+                    input_type=InputType.AUDIO,
+                    success=False,
+                    error=f"Vapi API error: {response.status_code} - {response.text}"
+                )
+
+        except Exception as e:
+            return ProcessingResult(
+                text="",
+                input_type=InputType.AUDIO,
+                success=False,
+                error=f"Vapi transcription failed: {str(e)}"
             )
 
     def _process_openai_with_timestamps(self, file_path: str, **kwargs) -> ProcessingResult:
