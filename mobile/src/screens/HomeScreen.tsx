@@ -19,7 +19,7 @@ import {
   AudioRecorder,
 } from './input';
 import { useTheme } from '../theme';
-import { pickImage, pickDocument, createFormData } from '../utils/fileUpload';
+import { pickImage, pickDocument, pickAudio, createFormData } from '../utils/fileUpload';
 import * as backendClient from '../api/backend-client';
 
 // Navigation type (will be properly typed when navigation structure is finalized)
@@ -141,11 +141,54 @@ export function HomeScreen() {
   }, []);
 
   /**
+   * Handle audio file upload (not recording)
+   */
+  const handleAudioUpload = useCallback(async () => {
+    try {
+      const result = await pickAudio();
+      if (!result) return;
+
+      // Handle both single file and array results
+      const file = Array.isArray(result) ? result[0] : result;
+      if (!file) return;
+
+      setIsProcessing(true);
+      setShowAudioRecorder(false);
+
+      // Create File object from the picked file
+      const audioFile = new File(
+        [await fetch(file.uri).then(r => r.blob())],
+        file.name || 'audio.m4a',
+        { type: file.type || 'audio/m4a' }
+      );
+
+      const uploadResult = await backendClient.uploadFile(audioFile, 'audio');
+
+      toast.success('Processing Complete', {
+        description: `Found ${uploadResult.session.processed_events?.length || 0} events`,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error processing audio file:', error);
+      toast.error('Processing Failed', {
+        description: error instanceof Error ? error.message : 'Could not process audio',
+        duration: 4000,
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, []);
+
+  /**
    * Handle image upload
    */
   const handleImageUpload = useCallback(async () => {
     try {
-      const file = await pickImage();
+      const result = await pickImage();
+      if (!result) return;
+
+      // Handle both single file and array results
+      const file = Array.isArray(result) ? result[0] : result;
       if (!file) return;
 
       setIsProcessing(true);
@@ -157,10 +200,10 @@ export function HomeScreen() {
         { type: file.type || 'image/jpeg' }
       );
 
-      const result = await backendClient.uploadFile(imageFile, 'image');
+      const uploadResult = await backendClient.uploadFile(imageFile, 'image');
 
       toast.success('Processing Complete', {
-        description: `Found ${result.session.processed_events?.length || 0} events`,
+        description: `Found ${uploadResult.session.processed_events?.length || 0} events`,
         duration: 3000,
       });
     } catch (error) {
@@ -179,9 +222,13 @@ export function HomeScreen() {
    */
   const handleDocumentUpload = useCallback(async () => {
     try {
-      const file = await pickDocument({
+      const result = await pickDocument({
         type: ['application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
       });
+      if (!result) return;
+
+      // Handle both single file and array results
+      const file = Array.isArray(result) ? result[0] : result;
       if (!file) return;
 
       setIsProcessing(true);
@@ -193,10 +240,10 @@ export function HomeScreen() {
         { type: file.type || 'application/pdf' }
       );
 
-      const result = await backendClient.uploadFile(docFile, 'image'); // Using 'image' type as backend handles it
+      const uploadResult = await backendClient.uploadFile(docFile, 'image'); // Using 'image' type as backend handles it
 
       toast.success('Processing Complete', {
-        description: `Found ${result.session.processed_events?.length || 0} events`,
+        description: `Found ${uploadResult.session.processed_events?.length || 0} events`,
         duration: 3000,
       });
     } catch (error) {
@@ -316,7 +363,7 @@ export function HomeScreen() {
       </ScrollView>
 
       {/* Text Input Modal */}
-      <Modal visible={showTextInput} onClose={() => setShowTextInput(false)} animationType="slide" height="full">
+      <Modal visible={showTextInput} onClose={() => setShowTextInput(false)} animationType="fade" height="full">
         <TextInputScreen
           onClose={() => setShowTextInput(false)}
           onSubmit={handleTextSubmit}
@@ -324,7 +371,7 @@ export function HomeScreen() {
       </Modal>
 
       {/* Link Input Modal */}
-      <Modal visible={showLinkInput} onClose={() => setShowLinkInput(false)} animationType="slide" height="full">
+      <Modal visible={showLinkInput} onClose={() => setShowLinkInput(false)} animationType="fade" height="full">
         <LinkInputScreen
           onClose={() => setShowLinkInput(false)}
           onSubmit={handleLinkSubmit}
@@ -332,18 +379,18 @@ export function HomeScreen() {
       </Modal>
 
       {/* Email Input Modal */}
-      <Modal visible={showEmailInput} onClose={() => setShowEmailInput(false)} animationType="slide" height="full">
+      <Modal visible={showEmailInput} onClose={() => setShowEmailInput(false)} animationType="fade" height="full">
         <EmailInputScreen
           onClose={() => setShowEmailInput(false)}
         />
       </Modal>
 
       {/* Audio Recorder Modal */}
-      <Modal visible={showAudioRecorder} onClose={() => setShowAudioRecorder(false)} animationType="slide" height="full">
+      <Modal visible={showAudioRecorder} onClose={() => setShowAudioRecorder(false)} animationType="fade" height="full">
         <AudioRecorder
           onClose={() => setShowAudioRecorder(false)}
           onSubmit={handleAudioSubmit}
-          onUploadFile={handleAudioSubmit}
+          onUploadFile={handleAudioUpload}
         />
       </Modal>
     </SafeAreaView>
@@ -367,6 +414,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   greeting: {
+    fontFamily: 'Chillax',
     fontSize: 44,
     fontWeight: '700',
     lineHeight: 44,

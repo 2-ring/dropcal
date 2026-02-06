@@ -51,7 +51,6 @@
       "expo-document-picker",
       "expo-av",
       "expo-file-system",
-      "@react-native-async-storage/async-storage",
       [
         "expo-build-properties",
         {
@@ -61,7 +60,7 @@
             "buildToolsVersion": "34.0.0"
           },
           "ios": {
-            "deploymentTarget": "15.0"
+            "deploymentTarget": "15.1"
           }
         }
       ]

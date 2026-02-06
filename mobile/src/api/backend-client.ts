@@ -506,6 +506,37 @@ export async function editEvent(
   return handleResponse(response);
 }
 
+/**
+ * Refine events in a session with AI chat request.
+ */
+export async function refineEvents(
+  sessionId: string,
+  changeRequest: string
+): Promise<{
+  refined_events: Array<{
+    summary: string;
+    start: { dateTime: string; timeZone: string };
+    end: { dateTime: string; timeZone: string };
+    location?: string;
+    description?: string;
+    recurrence?: string[];
+    attendees?: string[];
+    calendar?: string;
+  }>;
+}> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_URL}/api/sessions/${sessionId}/refine`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      change_request: changeRequest,
+    }),
+  });
+
+  return handleResponse(response);
+}
+
 // ============================================================================
 // Guest Mode API Functions (No Authentication Required)
 // ============================================================================

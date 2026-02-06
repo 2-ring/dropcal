@@ -8,6 +8,7 @@ export { EventEditScreen } from './EventEditScreen';
 export { EventsListScreen } from './EventsListScreen';
 export { SessionHistoryScreen } from './SessionHistoryScreen';
 export { SettingsScreen } from './SettingsScreen';
+export { WelcomeScreen } from './WelcomeScreen';
 
 // Input Screens (Agent 7 - Tasks 28-31)
 export * from './input';

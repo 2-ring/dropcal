@@ -34,6 +34,7 @@ export type PhosphorIconName =
   | 'Clock'
   // Communication & Social
   | 'Envelope'
+  | 'ChatCircle'
   | 'ChatCircleDots'
   | 'PaperPlaneTilt'
   | 'Mailbox'
@@ -148,6 +149,7 @@ export function Icon({
 
     // Communication & Social
     Envelope: { family: 'Feather', name: 'mail' },
+    ChatCircle: { family: 'Ionicons', name: 'chatbubble-outline' },
     ChatCircleDots: { family: 'Ionicons', name: 'chatbubbles-outline' },
     PaperPlaneTilt: { family: 'Feather', name: 'send' },
     Mailbox: { family: 'MaterialCommunityIcons', name: 'mailbox' },

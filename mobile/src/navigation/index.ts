@@ -40,8 +40,7 @@
 export { default as RootNavigator } from './RootNavigator';
 export type { RootStackParamList } from './RootNavigator';
 
-export { default as TabNavigator } from './TabNavigator';
-export type { TabParamList } from './TabNavigator';
+export { Sidebar } from './Sidebar';
 
 export { default as DrawerNavigator } from './DrawerNavigator';
 export type { DrawerParamList } from './DrawerNavigator';
