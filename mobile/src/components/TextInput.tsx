@@ -75,12 +75,13 @@ export function TextInput({
             setIsFocused(false);
             textInputProps.onBlur?.(e);
           }}
-          style={[
-            styles.input,
-            icon && styles.inputWithIcon,
-            trailingIcon && styles.inputWithTrailingIcon,
-            inputStyle,
-          ]}
+          style={(() => {
+            const inputStyles: TextStyle[] = [styles.input];
+            if (icon) inputStyles.push(styles.inputWithIcon);
+            if (trailingIcon) inputStyles.push(styles.inputWithTrailingIcon);
+            if (inputStyle) inputStyles.push(inputStyle);
+            return inputStyles;
+          })()}
           placeholderTextColor="#9CA3AF"
         />
 

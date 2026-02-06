@@ -60,21 +60,29 @@ export function Button({
   // Get size styles
   const sizeStyle = styles[`${size}Size` as keyof typeof styles] || styles.mediumSize;
 
+  // Build style array
+  const getContainerStyle = (pressed: boolean): ViewStyle[] => {
+    const styleArray: ViewStyle[] = [
+      styles.base,
+      variantContainerStyle,
+      sizeStyle,
+    ];
+
+    if (fullWidth) styleArray.push(styles.fullWidth);
+    if (isDisabled) styleArray.push(styles.disabled);
+    if (pressed && !isDisabled) styleArray.push(styles.pressed);
+    if (style) styleArray.push(style);
+
+    return styleArray;
+  };
+
   return (
     <Pressable
       onPress={onPress}
       disabled={isDisabled}
-      style={({ pressed }) => [
-        styles.base,
-        variantContainerStyle,
-        sizeStyle,
-        fullWidth && styles.fullWidth,
-        isDisabled && styles.disabled,
-        pressed && !isDisabled && styles.pressed,
-        style,
-      ]}
+      style={({ pressed }) => getContainerStyle(pressed)}
     >
-      {({ pressed }) => (
+      {() => (
         <View style={styles.content}>
           {loading ? (
             <ActivityIndicator
