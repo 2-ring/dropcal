@@ -64,8 +64,8 @@ export function Button({
   const getContainerStyle = (pressed: boolean): ViewStyle[] => {
     const styleArray: ViewStyle[] = [
       styles.base,
-      variantContainerStyle,
-      sizeStyle,
+      variantContainerStyle as ViewStyle,
+      sizeStyle as ViewStyle,
     ];
 
     if (fullWidth) styleArray.push(styles.fullWidth);

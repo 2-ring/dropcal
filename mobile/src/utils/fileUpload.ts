@@ -178,7 +178,7 @@ export const uriToBlob = async (uri: string): Promise<Blob> => {
   } else {
     // On native platforms, read the file as base64 and create blob
     const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64',
     });
 
     // Detect mime type from URI

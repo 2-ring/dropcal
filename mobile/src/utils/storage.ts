@@ -60,7 +60,7 @@ export const clear = async (): Promise<boolean> => {
 /**
  * Get all keys from storage
  */
-export const getAllKeys = async (): Promise<string[]> => {
+export const getAllKeys = async (): Promise<readonly string[]> => {
   try {
     const keys = await AsyncStorage.getAllKeys();
     return keys;
