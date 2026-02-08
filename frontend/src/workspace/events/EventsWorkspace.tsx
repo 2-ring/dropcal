@@ -47,6 +47,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
   const [isLoadingCalendars, setIsLoadingCalendars] = useState(true)
   const [isScrollable, setIsScrollable] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
+  const pendingEditRef = useRef<CalendarEvent | null>(null)
 
   // Fetch calendar list on mount
   useEffect(() => {
@@ -102,7 +103,20 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
   }, [events, editedEvents, isLoading, editingEventIndex])
 
   const handleEventClick = (eventIndex: number) => {
+    pendingEditRef.current = null
     setEditingEventIndex(eventIndex)
+  }
+
+  const handleEditChange = (updatedEvent: CalendarEvent) => {
+    pendingEditRef.current = updatedEvent
+  }
+
+  const handleSaveEdit = () => {
+    if (pendingEditRef.current) {
+      handleEventSave(pendingEditRef.current)
+      pendingEditRef.current = null
+    }
+    handleCloseEdit()
   }
 
   const handleEventSave = (updatedEvent: CalendarEvent) => {
@@ -304,9 +318,9 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
       return '#1170C5'
     }
 
-    // Find matching calendar by name (case-insensitive)
+    // Find matching calendar by ID or name (case-insensitive)
     const calendar = calendars.find(cal =>
-      cal.summary.toLowerCase() === calendarName.toLowerCase()
+      cal.id === calendarName || cal.summary.toLowerCase() === calendarName.toLowerCase()
     )
 
     return calendar?.backgroundColor || '#1170C5'
@@ -361,6 +375,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
               isLoadingCalendars={isLoadingCalendars}
               onClose={handleCloseEdit}
               onSave={handleEventSave}
+              onChange={handleEditChange}
               getCalendarColor={getCalendarColor}
             />
           ) : (
@@ -490,6 +505,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
         onSend={handleSendRequest}
         onKeyDown={handleKeyDown}
         onConfirm={handleConfirm}
+        onSave={handleSaveEdit}
         isScrollable={isScrollable}
       />
     </div>

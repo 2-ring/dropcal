@@ -132,6 +132,7 @@ interface BottomBarProps {
   onSend: () => void
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
   onConfirm?: () => void
+  onSave?: () => void
   isScrollable?: boolean
 }
 
@@ -148,6 +149,7 @@ export function BottomBar({
   onSend,
   onKeyDown,
   onConfirm,
+  onSave,
   isScrollable = true
 }: BottomBarProps) {
 
@@ -233,7 +235,7 @@ export function BottomBar({
                     <Tooltip content="Save changes">
                       <button
                         className="event-confirmation-icon-button confirm"
-                        onClick={onCancel}
+                        onClick={onSave}
                       >
                         <CheckIcon size={24} weight="bold" />
                       </button>

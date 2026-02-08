@@ -17,6 +17,7 @@ from extraction.title_generator import get_title_generator
 from events.service import EventService
 from preferences.service import PersonalizationService
 from processing.parallel import process_events_parallel, EventProcessingResult
+from processing.chunked_identification import identify_events_chunked
 from config.posthog import set_tracking_context
 
 logger = logging.getLogger(__name__)
@@ -229,11 +230,16 @@ class SessionProcessor:
             )
             title_thread.start()
 
-            # Step 1: Event Identification
-            identification_result = self.agent_1_identification.execute(
-                text,
-                {},
-                requires_vision=False
+            # Step 1: Event Identification (with chunking for large inputs)
+            identification_result = identify_events_chunked(
+                agent=self.agent_1_identification,
+                raw_input=text,
+                metadata={},
+                requires_vision=False,
+                tracking_context={
+                    'distinct_id': session.get('user_id', 'anonymous') if session else 'anonymous',
+                    'trace_id': session_id,
+                },
             )
 
             # Check if any events were found
@@ -321,11 +327,16 @@ class SessionProcessor:
             )
             title_thread.start()
 
-            # Step 1: Event Identification
-            identification_result = self.agent_1_identification.execute(
-                text,
-                metadata,
-                requires_vision
+            # Step 1: Event Identification (with chunking for large text inputs)
+            identification_result = identify_events_chunked(
+                agent=self.agent_1_identification,
+                raw_input=text,
+                metadata=metadata,
+                requires_vision=requires_vision,
+                tracking_context={
+                    'distinct_id': session_data.get('user_id', 'anonymous') if session_data else 'anonymous',
+                    'trace_id': session_id,
+                },
             )
 
             # Check if any events were found

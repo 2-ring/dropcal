@@ -60,6 +60,7 @@ from processing.session_processor import SessionProcessor
 # Import processing config and parallel helper
 from config.processing import ProcessingConfig
 from processing.parallel import process_events_parallel, EventProcessingResult
+from processing.chunked_identification import identify_events_chunked
 from config.posthog import init_posthog, set_tracking_context
 
 # Import rate limit configuration
@@ -349,12 +350,17 @@ def process_input():
 
     # Step 3: Run full agent pipeline with validation error handling
     try:
-        # Agent 1: Event Identification
+        # Agent 1: Event Identification (with chunking for large text inputs)
         try:
-            identification_result = agent_1_identification.execute(
-                raw_input,
-                metadata,
-                requires_vision
+            identification_result = identify_events_chunked(
+                agent=agent_1_identification,
+                raw_input=raw_input,
+                metadata=metadata,
+                requires_vision=requires_vision,
+                tracking_context={
+                    'distinct_id': locals().get('user_id', 'guest'),
+                    'trace_id': f"process-{uuid.uuid4().hex[:8]}",
+                },
             )
         except ValidationError as e:
             logger.error(f"Validation error in Agent 1 (Identification): {e}")

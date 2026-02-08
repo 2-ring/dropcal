@@ -24,6 +24,29 @@ class ProcessingConfig:
     # Total timeout for entire batch of events, in seconds
     BATCH_TIMEOUT: int = 300
 
+    # --- Text Chunking (Agent 1) ---
+
+    # Minimum text length (chars) before chunking kicks in
+    CHUNK_THRESHOLD: int = 8_000
+
+    # Target size per chunk in characters
+    CHUNK_TARGET_SIZE: int = 10_000
+
+    # Overlap between adjacent chunks in characters
+    CHUNK_OVERLAP: int = 500
+
+    # Max concurrent threads for chunked Agent 1 calls
+    CHUNK_MAX_WORKERS: int = 3
+
+    # Timeout per chunk for Agent 1 (seconds)
+    CHUNK_PER_TIMEOUT: int = 45
+
+    # Total timeout for all chunks (seconds)
+    CHUNK_BATCH_TIMEOUT: int = 120
+
+    # Minimum SequenceMatcher ratio to consider two events duplicates
+    DEDUP_SIMILARITY_THRESHOLD: float = 0.85
+
     @classmethod
     def get_text_limit_error_message(cls, actual_length: int) -> str:
         return (
