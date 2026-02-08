@@ -1,6 +1,6 @@
 .not-found {
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   background-color: var(--background);
   display: flex;
   align-items: center;

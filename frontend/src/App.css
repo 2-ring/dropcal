@@ -38,12 +38,13 @@
 }
 
 .app {
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background-color: var(--background);
   overflow: hidden;
   position: relative;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .content {

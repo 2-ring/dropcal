@@ -14,7 +14,7 @@
 
 .welcome {
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   background-color: var(--background);
   display: flex;
   flex-direction: column;

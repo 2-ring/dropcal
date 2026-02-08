@@ -9,7 +9,7 @@
   max-width: 800px;
   margin: 0 auto;
   position: relative;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden; /* Contain scrolling to content area */
   padding: var(--page-padding-x); /* Uniform padding on all sides */
 }
