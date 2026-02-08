@@ -52,7 +52,7 @@ type ViewMode = 'main' | 'integrations' | 'apple-connect';
 
 export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoading = false, triggerRef }: SettingsPopupProps) {
   const navigate = useNavigate();
-  const { signOut, signIn, preferences, setPreferences } = useAuth();
+  const { signOut, signIn, connectGoogleCalendar, preferences, setPreferences } = useAuth();
   const popupRef = useRef<HTMLDivElement>(null);
   const { themeMode, toggleTheme } = useTheme();
 
@@ -186,10 +186,10 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
 
   const handleConnectNew = async (provider: 'google' | 'microsoft' | 'apple') => {
     if (provider === 'google') {
-      // Reuse existing Google sign-in flow
-      await signIn();
-      // After sign-in completes, refresh calendar providers
-      setTimeout(() => fetchCalendarProviders(), 1000);
+      // Use Google Calendar-scoped sign-in to request calendar permissions
+      await connectGoogleCalendar();
+      // After redirect and sign-in completes, refresh calendar providers
+      setTimeout(() => fetchCalendarProviders(), 2000);
     } else if (provider === 'microsoft') {
       try {
         const { connectMicrosoftCalendar } = await import('../auth/microsoft');

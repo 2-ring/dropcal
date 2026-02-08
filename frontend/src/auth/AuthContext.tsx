@@ -9,10 +9,11 @@ import {
   getSession,
   getCurrentUser,
   signInWithGoogle,
+  signInWithGoogleCalendar,
   signOut as authSignOut,
   onAuthStateChange,
 } from './supabase';
-import { syncUserProfile, getUserProfile } from '../api/backend-client';
+import { syncUserProfile, getUserProfile, storeGoogleCalendarTokens } from '../api/backend-client';
 
 export interface UserPreferences {
   theme_mode?: 'light' | 'dark';
@@ -30,6 +31,7 @@ interface AuthContextType {
   setPreferences: React.Dispatch<React.SetStateAction<UserPreferences>>;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
+  connectGoogleCalendar: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -96,6 +98,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
           console.error('Failed to sync user profile:', error);
         }
+
+        // If provider_token exists, send Google Calendar tokens to backend
+        // This is present after OAuth redirect when calendar scopes were requested
+        if (newSession.provider_token) {
+          try {
+            await storeGoogleCalendarTokens({
+              access_token: newSession.provider_token,
+              refresh_token: newSession.provider_refresh_token || undefined,
+            });
+            console.log('Google Calendar tokens stored successfully');
+          } catch (error) {
+            console.error('Failed to store Google Calendar tokens:', error);
+          }
+        }
       } else {
         setUser(null);
         setPreferences({});
@@ -129,6 +145,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const connectGoogleCalendar = async () => {
+    try {
+      await signInWithGoogleCalendar();
+    } catch (error) {
+      console.error('Google Calendar connection failed:', error);
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     session,
     user,
@@ -137,6 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPreferences,
     signIn,
     signOut,
+    connectGoogleCalendar,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

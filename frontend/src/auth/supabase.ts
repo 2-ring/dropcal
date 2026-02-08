@@ -39,6 +39,32 @@ export async function signInWithGoogle() {
 }
 
 /**
+ * Sign in with Google OAuth + Calendar scopes.
+ * Used when connecting Google Calendar from the integrations page.
+ * Requests calendar read/write permissions and a refresh token.
+ */
+export async function signInWithGoogleCalendar() {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      scopes: 'email profile openid https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events',
+      redirectTo: 'https://dropcal.ai',
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
+    },
+  });
+
+  if (error) {
+    console.error('Google Calendar sign in error:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
  * Sign out the current user.
  */
 export async function signOut() {
