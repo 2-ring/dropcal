@@ -14,7 +14,6 @@ import {
   eventItemVariants
 } from './animations'
 import { getAccessToken } from '../../auth/supabase'
-import { useAuth } from '../../auth/AuthContext'
 import { updateEvent } from '../../api/backend-client'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'

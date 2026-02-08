@@ -17,13 +17,24 @@
   color: var(--primary);
 }
 
-/* Input Components - Absolute bottom of screen */
-.mobile-input-absolute-bottom {
+/* Fixed bottom stack: notification on top, active input on bottom */
+.mobile-bottom-stack {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.mobile-bottom-stack > * {
+  pointer-events: auto;
+}
+
+/* Input Components - bottom of stack */
+.mobile-input-absolute-bottom {
   padding: 14px 12px;
   display: flex;
   align-items: center;

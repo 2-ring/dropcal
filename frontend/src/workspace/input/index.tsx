@@ -87,19 +87,25 @@ export function InputWorkspace({
   return (
     <>
       {isMobile ? (
-        <MobileInputWorkspace {...inputProps} />
+        <MobileInputWorkspace
+          {...inputProps}
+          notification={currentNotification}
+          onDismissNotification={handleNotificationDismiss}
+        />
       ) : (
-        <DesktopInputWorkspace {...inputProps} />
+        <>
+          <DesktopInputWorkspace {...inputProps} />
+          <AnimatePresence mode="wait">
+            {currentNotification && (
+              <NotificationBar
+                key={currentNotification.id}
+                notification={currentNotification}
+                onDismiss={handleNotificationDismiss}
+              />
+            )}
+          </AnimatePresence>
+        </>
       )}
-      <AnimatePresence mode="wait">
-        {currentNotification && (
-          <NotificationBar
-            key={currentNotification.id}
-            notification={currentNotification}
-            onDismiss={handleNotificationDismiss}
-          />
-        )}
-      </AnimatePresence>
     </>
   )
 }

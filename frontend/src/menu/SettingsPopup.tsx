@@ -50,7 +50,7 @@ type ViewMode = 'main' | 'integrations' | 'apple-connect';
 
 export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoading = false, triggerRef }: SettingsPopupProps) {
   const navigate = useNavigate();
-  const { signOut, signIn, preferences, setPreferences, primaryCalendarProvider, setPrimaryCalendarProviderLocal } = useAuth();
+  const { signOut, signIn, preferences, setPreferences, setPrimaryCalendarProviderLocal } = useAuth();
   const popupRef = useRef<HTMLDivElement>(null);
   const { themeMode, toggleTheme } = useTheme();
 

@@ -3,7 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { MobileButtonMenu } from './MobileButtonMenu'
 import { useInputHandlers } from '../shared/hooks'
 import { Audio, Text, Link, Email } from '../shared/components'
+import { NotificationBar } from '../notifications'
+import type { Notification } from '../notifications/types'
 import type { ActiveInput, BaseInputWorkspaceProps } from '../shared/types'
+
+interface MobileInputWorkspaceProps extends BaseInputWorkspaceProps {
+  notification?: Notification | null
+  onDismissNotification?: (id: string) => void
+}
 
 export function MobileInputWorkspace({
   uploadedFile,
@@ -12,7 +19,9 @@ export function MobileInputWorkspace({
   onAudioSubmit,
   onTextSubmit,
   onClearFile,
-}: BaseInputWorkspaceProps) {
+  notification,
+  onDismissNotification,
+}: MobileInputWorkspaceProps) {
   // Single source of truth — drives button highlighting AND which input is shown
   const [activeInput, setActiveInput] = useState<ActiveInput>(null)
   const activeInputRef = useRef<ActiveInput>(null)
@@ -95,75 +104,88 @@ export function MobileInputWorkspace({
         )}
       </div>
 
-      {/* Active input — exactly one at a time, driven by activeInput */}
-      <AnimatePresence mode="wait">
-        {activeInput === 'audio' && (
-          <motion.div
-            key="audio-input"
-            className="mobile-input-absolute-bottom mobile-audio-input"
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          >
-            <Audio
-              onClose={() => setActiveInput('text')}
-              onSubmit={handleAudioSubmit}
-              onUploadFile={handleAudioFileUpload}
-              submitRef={submitRef}
+      {/* Fixed bottom stack: notification on top, active input on bottom */}
+      <div className="mobile-bottom-stack">
+        <AnimatePresence mode="wait">
+          {notification && onDismissNotification && (
+            <NotificationBar
+              key={notification.id}
+              notification={notification}
+              onDismiss={onDismissNotification}
             />
-          </motion.div>
-        )}
+          )}
+        </AnimatePresence>
 
-        {activeInput === 'text' && (
-          <motion.div
-            key="text-input"
-            className="mobile-input-absolute-bottom"
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          >
-            <Text
-              onClose={handleCloseInput}
-              onSubmit={handleTextSubmit}
-              submitRef={submitRef}
-            />
-          </motion.div>
-        )}
+        {/* Active input — exactly one at a time, driven by activeInput */}
+        <AnimatePresence mode="wait">
+          {activeInput === 'audio' && (
+            <motion.div
+              key="audio-input"
+              className="mobile-input-absolute-bottom mobile-audio-input"
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <Audio
+                onClose={() => setActiveInput('text')}
+                onSubmit={handleAudioSubmit}
+                onUploadFile={handleAudioFileUpload}
+                submitRef={submitRef}
+              />
+            </motion.div>
+          )}
 
-        {activeInput === 'link' && (
-          <motion.div
-            key="link-input"
-            className="mobile-input-absolute-bottom mobile-link-input"
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          >
-            <Link
-              onClose={handleCloseInput}
-              onSubmit={handleLinkSubmit}
-              submitRef={submitRef}
-            />
-          </motion.div>
-        )}
+          {activeInput === 'text' && (
+            <motion.div
+              key="text-input"
+              className="mobile-input-absolute-bottom"
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <Text
+                onClose={handleCloseInput}
+                onSubmit={handleTextSubmit}
+                submitRef={submitRef}
+              />
+            </motion.div>
+          )}
 
-        {activeInput === 'email' && (
-          <motion.div
-            key="email-input"
-            className="mobile-input-absolute-bottom mobile-email-input"
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          >
-            <Email
-              onClose={handleCloseInput}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+          {activeInput === 'link' && (
+            <motion.div
+              key="link-input"
+              className="mobile-input-absolute-bottom mobile-link-input"
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <Link
+                onClose={handleCloseInput}
+                onSubmit={handleLinkSubmit}
+                submitRef={submitRef}
+              />
+            </motion.div>
+          )}
+
+          {activeInput === 'email' && (
+            <motion.div
+              key="email-input"
+              className="mobile-input-absolute-bottom mobile-email-input"
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <Email
+                onClose={handleCloseInput}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </>
   )
 }
