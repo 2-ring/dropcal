@@ -125,6 +125,7 @@ export function Workspace({
           inputType={inputType}
           inputContent={inputContent}
           onConfirm={onConfirm}
+          onBack={onNewSession}
         />
       )}
     </>

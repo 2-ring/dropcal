@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { FirstAid as FirstAidIcon, CheckFat as CheckIcon, ChatCircleDots as ChatIcon, PaperPlaneTilt as SendIcon, CalendarStar as CalendarStarIcon, Images, Files, Microphone, Pen } from '@phosphor-icons/react'
+import { FirstAid as FirstAidIcon, CheckFat as CheckIcon, ChatCircleDots as ChatIcon, PaperPlaneTilt as SendIcon, CalendarStar as CalendarStarIcon, CaretLeft, Images, Files, Microphone, Pen } from '@phosphor-icons/react'
 import Skeleton from 'react-loading-skeleton'
 import type { LoadingStateConfig } from './types'
 import { Tooltip } from '../../components/Tooltip'
@@ -61,20 +61,18 @@ function getInputSummary(input: InputInfo): string {
 
 interface TopBarProps {
   eventCount: number
-  isLoading: boolean
-  expectedEventCount?: number
   isScrollable?: boolean
   inputType?: InputType
   inputContent?: string
+  onBack?: () => void
 }
 
 export function TopBar({
   eventCount,
-  isLoading,
-  expectedEventCount,
   isScrollable = true,
   inputType,
-  inputContent
+  inputContent,
+  onBack
 }: TopBarProps) {
   const input: InputInfo | null = inputType
     ? { type: inputType, content: inputContent || '' }
@@ -85,6 +83,11 @@ export function TopBar({
   return (
     <div className={`event-confirmation-header ${!isScrollable ? 'no-scroll' : ''}`}>
       <div className="event-confirmation-header-content">
+        {onBack && (
+          <button className="header-back-button" onClick={onBack} title="Back">
+            <CaretLeft size={20} weight="bold" />
+          </button>
+        )}
         <div className="header-left">
           {input && InputIcon ? (
             <div className="input-display">
@@ -99,11 +102,11 @@ export function TopBar({
           <WordMark size={28} />
         </div>
         <div className="header-right">
-          {isLoading && expectedEventCount === undefined ? (
+          {!eventCount ? (
             <Skeleton width={80} height={20} />
           ) : (
             <span>
-              {isLoading ? expectedEventCount : eventCount} {(isLoading ? expectedEventCount : eventCount) === 1 ? 'event' : 'events'}
+              {eventCount} {eventCount === 1 ? 'event' : 'events'}
             </span>
           )}
         </div>

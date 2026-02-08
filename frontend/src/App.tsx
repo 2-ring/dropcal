@@ -53,7 +53,7 @@ interface SessionListItem {
 
 // Main content component that handles all the business logic
 function AppContent() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const { sessionId } = useParams<{ sessionId?: string }>()
   const { addNotification } = useNotifications()
@@ -112,6 +112,9 @@ function AppContent() {
   // Load session from URL on mount or when sessionId changes
   useEffect(() => {
     if (sessionId) {
+      // Wait for auth to finish loading before checking access
+      if (authLoading) return
+
       // Check if guest can access this session
       const isGuestSession = GuestSessionManager.getSessionIds().includes(sessionId)
 
@@ -179,7 +182,7 @@ function AppContent() {
           setIsProcessing(false)
         })
     }
-  }, [sessionId, navigate, user])
+  }, [sessionId, navigate, user, authLoading])
 
   // Load session history and sync calendar when user logs in
   // Use ref to avoid re-fetching when user object reference changes but ID is the same

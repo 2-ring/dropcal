@@ -70,6 +70,10 @@
   pointer-events: auto; /* Re-enable clicks on the bar itself */
 }
 
+.header-back-button {
+  display: none;
+}
+
 .header-left {
   display: flex;
   align-items: center;
@@ -953,6 +957,20 @@
     --wm-mark: clamp(16px, 5vw, 28px);
     --wm-word: clamp(16px, 5vw, 28px);
     --wm-gap: clamp(4px, 1.25vw, 7px);
+  }
+
+  .header-back-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 0;
+    margin-left: -0.25rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .event-confirmation-content {

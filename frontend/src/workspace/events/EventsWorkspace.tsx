@@ -34,9 +34,10 @@ interface EventsWorkspaceProps {
   expectedEventCount?: number
   inputType?: 'text' | 'image' | 'audio' | 'document' | 'email'
   inputContent?: string
+  onBack?: () => void
 }
 
-export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingConfig = [], expectedEventCount, inputType, inputContent }: EventsWorkspaceProps) {
+export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingConfig = [], expectedEventCount, inputType, inputContent, onBack }: EventsWorkspaceProps) {
   const [changeRequest, setChangeRequest] = useState('')
   const [isChatExpanded, setIsChatExpanded] = useState(false)
   const [editingEventIndex, setEditingEventIndex] = useState<number | null>(null)
@@ -340,11 +341,10 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
     <div className="event-confirmation">
       <TopBar
         eventCount={events.filter(e => e !== null).length}
-        isLoading={isLoading}
-        expectedEventCount={expectedEventCount}
         isScrollable={isScrollable}
         inputType={inputType}
         inputContent={inputContent}
+        onBack={onBack}
       />
 
       <div
