@@ -286,6 +286,24 @@
   flex: 1;
 }
 
+.chat-entry.processing .chat-entry-title {
+  color: var(--text-secondary);
+}
+
+.processing-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--text-tertiary);
+  flex-shrink: 0;
+  animation: processingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes processingPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
 .event-count-badge {
   display: inline-flex;
   align-items: center;

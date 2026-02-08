@@ -70,6 +70,9 @@ function AppContent() {
   const [sessionHistory, setSessionHistory] = useState<BackendSession[]>([])
   const [isLoadingSessions, setIsLoadingSessions] = useState(false)
 
+  // Tracks the session the user is currently viewing (prevents stale processing from hijacking UI)
+  const activeViewSessionRef = useRef<string | null>(null)
+
   // Guest mode state
   const [isGuestMode, setIsGuestMode] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -124,8 +127,10 @@ function AppContent() {
         return
       }
 
+      activeViewSessionRef.current = sessionId
       setIsProcessing(true)
       setAppState('loading')
+      setCalendarEvents([])
       setLoadingConfig(LOADING_MESSAGES.READING_FILE)
 
       // Use guest endpoint if not authenticated and is a guest session
@@ -273,6 +278,7 @@ function AppContent() {
         : await uploadGuestFile(file, fileType)
 
       setCurrentSession(session)
+      activeViewSessionRef.current = session.id
 
       // Track guest session with access token
       if (!user && session.access_token) {
@@ -290,16 +296,27 @@ function AppContent() {
       const completedSession = await pollSession(
         session.id,
         (updatedSession) => {
-          setCurrentSession(updatedSession)
-
-          // Update loading message based on status
-          if (updatedSession.status === 'processing') {
-            setLoadingConfig(LOADING_MESSAGES.EXTRACTING_EVENTS)
+          // Only update loading UI if user is still viewing this session
+          if (activeViewSessionRef.current === session.id) {
+            setCurrentSession(updatedSession)
+            if (updatedSession.status === 'processing') {
+              setLoadingConfig(LOADING_MESSAGES.EXTRACTING_EVENTS)
+            }
           }
         },
         2000,
         !user // isGuest parameter
       )
+
+      // Always refresh session list so sidebar updates
+      if (user) {
+        getUserSessions().then(setSessionHistory).catch(console.error)
+      }
+
+      // If user navigated away, don't touch UI state
+      if (activeViewSessionRef.current !== session.id) {
+        return
+      }
 
       // Fetch events from events table
       const events = await getSessionEvents(completedSession.id, !user)
@@ -322,19 +339,13 @@ function AppContent() {
       // Navigate to the session URL
       navigate(`/s/${completedSession.id}`)
 
-      // Refresh session history (only for authenticated users)
-      if (user) {
-        setIsLoadingSessions(true)
-        getUserSessions()
-          .then(setSessionHistory)
-          .catch(console.error)
-          .finally(() => setIsLoadingSessions(false))
-      }
-
     } catch (error) {
-      addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
-      setAppState('input')
-      // Refresh session list so the failed session (now error status) gets filtered out
+      // Only show error if user is still viewing this session
+      if (activeViewSessionRef.current === null || activeViewSessionRef.current === currentSession?.id) {
+        addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
+        setAppState('input')
+      }
+      // Always refresh session list so the failed session gets filtered out
       if (user) {
         getUserSessions().then(setSessionHistory).catch(console.error)
       }
@@ -372,6 +383,7 @@ function AppContent() {
         : await createGuestTextSession(text)
 
       setCurrentSession(session)
+      activeViewSessionRef.current = session.id
 
       // Track guest session with access token
       if (!user && session.access_token) {
@@ -387,16 +399,27 @@ function AppContent() {
       const completedSession = await pollSession(
         session.id,
         (updatedSession) => {
-          setCurrentSession(updatedSession)
-
-          // Update loading message based on status
-          if (updatedSession.status === 'processing') {
-            setLoadingConfig(LOADING_MESSAGES.EXTRACTING_EVENTS)
+          // Only update loading UI if user is still viewing this session
+          if (activeViewSessionRef.current === session.id) {
+            setCurrentSession(updatedSession)
+            if (updatedSession.status === 'processing') {
+              setLoadingConfig(LOADING_MESSAGES.EXTRACTING_EVENTS)
+            }
           }
         },
         2000,
         !user // isGuest parameter
       )
+
+      // Always refresh session list so sidebar updates
+      if (user) {
+        getUserSessions().then(setSessionHistory).catch(console.error)
+      }
+
+      // If user navigated away, don't touch UI state
+      if (activeViewSessionRef.current !== session.id) {
+        return
+      }
 
       // Fetch events from events table
       const events = await getSessionEvents(completedSession.id, !user)
@@ -419,19 +442,13 @@ function AppContent() {
       // Navigate to the session URL
       navigate(`/s/${completedSession.id}`)
 
-      // Refresh session history (only for authenticated users)
-      if (user) {
-        setIsLoadingSessions(true)
-        getUserSessions()
-          .then(setSessionHistory)
-          .catch(console.error)
-          .finally(() => setIsLoadingSessions(false))
-      }
-
     } catch (error) {
-      addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
-      setAppState('input')
-      // Refresh session list so the failed session (now error status) gets filtered out
+      // Only show error if user is still viewing this session
+      if (activeViewSessionRef.current === null || activeViewSessionRef.current === currentSession?.id) {
+        addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
+        setAppState('input')
+      }
+      // Always refresh session list so the failed session gets filtered out
       if (user) {
         getUserSessions().then(setSessionHistory).catch(console.error)
       }
@@ -473,12 +490,14 @@ function AppContent() {
 
   // Handle session click (load from history)
   const handleSessionClick = useCallback((sessionId: string) => {
+    activeViewSessionRef.current = sessionId
     navigate(`/s/${sessionId}`)
     setSidebarOpen(false)
   }, [navigate])
 
   // Handle new session
   const handleNewSession = useCallback(() => {
+    activeViewSessionRef.current = null
     setAppState('input')
     setCurrentSession(null)
     setCalendarEvents([])

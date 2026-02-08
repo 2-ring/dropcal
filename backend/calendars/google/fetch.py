@@ -134,7 +134,12 @@ def list_calendars(user_id: str) -> List[Dict]:
     try:
         service = build('calendar', 'v3', credentials=credentials)
         calendar_list_result = service.calendarList().list().execute()
-        return calendar_list_result.get('items', [])
+        calendars = calendar_list_result.get('items', [])
+
+        # Exclude external/read-only calendars (e.g. public sports schedules)
+        # Only include calendars the user can write to
+        writable = [c for c in calendars if c.get('accessRole') in ('owner', 'writer')]
+        return writable
 
     except HttpError as error:
         print(f"Error listing Google calendars: {error}")

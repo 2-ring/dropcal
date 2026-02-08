@@ -1,6 +1,7 @@
-import { Equals as EqualsIcon, MapPin as LocationIcon } from '@phosphor-icons/react'
+import { Equals as EqualsIcon, MapPin as LocationIcon, CheckCircle, ArrowsClockwise } from '@phosphor-icons/react'
 import Skeleton from 'react-loading-skeleton'
 import type { CalendarEvent } from './types'
+import { getEventSyncStatus } from './types'
 
 interface GoogleCalendar {
   id: string
@@ -24,6 +25,9 @@ interface EventProps {
   formatTimeRange: (start: string, end: string) => string
   getCalendarColor: (calendarName: string | undefined) => string
 
+  // Sync status
+  activeProvider?: string
+
   // Event handlers
   onClick?: () => void
 }
@@ -36,6 +40,7 @@ export function Event({
   calendars = [],
   formatTimeRange,
   getCalendarColor,
+  activeProvider,
   onClick,
 }: EventProps) {
   // Loading skeleton - simple grey box with fade effect like session skeletons
@@ -105,6 +110,26 @@ export function Event({
           </span>
         </div>
       </div>
+
+      {/* Sync Status Bar */}
+      {(() => {
+        const syncStatus = getEventSyncStatus(event, activeProvider)
+        if (syncStatus === 'draft') return null
+
+        const config = {
+          applied: { label: 'Created', Icon: CheckCircle, className: 'status-created' },
+          edited: { label: 'Apply edits', Icon: ArrowsClockwise, className: 'status-apply-edits' },
+        } as const
+
+        const status = config[syncStatus]
+
+        return (
+          <div className={`event-status-bar ${status.className}`}>
+            <status.Icon size={14} weight="bold" />
+            <span>{status.label}</span>
+          </div>
+        )
+      })()}
     </div>
   )
 }

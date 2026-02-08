@@ -370,6 +370,7 @@
   border-radius: 16px;
   box-shadow: var(--shadow-medium);
   border: none;
+  overflow: hidden;
 }
 
 .event-card-clickable {
@@ -400,6 +401,28 @@
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--text-secondary);
+}
+
+/* Event Sync Status Bar */
+.event-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0.375rem -1.5rem -1.5rem;
+  padding: 0.4375rem 1.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.event-status-bar.status-created {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.event-status-bar.status-apply-edits {
+  background-color: #fef3c7;
+  color: #b45309;
 }
 
 /* Skeleton card styling */
@@ -1002,6 +1025,12 @@
   .event-confirmation-card {
     padding: 1.25rem;
     border-radius: 12px;
+  }
+
+  .event-status-bar {
+    margin: 0.375rem -1.25rem -1.25rem;
+    padding: 0.375rem 1.25rem;
+    font-size: 0.6875rem;
   }
 
   .event-confirmation-card-title {

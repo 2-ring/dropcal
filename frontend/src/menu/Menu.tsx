@@ -226,23 +226,22 @@ export function Menu({
                 <div key={period} className="chat-group">
                   <div className="chat-group-label">{period}</div>
                   {periodSessions.map((session) => {
-                    if (session.status === 'processing') {
-                      return <SkeletonSessionItem key={session.id} />
-                    }
                     const InputIcon = getInputIcon(session.inputType)
                     return (
                       <div
                         key={session.id}
                         className={`chat-entry ${
                           session.id === currentSessionId ? 'active' : ''
-                        }`}
+                        } ${session.status === 'processing' ? 'processing' : ''}`}
                         onClick={() => onSessionClick(session.id)}
                       >
                         <InputIcon size={16} weight="regular" className="chat-entry-icon" />
                         <span className="chat-entry-title">{session.title}</span>
-                        {session.eventCount > 0 && (
+                        {session.status === 'processing' ? (
+                          <span className="processing-indicator" />
+                        ) : session.eventCount > 0 ? (
                           <span className="event-count-badge">{session.eventCount}</span>
-                        )}
+                        ) : null}
                       </div>
                     )
                   })}

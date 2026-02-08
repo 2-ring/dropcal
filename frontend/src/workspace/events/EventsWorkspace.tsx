@@ -413,6 +413,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
                       formatTime={formatTime}
                       formatTimeRange={formatTimeRange}
                       getCalendarColor={getCalendarColor}
+                      activeProvider="google"
                       onClick={() => handleEventClick(index)}
                     />
                   </motion.div>
@@ -474,6 +475,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
                             formatTime={formatTime}
                             formatTimeRange={formatTimeRange}
                             getCalendarColor={getCalendarColor}
+                            activeProvider="google"
                             onClick={() => handleEventClick(originalIndex)}
                           />
                         </div>
