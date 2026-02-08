@@ -58,8 +58,18 @@ function getTimePeriod(): GreetingType {
   return 'lateNight'
 }
 
+// Cache to avoid changing greeting on every render
+let cachedGreeting: { text: string; userName?: string; timestamp: number } | null = null
+const CACHE_TTL_MS = 30_000
+
 // Get random greeting based on context
 export function getGreeting(userName?: string): string {
+  const now = Date.now()
+
+  if (cachedGreeting && now - cachedGreeting.timestamp < CACHE_TTL_MS && cachedGreeting.userName === userName) {
+    return cachedGreeting.text
+  }
+
   const timePeriod = getTimePeriod()
   const isAuthenticated = !!userName
 
@@ -91,9 +101,11 @@ export function getGreeting(userName?: string): string {
   const greeting = availableGreetings[Math.floor(Math.random() * availableGreetings.length)]
 
   // Replace {name} with actual name
-  if (userName && greeting.text.includes('{name}')) {
-    return greeting.text.replace('{name}', userName)
+  let text = greeting.text
+  if (userName && text.includes('{name}')) {
+    text = text.replace('{name}', userName)
   }
 
-  return greeting.text
+  cachedGreeting = { text, userName, timestamp: now }
+  return text
 }
