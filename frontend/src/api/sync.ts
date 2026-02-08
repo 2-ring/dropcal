@@ -43,9 +43,7 @@ export interface SyncResult {
 export const syncCalendar = async (): Promise<SyncResult> => {
   const token = await getAccessToken();
 
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
+  const headers: HeadersInit = {};
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;

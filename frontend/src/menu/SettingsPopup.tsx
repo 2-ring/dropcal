@@ -29,7 +29,6 @@ import { useState, useEffect, useRef } from 'react';
 import { getCalendarProviders, setPrimaryCalendarProvider, disconnectCalendarProvider, getUserPreferences, sendAppleCredentials, updateUserPreferences } from '../api/backend-client';
 import { Tooltip } from '../components/Tooltip';
 import { useTheme } from '../theme';
-import { useAuth } from '../auth/AuthContext';
 
 interface SettingsPopupProps {
   onClose: () => void;
