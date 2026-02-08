@@ -57,10 +57,7 @@ export async function createTextSession(text: string): Promise<Session> {
   const response = await fetch(`${API_URL}/api/sessions`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({
-      input_type: 'text',
-      input_content: text,
-    }),
+    body: JSON.stringify({ text }),
   });
 
   const data = await handleResponse<CreateSessionResponse>(response);
@@ -78,7 +75,7 @@ export async function uploadFile(
 
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('input_type', type);
+  formData.append('type', type);
 
   const headers: HeadersInit = {};
   if (token) {
@@ -517,11 +514,6 @@ export async function getUserPreferences(): Promise<{
     method: 'GET',
     headers,
   });
-
-  // Handle 404 as a valid response (no preferences yet)
-  if (response.status === 404) {
-    return { exists: false };
-  }
 
   return handleResponse(response);
 }

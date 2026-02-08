@@ -16,6 +16,7 @@ import {
   listContainerVariants,
   eventItemVariants
 } from './animations'
+import { getAccessToken } from '../../auth/supabase'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
@@ -56,7 +57,12 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
     const fetchCalendars = async () => {
       setIsLoadingCalendars(true)
       try {
-        const response = await fetch(`${API_URL}/api/calendar/list-calendars`)
+        const token = await getAccessToken()
+        const headers: HeadersInit = {}
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+        const response = await fetch(`${API_URL}/api/calendar/list-calendars`, { headers })
         if (response.ok) {
           const data = await response.json()
           setCalendars(data.calendars || [])

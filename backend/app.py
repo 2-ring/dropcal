@@ -615,7 +615,7 @@ def get_preferences():
             return jsonify({
                 'exists': False,
                 'message': f'No preferences found for user {user_id}'
-            }), 404
+            })
 
         return jsonify({
             'exists': True,

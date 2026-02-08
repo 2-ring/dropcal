@@ -113,6 +113,34 @@ def check_conflicts(
         return []
 
 
+def list_calendars(user_id: str) -> List[Dict]:
+    """
+    List all calendars the user has access to.
+
+    Args:
+        user_id: User's UUID
+
+    Returns:
+        List of calendar dicts with id, summary, backgroundColor, etc.
+    """
+    credentials = auth.load_credentials(user_id)
+
+    if not credentials:
+        raise Exception("Not authenticated with Google Calendar")
+
+    if not auth.refresh_if_needed(user_id, credentials):
+        raise Exception("Failed to refresh Google Calendar credentials")
+
+    try:
+        service = build('calendar', 'v3', credentials=credentials)
+        calendar_list_result = service.calendarList().list().execute()
+        return calendar_list_result.get('items', [])
+
+    except HttpError as error:
+        print(f"Error listing Google calendars: {error}")
+        return []
+
+
 def get_calendar_settings(user_id: str) -> Optional[Dict]:
     """
     Fetch user's Google Calendar settings including timezone.

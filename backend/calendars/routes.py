@@ -275,23 +275,28 @@ def list_calendar_events():
 
 
 @calendar_bp.route('/api/calendar/list-calendars', methods=['GET'])
+@require_auth
 def list_calendars():
     """
     List all calendars the user has access to with their colors.
 
+    Requires authentication. Uses per-user calendar provider.
+
     Returns list of calendars with id, summary (name), backgroundColor, etc.
     """
     try:
-        # Check authentication status
-        if not calendar_service.is_authenticated():
+        user_id = request.user_id
+
+        # Check if user has a connected calendar provider
+        if not factory.is_authenticated(user_id):
             return jsonify({
-                'error': 'Not authenticated with Google Calendar',
+                'error': 'Calendar not connected',
                 'authenticated': False,
-                'authorization_url': '/api/oauth/authorize'
+                'calendars': []
             }), 401
 
-        # Get calendar list
-        calendars = calendar_service.get_calendar_list()
+        # Get calendar list via factory (routes to user's primary provider)
+        calendars = factory.list_calendars(user_id)
 
         return jsonify({
             'success': True,
@@ -499,27 +504,26 @@ def list_calendar_providers():
         connections = user.get('provider_connections', [])
         primary_provider = user.get('primary_calendar_provider')
 
-        # Build provider list
+        # Build provider list (include all providers, not just calendar ones)
         provider_list = []
         for conn in connections:
             provider_name = conn.get('provider')
             usage = conn.get('usage', [])
+            has_calendar = 'calendar' in usage
 
-            # Only include providers with 'calendar' in usage
-            if 'calendar' not in usage:
-                continue
-
-            # Check if credentials are valid
+            # Check if credentials are valid (only if calendar usage exists)
             valid = False
-            try:
-                valid = factory.is_authenticated(user_id, provider_name)
-            except Exception:
-                pass
+            if has_calendar:
+                try:
+                    valid = factory.is_authenticated(user_id, provider_name)
+                except Exception:
+                    pass
 
             provider_info = {
                 'provider': provider_name,
+                'provider_id': conn.get('provider_id'),
                 'email': conn.get('email'),
-                'connected': True,
+                'connected': has_calendar and valid,
                 'valid': valid,
                 'is_primary': provider_name == primary_provider,
                 'usage': usage,

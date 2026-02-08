@@ -82,6 +82,27 @@ def is_authenticated(user_id: str, provider: Optional[str] = None) -> bool:
     return auth_module.is_authenticated(user_id)
 
 
+def list_calendars(
+    user_id: str,
+    provider: Optional[str] = None
+) -> List[Dict]:
+    """
+    List all calendars the user has access to.
+
+    Args:
+        user_id: User's UUID
+        provider: Provider to use, or None to use primary
+
+    Returns:
+        List of calendar dicts
+    """
+    if not provider:
+        provider = get_user_primary_provider(user_id)
+
+    _, fetch_module, _ = get_provider_modules(provider)
+    return fetch_module.list_calendars(user_id)
+
+
 def list_events(
     user_id: str,
     max_results: int = 100,
