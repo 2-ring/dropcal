@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, type MutableRefObject } from 'react'
 import { motion } from 'framer-motion'
 import {
   FirstAid as FirstAidIcon,
@@ -10,9 +10,10 @@ interface AudioProps {
   onClose: () => void
   onSubmit: (audioBlob: Blob) => void
   onUploadFile: () => void
+  submitRef?: MutableRefObject<(() => void) | null>
 }
 
-export function Audio({ onClose, onSubmit, onUploadFile }: AudioProps) {
+export function Audio({ onClose, onSubmit, onUploadFile, submitRef }: AudioProps) {
   const recorderControls = useVoiceVisualizer()
   const { recordedBlob, stopRecording } = recorderControls
 
@@ -31,6 +32,11 @@ export function Audio({ onClose, onSubmit, onUploadFile }: AudioProps) {
   const handleSubmit = () => {
     stopRecording()
   }
+
+  useEffect(() => {
+    if (submitRef) submitRef.current = handleSubmit
+    return () => { if (submitRef) submitRef.current = null }
+  })
 
   const handleClose = () => {
     stopRecording()

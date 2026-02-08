@@ -11,14 +11,14 @@ const GREETINGS: Greeting[] = [
   // Authenticated greetings (require user name)
   { text: "Let's plan, {name}", types: ['authenticated'] },
   { text: "Welcome back, {name}", types: ['authenticated'] },
-  { text: "Ready to drop it in, {name}?", types: ['authenticated'] },
-  { text: "What's on the agenda, {name}?", types: ['authenticated'] },
+  { text: "Ready, {name}?", types: ['authenticated'] },
+  { text: "What's up, {name}?", types: ['authenticated'] },
 
   // General greetings (no name needed)
   { text: "Time to organize", types: ['general'] },
   { text: "Drop it in", types: ['general'] },
-  { text: "Let's get scheduling", types: ['general'] },
-  { text: "Your calendar awaits", types: ['general'] },
+  { text: "Let's schedule", types: ['general'] },
+  { text: "Calendar time", types: ['general'] },
   { text: "Ready to plan?", types: ['general'] },
 
   // Morning greetings

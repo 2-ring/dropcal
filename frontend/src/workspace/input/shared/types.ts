@@ -1,3 +1,5 @@
+export type ActiveInput = 'audio' | 'text' | 'link' | 'email' | null
+
 export interface BaseInputWorkspaceProps {
   uploadedFile: File | null
   isProcessing: boolean

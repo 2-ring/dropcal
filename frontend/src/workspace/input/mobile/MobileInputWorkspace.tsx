@@ -1,11 +1,9 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MobileButtonMenu } from './MobileButtonMenu'
 import { useInputHandlers } from '../shared/hooks'
 import { Audio, Text, Link, Email } from '../shared/components'
-import type { BaseInputWorkspaceProps } from '../shared/types'
-
-type ActiveInput = 'audio' | 'text' | 'link' | 'email' | null
+import type { ActiveInput, BaseInputWorkspaceProps } from '../shared/types'
 
 export function MobileInputWorkspace({
   uploadedFile,
@@ -15,47 +13,51 @@ export function MobileInputWorkspace({
   onTextSubmit,
   onClearFile,
 }: BaseInputWorkspaceProps) {
-  // Single source of truth: only one input can be active at a time
+  // Single source of truth — drives button highlighting AND which input is shown
   const [activeInput, setActiveInput] = useState<ActiveInput>(null)
+  // Each input component registers its submit here; center button calls it
+  const submitRef = useRef<(() => void) | null>(null)
 
-  const { handleImageClick, handleDocumentClick, handleAudioFileUpload } = useInputHandlers({
+  const { handleImageClick: rawImageClick, handleDocumentClick: rawDocumentClick, handleAudioFileUpload } = useInputHandlers({
     onFileUpload
   })
 
-  const handleAudioClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    setActiveInput('audio')
+  // Wrap file-upload handlers so they close the active input first
+  const handleImageClick = useCallback((e: React.MouseEvent) => {
+    setActiveInput(null)
+    rawImageClick(e)
+  }, [rawImageClick])
+
+  const handleDocumentClick = useCallback((e: React.MouseEvent) => {
+    setActiveInput(null)
+    rawDocumentClick(e)
+  }, [rawDocumentClick])
+
+  // One callback for all input-type buttons
+  const handleSelect = useCallback((input: ActiveInput) => {
+    setActiveInput(input)
   }, [])
 
+  // Center button triggers whichever input is active
+  const handleSubmit = useCallback(() => {
+    submitRef.current?.()
+  }, [])
+
+  // After a successful submit, clear the active input
   const handleAudioSubmit = useCallback((audioBlob: Blob) => {
     onAudioSubmit(audioBlob)
     setActiveInput(null)
   }, [onAudioSubmit])
-
-  const handleTextClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    setActiveInput('text')
-  }, [])
 
   const handleTextSubmit = useCallback((text: string) => {
     onTextSubmit(text)
     setActiveInput(null)
   }, [onTextSubmit])
 
-  const handleLinkClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    setActiveInput('link')
-  }, [])
-
   const handleLinkSubmit = useCallback((content: string) => {
     onTextSubmit(content)
     setActiveInput(null)
   }, [onTextSubmit])
-
-  const handleEmailClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    setActiveInput('email')
-  }, [])
 
   const handleCloseInput = useCallback(() => {
     setActiveInput(null)
@@ -63,7 +65,7 @@ export function MobileInputWorkspace({
 
   return (
     <>
-      {/* Button Menu - No drop area, just buttons */}
+      {/* Button Menu */}
       <div style={{ pointerEvents: isProcessing ? 'none' : 'auto', opacity: isProcessing ? 0.5 : 1 }}>
         {uploadedFile ? (
           <div className="file-info">
@@ -80,18 +82,16 @@ export function MobileInputWorkspace({
           </div>
         ) : (
           <MobileButtonMenu
+            activeInput={activeInput}
+            onSelect={handleSelect}
+            onSubmit={handleSubmit}
             onImageClick={handleImageClick}
             onDocumentClick={handleDocumentClick}
-            onAudioClick={handleAudioClick}
-            onTextClick={handleTextClick}
-            onLinkClick={handleLinkClick}
-            onEmailClick={handleEmailClick}
-            activeButton={activeInput}
           />
         )}
       </div>
 
-      {/* Input Components - Absolute bottom of screen */}
+      {/* Active input — exactly one at a time, driven by activeInput */}
       <AnimatePresence mode="wait">
         {activeInput === 'audio' && (
           <motion.div
@@ -106,6 +106,7 @@ export function MobileInputWorkspace({
               onClose={handleCloseInput}
               onSubmit={handleAudioSubmit}
               onUploadFile={handleAudioFileUpload}
+              submitRef={submitRef}
             />
           </motion.div>
         )}
@@ -122,6 +123,7 @@ export function MobileInputWorkspace({
             <Text
               onClose={handleCloseInput}
               onSubmit={handleTextSubmit}
+              submitRef={submitRef}
             />
           </motion.div>
         )}
@@ -138,6 +140,7 @@ export function MobileInputWorkspace({
             <Link
               onClose={handleCloseInput}
               onSubmit={handleLinkSubmit}
+              submitRef={submitRef}
             />
           </motion.div>
         )}

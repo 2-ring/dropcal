@@ -21,15 +21,34 @@
   justify-content: center;
 }
 
-/* Ensure input components fill full width */
-.mobile-input-absolute-bottom .sound-input-container,
-.mobile-input-absolute-bottom .email-input-dock {
+/* All input components fill exactly the parent width, no overflow */
+.mobile-input-absolute-bottom .sound-input-container {
   width: 100%;
   max-width: none;
+  box-sizing: border-box;
 }
 
-/* Hide close buttons on mobile - users can switch via button menu */
+.mobile-input-absolute-bottom .sound-input-dock,
+.mobile-input-absolute-bottom .email-input-dock {
+  min-width: 0;
+  flex: 1;
+}
+
+.mobile-input-absolute-bottom .text-input-field {
+  min-width: 0;
+}
+
+.mobile-input-absolute-bottom .sound-visualizer-wrapper {
+  min-width: 0;
+}
+
+.mobile-input-absolute-bottom .external-button {
+  flex-shrink: 0;
+}
+
+/* Hide close and submit buttons on mobile - center button handles submit, button menu handles switching */
 .mobile-input-absolute-bottom .dock-button.close,
+.mobile-input-absolute-bottom .dock-button.submit,
 .mobile-input-absolute-bottom .close-button {
   display: none;
 }

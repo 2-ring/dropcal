@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, type MutableRefObject } from 'react'
 import { motion } from 'framer-motion'
 import {
   FirstAid as FirstAidIcon,
@@ -11,9 +11,10 @@ import { IconButton } from './IconButton'
 interface TextProps {
   onClose: () => void
   onSubmit: (text: string) => void
+  submitRef?: MutableRefObject<(() => void) | null>
 }
 
-export function Text({ onClose, onSubmit }: TextProps) {
+export function Text({ onClose, onSubmit, submitRef }: TextProps) {
   const [text, setText] = useState('')
 
   const handleSubmit = () => {
@@ -22,6 +23,11 @@ export function Text({ onClose, onSubmit }: TextProps) {
       setText('')
     }
   }
+
+  useEffect(() => {
+    if (submitRef) submitRef.current = handleSubmit
+    return () => { if (submitRef) submitRef.current = null }
+  })
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {

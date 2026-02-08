@@ -8,35 +8,32 @@ import {
   Envelope as EnvelopeIcon,
   ArrowFatUp as ArrowFatUpIcon
 } from '@phosphor-icons/react'
+import type { ActiveInput } from '../shared/types'
 
 interface MobileButtonMenuProps {
+  activeInput: ActiveInput
+  onSelect: (input: ActiveInput) => void
+  onSubmit: () => void
   onImageClick: (e: React.MouseEvent) => void
   onDocumentClick: (e: React.MouseEvent) => void
-  onAudioClick: (e: React.MouseEvent) => void
-  onTextClick: (e: React.MouseEvent) => void
-  onLinkClick: (e: React.MouseEvent) => void
-  onEmailClick: (e: React.MouseEvent) => void
-  activeButton?: 'audio' | 'text' | 'link' | 'email' | null
 }
 
 export function MobileButtonMenu({
+  activeInput,
+  onSelect,
+  onSubmit,
   onImageClick,
   onDocumentClick,
-  onAudioClick,
-  onTextClick,
-  onLinkClick,
-  onEmailClick,
-  activeButton
 }: MobileButtonMenuProps) {
   return (
     <div className="icon-row">
       <motion.div
         key="link-button"
-        className={`icon-circle small clickable btn-left-1 ${activeButton === 'link' ? 'active' : ''}`}
+        className={`icon-circle small clickable btn-left-1 ${activeInput === 'link' ? 'active' : ''}`}
         initial={{ opacity: 0, y: -20, scale: 0.8 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.2, ease: "easeOut", delay: 0.05 }}
-        onClick={onLinkClick}
+        onClick={() => onSelect('link')}
         title="Link Input"
       >
         <LinkIcon size={28} weight="duotone" />
@@ -64,42 +61,44 @@ export function MobileButtonMenu({
         <FileIcon size={28} weight="duotone" />
       </motion.div>
       <motion.div
-        className="icon-circle center"
+        className={`icon-circle center ${activeInput ? 'clickable' : ''}`}
         initial={{ opacity: 0, scale: 0.5 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
+        onClick={activeInput ? onSubmit : undefined}
+        style={{ cursor: activeInput ? 'pointer' : 'default' }}
       >
-        <ArrowFatUpIcon size={36} weight="bold" />
+        <ArrowFatUpIcon size={36} weight={activeInput ? 'fill' : 'bold'} />
       </motion.div>
       <motion.div
         key="audio-button"
-        className={`icon-circle small clickable btn-right-1 ${activeButton === 'audio' ? 'active' : ''}`}
+        className={`icon-circle small clickable btn-right-1 ${activeInput === 'audio' ? 'active' : ''}`}
         initial={{ opacity: 0, y: -20, scale: 0.8 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.2, ease: "easeOut", delay: 0.1 }}
-        onClick={onAudioClick}
+        onClick={() => onSelect('audio')}
         title="Record Audio"
       >
         <MicrophoneIcon size={28} weight="duotone" />
       </motion.div>
       <motion.div
         key="text-button"
-        className={`icon-circle small clickable btn-right-2 ${activeButton === 'text' ? 'active' : ''}`}
+        className={`icon-circle small clickable btn-right-2 ${activeInput === 'text' ? 'active' : ''}`}
         initial={{ opacity: 0, x: 28, scale: 0.8 }}
         animate={{ opacity: 1, x: 14, scale: 1 }}
         transition={{ duration: 0.2, ease: "easeOut", delay: 0.08 }}
-        onClick={onTextClick}
+        onClick={() => onSelect('text')}
         title="Text Input"
       >
         <TextIcon size={28} weight="duotone" />
       </motion.div>
       <motion.div
         key="email-button"
-        className={`icon-circle small clickable btn-right-3 ${activeButton === 'email' ? 'active' : ''}`}
+        className={`icon-circle small clickable btn-right-3 ${activeInput === 'email' ? 'active' : ''}`}
         initial={{ opacity: 0, y: 20, scale: 0.8 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.2, ease: "easeOut", delay: 0.05 }}
-        onClick={onEmailClick}
+        onClick={() => onSelect('email')}
         title="Email Input"
       >
         <EnvelopeIcon size={28} weight="duotone" />

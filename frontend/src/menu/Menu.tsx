@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { SidebarSimple as SidebarIcon, CalendarBlank, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, GoogleLogo, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
+import { Sidebar as SidebarIcon, Baby, CalendarBlank, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, GoogleLogo, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
 import type { SessionListItem } from '../sessions'
 import type { InputType } from '../sessions'
 import { Account } from './Account'
@@ -217,6 +217,7 @@ export function Menu({
               <SkeletonSessionGroup count={8} showLabel={false} />
             ) : groupedSessions.length === 0 ? (
               <div className="empty-state">
+                <Baby size={40} weight="duotone" className="empty-state-icon" />
                 <p>No sessions yet</p>
                 <p className="empty-state-hint">Drop files or text to get started</p>
               </div>

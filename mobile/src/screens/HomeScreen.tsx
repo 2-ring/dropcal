@@ -359,6 +359,9 @@ export function HomeScreen({
           <View style={styles.greetingRow}>
             <Logo size={48} color={theme.colors.textPrimary} />
             <Animated.Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.5}
               style={[
                 styles.greetingText,
                 { color: theme.colors.primary },

@@ -306,9 +306,14 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1rem;
+  height: 100%;
   text-align: center;
   color: var(--text-tertiary);
+}
+
+.empty-state-icon {
+  margin-bottom: 0.75rem;
+  opacity: 0.5;
 }
 
 .empty-state p {
@@ -375,5 +380,29 @@
   .dock-icon-button {
     width: 28px;
     height: 28px;
+  }
+
+  .sidebar-header {
+    padding: 1rem;
+    min-height: auto;
+  }
+
+  .sidebar-logo {
+    padding-left: calc(var(--brand-mark-size) + var(--brand-logo-gap));
+    height: var(--brand-mark-size);
+  }
+
+  .word-logo {
+    height: var(--brand-mark-size);
+  }
+
+  .sidebar-toggle {
+    width: var(--brand-mark-size);
+    height: var(--brand-mark-size);
+  }
+
+  .sidebar-toggle svg {
+    width: var(--brand-mark-size);
+    height: var(--brand-mark-size);
   }
 }

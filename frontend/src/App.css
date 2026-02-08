@@ -100,15 +100,18 @@
 
 .greeting-text {
   font-family: var(--display-font), sans-serif;
-  font-size: 44px;
+  font-size: clamp(24px, 8vw, 44px);
   font-weight: 700;
-  line-height: 44px;
+  line-height: 1;
   text-align: center;
   color: var(--primary);
   margin: 0;
   letter-spacing: -0.02em;
   transform-style: preserve-3d;
   backface-visibility: hidden;
+  white-space: nowrap;
+  max-width: 90vw;
+  overflow: visible;
 }
 
 .greeting-hero-text {

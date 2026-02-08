@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, type MutableRefObject } from 'react'
 import { motion } from 'framer-motion'
 import {
   FirstAid as FirstAidIcon,
@@ -10,9 +10,10 @@ import isURL from 'validator/lib/isURL'
 interface LinkProps {
   onClose: () => void
   onSubmit: (url: string) => void
+  submitRef?: MutableRefObject<(() => void) | null>
 }
 
-export function Link({ onClose, onSubmit }: LinkProps) {
+export function Link({ onClose, onSubmit, submitRef }: LinkProps) {
   const [url, setUrl] = useState('')
   const [isValid, setIsValid] = useState(false)
 
@@ -79,6 +80,11 @@ export function Link({ onClose, onSubmit }: LinkProps) {
       })
     }
   }
+
+  useEffect(() => {
+    if (submitRef) submitRef.current = handleSubmit
+    return () => { if (submitRef) submitRef.current = null }
+  })
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && isValid) {
