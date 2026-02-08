@@ -88,7 +88,8 @@ limiter = Limiter(
     app=app,
     key_func=get_remote_address,
     storage_uri=RateLimitConfig.get_storage_uri(),
-    default_limits=RateLimitConfig.DEFAULT_LIMITS
+    default_limits=RateLimitConfig.DEFAULT_LIMITS,
+    default_limits_exempt_when=lambda: request.method == 'OPTIONS'
 )
 
 # Configure logging
