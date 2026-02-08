@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Routes, Route, useParams, useNavigate } from 'react-router-dom'
 import { Toaster, toast } from 'sonner'
 import { validateFile } from './workspace/input/validation'
@@ -160,8 +160,11 @@ function AppContent() {
   }, [sessionId, navigate, user])
 
   // Load session history and sync calendar when user logs in
+  // Use ref to avoid re-fetching when user object reference changes but ID is the same
+  const lastLoadedUserId = useRef<string | null>(null)
   useEffect(() => {
-    if (user) {
+    if (user && user.id !== lastLoadedUserId.current) {
+      lastLoadedUserId.current = user.id
       getUserSessions().then(setSessionHistory).catch(console.error)
 
       // Sync calendar with provider (smart backend decides strategy)
@@ -181,6 +184,8 @@ function AppContent() {
           // Silent fail - don't interrupt user experience if sync fails
           console.error('Calendar sync failed:', error)
         })
+    } else if (!user) {
+      lastLoadedUserId.current = null
     }
   }, [user])
 

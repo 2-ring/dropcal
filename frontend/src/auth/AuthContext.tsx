@@ -76,40 +76,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
 
     // Subscribe to auth state changes
-    const unsubscribe = onAuthStateChange(async (newSession) => {
+    // Only run expensive sync operations on SIGNED_IN (actual login, not session restore)
+    const unsubscribe = onAuthStateChange(async (newSession, event) => {
       setSession(newSession);
 
       if (newSession) {
         const currentUser = await getCurrentUser();
         setUser(currentUser);
 
-        // Sync user profile to backend (creates account if first time)
-        // This happens after successful Google OAuth sign-in
-        try {
-          const result = await syncUserProfile();
-          console.log(result.is_new_user ? 'Account created successfully' : 'Welcome back');
-          console.log('User profile synced:', result.user);
-
-          // Fetch full profile to get preferences
-          const profile = await getUserProfile();
-          if (profile.user?.preferences) {
-            setPreferences(profile.user.preferences);
-          }
-        } catch (error) {
-          console.error('Failed to sync user profile:', error);
-        }
-
-        // If provider_token exists, send Google Calendar tokens to backend
-        // This is present after OAuth redirect when calendar scopes were requested
-        if (newSession.provider_token) {
+        // Only sync profile and store tokens on actual sign-in (not session restore or token refresh)
+        if (event === 'SIGNED_IN') {
           try {
-            await storeGoogleCalendarTokens({
-              access_token: newSession.provider_token,
-              refresh_token: newSession.provider_refresh_token || undefined,
-            });
-            console.log('Google Calendar tokens stored successfully');
+            const result = await syncUserProfile();
+            console.log(result.is_new_user ? 'Account created successfully' : 'Welcome back');
+            console.log('User profile synced:', result.user);
+
+            // Fetch full profile to get preferences
+            const profile = await getUserProfile();
+            if (profile.user?.preferences) {
+              setPreferences(profile.user.preferences);
+            }
           } catch (error) {
-            console.error('Failed to store Google Calendar tokens:', error);
+            console.error('Failed to sync user profile:', error);
+          }
+
+          // If provider_token exists, send Google Calendar tokens to backend
+          // This is present after OAuth redirect when calendar scopes were requested
+          if (newSession.provider_token) {
+            try {
+              await storeGoogleCalendarTokens({
+                access_token: newSession.provider_token,
+                refresh_token: newSession.provider_refresh_token || undefined,
+              });
+              console.log('Google Calendar tokens stored successfully');
+            } catch (error) {
+              console.error('Failed to store Google Calendar tokens:', error);
+            }
           }
         }
       } else {

@@ -1,43 +1,113 @@
 # DropCal
 
-**Drop anything in. Get calendar events out.**
+Converts messy text, images, audio, PDFs, and emails into calendar events via a multi-agent AI pipeline. Three-app monorepo: `backend/` (Flask/Python), `frontend/` (React/Vite/TypeScript), `mobile/` (Expo/React Native).
 
-## The Problem
+Production: dropcal.ai (frontend) / api.dropcal.ai (backend)
 
-Manually entering calendar events from emails, texts, flyers, and screenshots is tedious and time-consuming. The friction between "things to schedule" and "actually scheduled" kills productivity.
+## Architecture
 
-## The Solution
+### Agent Pipeline
 
-DropCal is a universal input funnel for calendar events. Paste text, upload an image, forward an email—get perfectly formatted events ready for your calendar. No manual entry, no reformatting.
+The core is a 5-agent LangChain pipeline. Each agent inherits from `BaseAgent` (`backend/core/base_agent.py`), uses `.with_structured_output(PydanticModel)` for typed returns, and loads prompts from a `prompts/` directory relative to its own file.
 
-## What It Does
+```
+Input → Agent 1 (Identification) → Agent 2 (Extraction) → Agent 3 (Formatting)
+                                         ↕ parallel per event
+        Agent 4 (Modification) ← user edits
+        Agent 5 (Preferences)  ← learned patterns
+```
 
-**Handles messy inputs.** Takes unstructured text with abbreviations, typos, and informal language. Extracts event information exactly as written.
+| Agent | File | Input → Output | Job |
+|-------|------|---------------|-----|
+| 1 - Identification | `extraction/agents/identification.py` | raw text/image → `IdentificationResult` | Find all events in input |
+| 2 - Extraction | `extraction/agents/facts.py` | per-event raw_text → `ExtractedFacts` | Normalize dates/times/fields |
+| 3 - Formatting | `extraction/agents/formatting.py` | `ExtractedFacts` → `CalendarEvent` | Format for calendar API |
+| 4 - Modification | `modification/agent.py` | user edit request → modified event | Handle user corrections |
+| 5 - Preferences | `preferences/agent.py` | event + patterns → personalized event | Apply learned preferences |
 
-**Cleans and standardizes.** Fixes spelling, expands acronyms (mtg → Meeting), converts relative dates (tmrw → actual date), formats times consistently (2pm → 14:00).
+All Pydantic models live in `backend/extraction/models.py`. Agents 2+3 run in parallel per event using threads with a `db_lock` (because `Session.add_event` does read-modify-write).
 
-**Detects conflicts.** Checks new events against existing calendar to flag overlaps.
+### LLM Provider Config
 
-**Outputs clean calendar events.** Formats everything for Google Calendar API. Ready to add with one click.
+`backend/config/text.py` controls which LLM each agent uses. Switch between presets by changing the `CONFIG` line:
+- `TextModelConfig.all_grok()` — current default, uses $2.5k xAI credits
+- `TextModelConfig.all_claude()` — production quality (claude-sonnet-4-5)
+- `TextModelConfig.hybrid_optimized()` — Claude for complex tasks, Grok for simple
 
-## How It Works
+Each agent can use a different provider. `create_text_model(component)` returns the right LangChain LLM.
 
-Multi-agent AI pipeline where each stage has one job. Extract raw event data from text. Normalize and standardize the information. Check for scheduling conflicts. Format for calendar APIs. Standard interfaces between each step.
+### Processing Flow
 
-Built with LangChain for orchestration, Claude Sonnet 4 for intelligent parsing with structured outputs, Google Calendar API for integration.
+1. Frontend creates a session (`POST /api/sessions`) → backend returns session ID
+2. `SessionProcessor` runs the pipeline asynchronously (title generation in parallel background thread)
+3. Frontend polls `GET /api/sessions/:id` until status is `processed` or `error`
+4. Uses standard formatting for guests or users with <10 events, personalized formatting otherwise
 
-## Why It Matters
+### Factory Patterns
 
-Current calendar tools require semi-structured input or manual entry. DropCal handles truly messy, real-world text—the way people actually communicate about events. Built by someone who juggles multiple calendars, course schedules, and event flyers and needed a system that just works.
+- **Input processors** (`backend/processors/factory.py`): `InputProcessorFactory` routes to `AudioProcessor`, `ImageProcessor`, `PDFProcessor`, `TextFileProcessor`. All inherit `BaseInputProcessor` with `process()` and `supports_file()`.
+- **Calendar providers** (`backend/calendars/factory.py`): Routes to `google/`, `microsoft/`, `apple/` subdirectories. Each has `auth`, `fetch`, `create` modules. Auto-routes to user's `primary_calendar_provider`.
 
----
+## Database
 
-## AI Agent Guidelines
+Supabase PostgreSQL. Singleton client via `get_supabase()` in `database/supabase_client.py`.
 
-**Documentation:** Only create markdown files for genuinely insightful information that will be useful an hour+ later. No completion reports, summaries of work just done, or self-evident documentation.
+Three tables: `users`, `sessions`, `events`. Models in `backend/database/models.py` use static methods for CRUD (not an ORM).
 
-**Available CLIs:** The AWS CLI (`aws`) and Supabase CLI (`supabase`) are installed and authenticated. Use them directly for infrastructure tasks, database operations, migrations, and deployments.
+Key patterns:
+- OAuth tokens are **encrypted with Fernet** (`utils/encryption.py`). Never store tokens in plaintext.
+- Session statuses: `pending` → `processing` → `processed` | `error`
+- Guest sessions use `secrets.token_hex(32)` access tokens, separate endpoints (`/api/sessions/guest`)
+- Events support soft delete (`deleted_at`), draft status, correction history, and 384-dim vector embeddings (pgvector)
+- Conflicts checked via `get_conflicting_events` Supabase RPC function
 
----
+## Auth
 
-**Built for Hack@Brown 2026 | Marshall Wace Track**
+- Supabase Auth handles JWT tokens. Backend validates with `@require_auth` decorator (`auth/middleware.py`) which sets `request.user_id`.
+- Frontend: `AuthContext` (React Context) manages state, `useAuth()` hook for components.
+- Google OAuth for auth + calendar scopes. Microsoft MSAL for Outlook. Apple CalDAV with app-specific passwords.
+
+## Key Commands
+
+```bash
+# Backend
+cd backend && python app.py                    # Dev server (port 5000)
+cd backend && gunicorn wsgi:app -b 0.0.0.0:8000  # Production
+cd backend && pytest tests/                    # Run tests
+
+# Frontend
+cd frontend && npm run dev                     # Vite dev server (port 5173)
+cd frontend && npm run build                   # Production build
+cd frontend && npx tsc --noEmit                # Type check
+
+# Deploy (CI/CD does this on push to main)
+cd backend && eb deploy dropcal-prod           # Backend → Elastic Beanstalk
+cd frontend && aws s3 sync dist/ s3://dropcal-frontend --delete  # Frontend → S3
+
+# Database
+supabase db push                               # Apply migrations
+supabase migration new <name>                  # Create migration
+```
+
+## Conventions
+
+- **Python**: PascalCase classes, snake_case functions, Pydantic models for all structured LLM output. Agents use `ChatPromptTemplate` → `chain.invoke()`. Flask blueprints for route groups.
+- **TypeScript**: PascalCase components, camelCase functions/hooks. API client in `frontend/src/api/backend-client.ts`. Types in `frontend/src/api/types.ts`.
+- **New agents**: Inherit `BaseAgent`, implement `execute()`, add Pydantic model to `extraction/models.py`, put prompt in `prompts/` dir next to agent.
+- **New calendar providers**: Add `auth.py`, `fetch.py`, `create.py` in `backend/calendars/<provider>/`, register in `factory.py`.
+- **New input processors**: Inherit `BaseInputProcessor`, register in `app.py` via `input_processor_factory.register_processor()`.
+
+## Gotchas
+
+- `app.py` initializes ALL agents and services at module import time — heavy startup, but needed for Gunicorn preloading.
+- Rate limiting uses Redis in production (`REDIS_URL`), falls back to in-memory in dev.
+- Max file upload: 25MB (`app.config['MAX_CONTENT_LENGTH']`).
+- Backend `sys.path` manipulation at top of `app.py` — imports assume `backend/` is the working directory.
+- CORS allows `localhost:3000`, `localhost:5173`, `dropcal.ai`, `www.dropcal.ai` only.
+
+## Rules
+
+- Only create markdown files for genuinely useful information. No completion reports, summaries, or self-evident docs.
+- AWS CLI (`aws`) and Supabase CLI (`supabase`) are installed and authenticated. Use them directly.
+- Don't modify `utils/encryption.py` or token encryption logic without explicit request.
+- When adding new endpoints, follow the blueprint pattern (see `auth/routes.py`, `calendars/routes.py`, `sessions/routes.py`).

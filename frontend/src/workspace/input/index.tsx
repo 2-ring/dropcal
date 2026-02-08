@@ -45,7 +45,7 @@ export function InputWorkspace({
         id: 'guest-mode',
         icon: HandWaving,
         iconWeight: 'duotone',
-        message: 'Hey! Welcome to dropcal. Keep in mind you need an account to sync your calender.',
+        message: 'Hey! Welcome to DropCal. Keep in mind you need an account to sync your calendar.',
         variant: 'info',
         persistent: true,
         priority: -1, // Low priority, shows when no other notifications

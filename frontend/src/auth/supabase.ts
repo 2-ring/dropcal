@@ -118,10 +118,12 @@ export async function getAccessToken(): Promise<string | null> {
 /**
  * Subscribe to auth state changes.
  * Returns an unsubscribe function.
+ *
+ * Events: INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, USER_UPDATED
  */
-export function onAuthStateChange(callback: (session: Session | null) => void) {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback(session);
+export function onAuthStateChange(callback: (session: Session | null, event: string) => void) {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    callback(session, event);
   });
 
   return () => subscription.unsubscribe();

@@ -83,12 +83,15 @@ CORS(app,
      allow_headers=['Content-Type', 'Authorization'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 
-# Configure rate limiting (for guest endpoints)
+# Configure rate limiting
+# Default limits are generous (authenticated users make many calls on page load).
+# Guest endpoints have stricter explicit @limiter.limit() decorators.
+# OPTIONS is always exempt (CORS preflight).
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
     storage_uri=RateLimitConfig.get_storage_uri(),
-    default_limits=RateLimitConfig.DEFAULT_LIMITS,
+    default_limits=["2000 per day", "500 per hour"],
     default_limits_exempt_when=lambda: request.method == 'OPTIONS'
 )
 
