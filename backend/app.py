@@ -38,8 +38,7 @@ from events.service import EventService
 
 # Import agent modules
 from extraction.agents.identification import EventIdentificationAgent
-from extraction.agents.facts import FactExtractionAgent
-from extraction.agents.formatting import CalendarFormattingAgent
+from extraction.agents.facts import EventExtractionAgent
 from modification.agent import EventModificationAgent
 from preferences.agent import PreferenceApplicationAgent
 
@@ -130,7 +129,6 @@ from config.audio import print_audio_config
 # Create LLM instances for each component based on config
 llm_agent_1 = create_text_model('agent_1_identification')
 llm_agent_2 = create_text_model('agent_2_extraction')
-llm_agent_3 = create_text_model('agent_3_formatting')
 llm_agent_4 = create_text_model('agent_4_modification')
 llm_agent_5 = create_text_model('agent_5_preferences')
 llm_pattern_discovery = create_text_model('pattern_discovery')
@@ -156,8 +154,7 @@ data_collection_service = DataCollectionService(calendar_service)
 
 # Initialize Agents with their configured models
 agent_1_identification = EventIdentificationAgent(llm_agent_1)
-agent_2_extraction = FactExtractionAgent(llm_agent_2)
-agent_3_formatting = CalendarFormattingAgent(llm_agent_3)
+agent_2_extraction = EventExtractionAgent(llm_agent_2)
 agent_4_modification = EventModificationAgent(llm_agent_4)
 agent_5_preferences = PreferenceApplicationAgent(llm_agent_5)
 
@@ -324,29 +321,21 @@ def process_input():
     else:
         return jsonify({'error': 'No file or text provided'}), 400
 
-    # Step 2: Load user preferences (if authenticated)
-    user_preferences = None
+    # Step 2: Determine user timezone (if authenticated)
+    timezone = 'America/New_York'
     try:
-        # Check if user is authenticated (JWT token in header)
         auth_header = request.headers.get('Authorization')
         if auth_header and auth_header.startswith('Bearer '):
-            # User is authenticated - try to load their preferences
             from auth.middleware import verify_token
             token = auth_header.replace('Bearer ', '')
             decoded = verify_token(token)
             if decoded:
                 user_id = decoded.get('sub')
-                # Load preferences from file
                 preferences_obj = personalization_service.load_preferences(user_id)
-                if preferences_obj:
-                    user_preferences = {
-                        'timezone': preferences_obj.timezone or 'America/New_York',
-                        'date_format': preferences_obj.date_format or 'MM/DD/YYYY'
-                    }
+                if preferences_obj and preferences_obj.timezone:
+                    timezone = preferences_obj.timezone
     except Exception as e:
-        print(f"Note: Could not load user preferences: {e}")
-        # Continue without preferences (will use defaults)
-        pass
+        print(f"Note: Could not load user timezone: {e}")
 
     # Step 3: Run full agent pipeline with validation error handling
     try:
@@ -374,45 +363,34 @@ def process_input():
                 'message': 'No calendar events found in input'
             })
 
-        # Step 4: Extract and format events in parallel with per-event error handling
+        # Step 4: Extract events in parallel with per-event error handling
         def process_single_event_api(idx, event):
-            """Process one event through Agent 2 + Agent 3 for /api/process."""
+            """Process one event through Agent 2 for /api/process."""
             try:
-                # Agent 2: Fact Extraction
                 try:
-                    facts = agent_2_extraction.execute(
+                    calendar_event = agent_2_extraction.execute(
                         event.raw_text,
-                        event.description
+                        event.description,
+                        timezone=timezone
                     )
 
                     # Log soft warning for long titles (>8 words)
                     warning = None
-                    if len(facts.title.split()) > 8:
-                        warning = f"Event {idx+1}: Title is long ({len(facts.title.split())} words). Consider shortening."
+                    if len(calendar_event.summary.split()) > 8:
+                        warning = f"Event {idx+1}: Title is long ({len(calendar_event.summary.split())} words). Consider shortening."
                         logger.warning(warning)
+
+                    return EventProcessingResult(
+                        index=idx, success=True,
+                        calendar_event=calendar_event.model_dump(),
+                        warning=warning,
+                    )
 
                 except ValidationError as e:
                     logger.error(f"Validation error in Agent 2 (Extraction) for event {idx+1}: {e}")
                     return EventProcessingResult(
                         index=idx, success=False,
                         warning=f"Event {idx+1} ('{event.description[:50]}...'): Failed validation - {get_validation_summary(e)}"
-                    )
-
-                # Agent 3: Calendar Formatting
-                try:
-                    calendar_event = agent_3_formatting.execute(facts, user_preferences)
-                    return EventProcessingResult(
-                        index=idx, success=True,
-                        calendar_event=calendar_event.model_dump(),
-                        facts=facts,
-                        warning=warning,
-                    )
-
-                except ValidationError as e:
-                    logger.error(f"Validation error in Agent 3 (Formatting) for event {idx+1}: {e}")
-                    return EventProcessingResult(
-                        index=idx, success=False,
-                        warning=f"Event {idx+1} ('{facts.title}'): Calendar formatting failed - {get_validation_summary(e)}"
                     )
 
             except Exception as e:

@@ -142,104 +142,123 @@ class ExtractedFacts(BaseModel):
 
 
 # ============================================================================
-# Agent 3: Calendar Formatting
+# Agent 2 Output / Pipeline Standard Model
 # ============================================================================
 
 class CalendarDateTime(BaseModel):
-    """Date/time in calendar format"""
-    dateTime: str = Field(description="ISO 8601 datetime with timezone: '2026-02-01T14:00:00-05:00'")
-    timeZone: str = Field(description="IANA timezone: 'America/New_York'")
+    """Date/time supporting both timed events and all-day events"""
+    dateTime: Optional[str] = Field(default=None, description="ISO 8601 datetime with timezone for timed events: '2026-02-01T14:00:00-05:00'")
+    date: Optional[str] = Field(default=None, description="YYYY-MM-DD date for all-day events: '2026-02-05'")
+    timeZone: Optional[str] = Field(default=None, description="IANA timezone: 'America/New_York'")
+
+    @model_validator(mode='after')
+    def validate_has_date_or_datetime(self):
+        """Ensure either dateTime or date is provided, not both"""
+        if self.dateTime and self.date:
+            raise ValueError("Provide either dateTime (timed event) or date (all-day event), not both")
+        if not self.dateTime and not self.date:
+            raise ValueError("Must provide either dateTime or date")
+        return self
 
     @field_validator('dateTime')
     @classmethod
-    def validate_datetime(cls, v: str) -> str:
-        """
-        Validate ISO 8601 datetime format with timezone.
-        Expected format: 2026-02-05T14:00:00-05:00 or 2026-02-05T14:00:00Z
-        """
-        if not v or not isinstance(v, str):
-            raise ValueError("dateTime must be a non-empty string")
+    def validate_datetime(cls, v: Optional[str]) -> Optional[str]:
+        """Validate ISO 8601 datetime format with timezone"""
+        if v is None:
+            return v
 
-        # ISO 8601 pattern with timezone offset or Z
-        # Matches: YYYY-MM-DDTHH:MM:SS±HH:MM or YYYY-MM-DDTHH:MM:SSZ
+        if not isinstance(v, str):
+            raise ValueError("dateTime must be a string")
+
         iso_pattern = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}([+-]\d{2}:\d{2}|Z)$'
-
         if not re.match(iso_pattern, v):
             raise ValueError(
                 f"dateTime must be ISO 8601 format with timezone "
-                f"(e.g., '2026-02-05T14:00:00-05:00' or '2026-02-05T14:00:00Z'), got '{v}'"
+                f"(e.g., '2026-02-05T14:00:00-05:00'), got '{v}'"
             )
 
-        # Validate it parses to a real datetime
         try:
-            # Use basic parsing for validation (dateutil will be added later)
-            # For now, just check the format is correct
-            if v.endswith('Z'):
-                datetime.strptime(v[:-1], '%Y-%m-%dT%H:%M:%S')
-            else:
-                # Check date and time parts are valid
-                date_time_part = v[:19]  # YYYY-MM-DDTHH:MM:SS
-                datetime.strptime(date_time_part, '%Y-%m-%dT%H:%M:%S')
+            date_time_part = v[:19]
+            datetime.strptime(date_time_part, '%Y-%m-%dT%H:%M:%S')
         except ValueError as e:
             raise ValueError(f"Invalid ISO 8601 datetime '{v}': {str(e)}")
 
         return v
 
+    @field_validator('date')
+    @classmethod
+    def validate_date(cls, v: Optional[str]) -> Optional[str]:
+        """Validate YYYY-MM-DD date format for all-day events"""
+        if v is None:
+            return v
+
+        if not isinstance(v, str):
+            raise ValueError("date must be a string")
+
+        date_pattern = r'^\d{4}-\d{2}-\d{2}$'
+        if not re.match(date_pattern, v):
+            raise ValueError(f"date must be YYYY-MM-DD format, got '{v}'")
+
+        try:
+            datetime.strptime(v, '%Y-%m-%d')
+        except ValueError as e:
+            raise ValueError(f"Invalid date '{v}': {str(e)}")
+
+        return v
+
     @field_validator('timeZone')
     @classmethod
-    def validate_timezone(cls, v: str) -> str:
-        """
-        Validate IANA timezone string.
-        Examples: 'America/New_York', 'Europe/London', 'UTC'
-        """
-        if not v or not isinstance(v, str):
-            raise ValueError("timeZone must be a non-empty string")
+    def validate_timezone(cls, v: Optional[str]) -> Optional[str]:
+        """Validate IANA timezone string"""
+        if v is None:
+            return v
 
-        # Check if timezone exists in pytz
+        if not isinstance(v, str):
+            raise ValueError("timeZone must be a string")
+
         try:
             pytz.timezone(v)
         except pytz.exceptions.UnknownTimeZoneError:
-            # Provide helpful error with common timezones
-            common_timezones = [
-                'America/New_York', 'America/Chicago', 'America/Denver',
-                'America/Los_Angeles', 'UTC', 'Europe/London'
-            ]
             raise ValueError(
                 f"Invalid IANA timezone '{v}'. "
-                f"Examples: {', '.join(common_timezones[:4])}..."
+                f"Examples: America/New_York, America/Chicago, UTC, Europe/London"
             )
 
         return v
 
 
-class CalendarRecurrence(BaseModel):
-    """Recurrence rule in RRULE format"""
-    rrule: str = Field(description="RRULE string: 'RRULE:FREQ=WEEKLY;BYDAY=TU' or 'RRULE:FREQ=DAILY'")
-
-
 class CalendarEvent(BaseModel):
-    """Formatted calendar event ready for Google Calendar API"""
-    summary: str = Field(description="Event title/name")
+    """
+    Unified calendar event model — the standard output for the extraction pipeline.
+
+    Produced by Agent 2 (extraction), optionally enhanced by Agent 3 (personalization),
+    consumed by Agent 4 (modification) and the calendar write layer.
+    """
+    summary: str = Field(description="Event title — clean, descriptive, and scannable")
     start: CalendarDateTime = Field(description="Start date/time")
     end: CalendarDateTime = Field(description="End date/time")
-    location: Optional[str] = Field(default=None, description="Event location")
+    location: Optional[str] = Field(default=None, description="Physical location (standardized)")
     description: Optional[str] = Field(default=None, description="Event description/notes")
-    recurrence: Optional[List[str]] = Field(default=None, description="List of RRULE strings for recurring events")
-    attendees: Optional[List[str]] = Field(default=None, description="List of attendee email addresses or names")
+    recurrence: Optional[List[str]] = Field(default=None, description="RRULE strings for recurring events")
+    attendees: Optional[List[str]] = Field(default=None, description="Attendee email addresses")
+
+    # Metadata from extraction
+    meeting_url: Optional[str] = Field(default=None, description="Virtual meeting link (Zoom, Teams, etc.)")
+    people: Optional[List[str]] = Field(default=None, description="People mentioned by name")
+    instructions: Optional[str] = Field(default=None, description="User's explicit requests: 'remind me 1 hour before', 'high priority'")
+
+    # Set by extraction (if explicit) or personalization agent
+    calendar: Optional[str] = Field(default=None, description="Target calendar name. None = primary calendar.")
+    colorId: Optional[str] = Field(default=None, description="Calendar color ID. Set by personalization agent.")
 
     @field_validator('summary')
     @classmethod
     def validate_summary(cls, v: str) -> str:
-        """
-        Validate summary (title) length.
-        Hard limit: 100 characters for consistency
-        """
+        """Validate and truncate summary"""
         if not v or not v.strip():
             raise ValueError("Summary cannot be empty")
 
         v = v.strip()
-
-        # Hard limit: 100 characters - truncate if exceeded
         if len(v) > 100:
             v = v[:97] + "..."
 
@@ -248,11 +267,7 @@ class CalendarEvent(BaseModel):
     @field_validator('recurrence')
     @classmethod
     def validate_recurrence(cls, v: Optional[List[str]]) -> Optional[List[str]]:
-        """
-        Validate RRULE format for recurrence rules.
-        Expected format: ['RRULE:FREQ=WEEKLY;BYDAY=TU', ...]
-        Basic validation: checks prefix, FREQ parameter, and BYDAY codes
-        """
+        """Validate RRULE format"""
         if v is None:
             return v
 
@@ -264,41 +279,27 @@ class CalendarEvent(BaseModel):
                 raise ValueError(f"Each RRULE must be a string, got {type(rule).__name__}")
 
             if not rule.startswith('RRULE:'):
-                raise ValueError(
-                    f"RRULE must start with 'RRULE:', got '{rule}'"
-                )
+                raise ValueError(f"RRULE must start with 'RRULE:', got '{rule}'")
 
-            # Basic validation of RRULE format
-            rrule_content = rule[6:]  # Remove 'RRULE:' prefix
+            rrule_content = rule[6:]
 
-            # Must have FREQ
             if 'FREQ=' not in rrule_content:
-                raise ValueError(
-                    f"RRULE must contain FREQ parameter, got '{rule}'"
-                )
+                raise ValueError(f"RRULE must contain FREQ parameter, got '{rule}'")
 
-            # Validate FREQ values
             valid_freq = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']
             freq_match = re.search(r'FREQ=(\w+)', rrule_content)
-            if freq_match:
-                freq_value = freq_match.group(1)
-                if freq_value not in valid_freq:
-                    raise ValueError(
-                        f"Invalid FREQ value '{freq_value}', must be one of {valid_freq}"
-                    )
+            if freq_match and freq_match.group(1) not in valid_freq:
+                raise ValueError(f"Invalid FREQ value '{freq_match.group(1)}', must be one of {valid_freq}")
 
-            # If BYDAY is present, validate day codes
             if 'BYDAY=' in rrule_content:
                 valid_days = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']
                 byday_match = re.search(r'BYDAY=([A-Z,]+)', rrule_content)
                 if byday_match:
-                    days = byday_match.group(1).split(',')
-                    for day in days:
-                        # Remove any numeric prefix (e.g., "2TU" -> "TU")
+                    for day in byday_match.group(1).split(','):
                         day_code = re.sub(r'^\d+', '', day)
                         if day_code not in valid_days:
-                            raise ValueError(
-                                f"Invalid BYDAY code '{day}', day code must be one of {valid_days}"
-                            )
+                            raise ValueError(f"Invalid BYDAY code '{day}', must be one of {valid_days}")
+
+        return v
 
         return v

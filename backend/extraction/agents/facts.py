@@ -1,75 +1,66 @@
 """
-Semantic Fact Extraction Agent (Agent 2)
-Extracts structured facts from identified event text.
+Event Extraction Agent (Agent 2)
+Reads raw event text and produces a complete, high-quality CalendarEvent.
 """
 
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timedelta
 from pathlib import Path
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
 from core.base_agent import BaseAgent
-from extraction.models import ExtractedFacts
+from extraction.models import CalendarEvent
 
 
-class FactExtractionAgent(BaseAgent):
+class EventExtractionAgent(BaseAgent):
     """
-    Extracts structured facts from identified event text.
-    Third agent in the pipeline.
+    Extracts facts from raw event text and produces a complete CalendarEvent.
+    Second agent in the pipeline (after identification).
     """
 
     def __init__(self, llm: ChatAnthropic):
-        """
-        Initialize Fact Extraction Agent.
+        super().__init__("Agent2_EventExtraction")
+        self.llm = llm.with_structured_output(CalendarEvent)
 
-        Args:
-            llm: Language model instance
-        """
-        super().__init__("Agent2_FactExtraction")
-        self.llm = llm.with_structured_output(ExtractedFacts)
-
-        # Load prompt from extraction/prompts directory
-        prompt_path = Path(__file__).parent.parent / "prompts" / "facts.txt"
+        prompt_path = Path(__file__).parent.parent / "prompts" / "extraction.txt"
         with open(prompt_path, 'r') as f:
             self.prompt_template = f.read()
 
     def execute(
         self,
         raw_text_list: List[str],
-        description: str
-    ) -> ExtractedFacts:
+        description: str,
+        timezone: str = 'America/New_York'
+    ) -> CalendarEvent:
         """
-        Extract and normalize semantic facts from event text.
+        Extract event from raw text and produce a calendar event.
 
         Args:
-            raw_text_list: List of text chunks for the event
-            description: Uniquely identifying description of the event
+            raw_text_list: Text chunks for the event (from Agent 1)
+            description: Identifying description of the event (from Agent 1)
+            timezone: User's IANA timezone
 
         Returns:
-            ExtractedFacts with normalized dates/times
+            CalendarEvent ready for calendar API (or personalization)
         """
         if not raw_text_list:
-            raise ValueError("No raw_text provided for fact extraction")
+            raise ValueError("No raw_text provided for event extraction")
 
-        # Generate temporal context for date/time normalization
         temporal_context = self._generate_temporal_context()
-
-        # Combine raw_text chunks for processing
         combined_text = ' '.join(raw_text_list)
 
-        # Format system prompt with temporal context
         system_prompt = self.prompt_template.format(
-            temporal_context=temporal_context
+            temporal_context=temporal_context,
+            timezone=timezone
         )
 
-        fact_extraction_prompt = ChatPromptTemplate.from_messages([
+        extraction_prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),
-            ("human", "Event description: {description}\n\nEvent text: {text}\n\nExtract and normalize all semantic facts from this event.")
+            ("human", "Event description: {description}\n\nEvent text: {text}\n\nProduce a complete calendar event.")
         ])
 
-        # Run fact extraction
-        chain = fact_extraction_prompt | self.llm
+        chain = extraction_prompt | self.llm
         result = chain.invoke({
             "description": description,
             "text": combined_text
@@ -78,10 +69,9 @@ class FactExtractionAgent(BaseAgent):
         return result
 
     def _generate_temporal_context(self) -> str:
-        """Generate temporal context for date/time normalization"""
+        """Generate temporal context for date/time resolution"""
         now = datetime.now()
 
-        # Calculate next occurrences of each weekday
         weekdays = []
         for i in range(7):
             next_day = self._get_next_weekday(now, i)
@@ -107,6 +97,6 @@ Current time: {now.strftime('%H:%M:%S')}
     def _get_next_weekday(self, date: datetime, weekday: int) -> datetime:
         """Get next occurrence of weekday (0=Monday, 6=Sunday)"""
         days_ahead = weekday - date.weekday()
-        if days_ahead <= 0:  # Target day already happened this week
+        if days_ahead <= 0:
             days_ahead += 7
         return date + timedelta(days_ahead)

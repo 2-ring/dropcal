@@ -11,9 +11,7 @@ import traceback
 from database.models import Session as DBSession, Event
 from processors.factory import InputProcessorFactory, InputType
 from extraction.agents.identification import EventIdentificationAgent
-from extraction.agents.facts import FactExtractionAgent
-from extraction.agents.formatting import CalendarFormattingAgent
-from extraction.agents.standard_formatting import StandardFormattingAgent
+from extraction.agents.facts import EventExtractionAgent
 from extraction.title_generator import get_title_generator
 from events.service import EventService
 from processing.parallel import process_events_parallel, EventProcessingResult
@@ -23,9 +21,6 @@ logger = logging.getLogger(__name__)
 
 class SessionProcessor:
     """Processes sessions through the full AI pipeline."""
-
-    # Threshold for "minimal history" (events needed before using personalized formatting)
-    MIN_HISTORY_THRESHOLD = 10
 
     def __init__(self, llm, input_processor_factory: InputProcessorFactory):
         """
@@ -38,45 +33,23 @@ class SessionProcessor:
         self.llm = llm
         self.input_processor_factory = input_processor_factory
 
-        # Initialize all agents
+        # Initialize agents
         self.agent_1_identification = EventIdentificationAgent(llm)
-        self.agent_2_extraction = FactExtractionAgent(llm)
-        self.agent_3_formatting = CalendarFormattingAgent(llm)
-        self.agent_3_standard_formatting = StandardFormattingAgent(llm)
+        self.agent_2_extraction = EventExtractionAgent(llm)
 
         # Initialize title generator
         self.title_generator = get_title_generator()
 
-    def _should_use_standard_formatting(self, session: dict) -> bool:
-        """
-        Determine if we should use standard formatting agent.
-
-        Uses standard formatting for:
-        1. Guest sessions (guest_mode=True)
-        2. Users with minimal calendar history (< MIN_HISTORY_THRESHOLD events)
-
-        Args:
-            session: Session dictionary from database
-
-        Returns:
-            True if standard formatting should be used
-        """
-        # Check if guest session
-        if session.get('guest_mode'):
-            return True
-
-        # Check user's event history
-        user_id = session['user_id']
+    def _get_user_timezone(self, user_id: str) -> str:
+        """Get user's timezone from their profile, default to America/New_York."""
         try:
-            event_count = Event.count_user_events(user_id)
-            if event_count < self.MIN_HISTORY_THRESHOLD:
-                print(f"Using standard formatting: User has only {event_count} events (threshold: {self.MIN_HISTORY_THRESHOLD})")
-                return True
+            from database.models import User
+            user = User.get_by_id(user_id)
+            if user and user.get('timezone'):
+                return user['timezone']
         except Exception as e:
-            print(f"Error checking event count: {e}. Defaulting to standard formatting.")
-            return False
-
-        return False
+            logger.warning(f"Could not fetch user timezone: {e}")
+        return 'America/New_York'
 
     def _generate_and_update_title(self, session_id: str, text: str, metadata: dict = None) -> None:
         """
@@ -106,7 +79,7 @@ class SessionProcessor:
         session_id: str,
         user_id: str,
         events: list,
-        formatting_agent,
+        timezone: str,
     ) -> None:
         """
         Process identified events in parallel and write to DB.
@@ -117,21 +90,19 @@ class SessionProcessor:
             session_id: Session ID for DB writes
             user_id: User ID for event ownership
             events: List of IdentifiedEvent objects from Agent 1
-            formatting_agent: The Agent 3 instance to use
+            timezone: User's IANA timezone
         """
         # Lock for thread-safe DB writes (Session.add_event does read-modify-write)
         db_lock = threading.Lock()
 
         def process_single_event(idx, event):
             try:
-                # Agent 2: Fact Extraction
-                facts = self.agent_2_extraction.execute(
+                # Agent 2: Extract facts and produce calendar event
+                calendar_event = self.agent_2_extraction.execute(
                     event.raw_text,
-                    event.description
+                    event.description,
+                    timezone=timezone
                 )
-
-                # Agent 3: Calendar Formatting
-                calendar_event = formatting_agent.execute(facts)
 
                 # DB write with lock to avoid race condition on event_ids
                 with db_lock:
@@ -139,23 +110,23 @@ class SessionProcessor:
                         user_id=user_id,
                         session_id=session_id,
                         summary=calendar_event.summary,
-                        start_time=calendar_event.start.get('dateTime') if calendar_event.start else None,
-                        end_time=calendar_event.end.get('dateTime') if calendar_event.end else None,
-                        start_date=calendar_event.start.get('date') if calendar_event.start else None,
-                        end_date=calendar_event.end.get('date') if calendar_event.end else None,
-                        is_all_day=calendar_event.start.get('date') is not None if calendar_event.start else False,
+                        start_time=calendar_event.start.dateTime,
+                        end_time=calendar_event.end.dateTime,
+                        start_date=calendar_event.start.date,
+                        end_date=calendar_event.end.date,
+                        is_all_day=calendar_event.start.date is not None,
                         description=calendar_event.description,
                         location=calendar_event.location,
                         calendar_name=calendar_event.calendar,
                         color_id=calendar_event.colorId,
                         original_input=event.raw_text,
-                        extracted_facts=facts.model_dump(),
+                        extracted_facts=calendar_event.model_dump(),
                         system_suggestion=calendar_event.model_dump()
                     )
 
                 return EventProcessingResult(
                     index=idx, success=True,
-                    calendar_event=calendar_event, facts=facts
+                    calendar_event=calendar_event
                 )
 
             except Exception as e:
@@ -223,24 +194,16 @@ class SessionProcessor:
             ]
             DBSession.update_extracted_events(session_id, extracted_events)
 
-            # Step 3: Process events in parallel (Fact Extraction + Formatting)
+            # Step 2: Process events in parallel (extraction → calendar event)
             session = DBSession.get_by_id(session_id)
             user_id = session['user_id']
-
-            use_standard_formatting = self._should_use_standard_formatting(session)
-            formatting_agent = (
-                self.agent_3_standard_formatting if use_standard_formatting
-                else self.agent_3_formatting
-            )
-
-            agent_type = "standard" if use_standard_formatting else "personalized"
-            print(f"Using {agent_type} formatting agent for session {session_id}")
+            timezone = self._get_user_timezone(user_id)
 
             self._process_events_for_session(
                 session_id=session_id,
                 user_id=user_id,
                 events=identification_result.events,
-                formatting_agent=formatting_agent,
+                timezone=timezone,
             )
 
             # Mark session as complete
@@ -270,26 +233,16 @@ class SessionProcessor:
             # Update status to processing
             DBSession.update_status(session_id, 'processing')
 
-            # For files stored in Supabase, we need to download them first
-            # For now, if it's a Supabase URL, we'll handle it as-is
-            # The processor can handle URLs directly for images
-
             # Determine if vision is needed
             requires_vision = file_type in ['image', 'pdf']
 
-            # For audio files, we need the actual file path
-            # For now, we'll extract text from the file path/URL
             if file_type == 'audio':
-                # Audio files need to be processed to extract text
-                # This is a simplified version - in production, download from Supabase first
                 text = f"[Audio file content from {file_path}]"
                 metadata = {'source': 'audio', 'file_path': file_path}
             elif file_type == 'image':
-                # Images can be processed with vision
                 text = f"[Image file at {file_path}]"
                 metadata = {'source': 'image', 'file_path': file_path, 'requires_vision': True}
             else:
-                # Default text extraction
                 text = file_path
                 metadata = {'source': file_type, 'file_path': file_path}
 
@@ -324,24 +277,16 @@ class SessionProcessor:
             ]
             DBSession.update_extracted_events(session_id, extracted_events)
 
-            # Step 3: Process events in parallel
+            # Step 2: Process events in parallel (extraction → calendar event)
             session = DBSession.get_by_id(session_id)
             user_id = session['user_id']
-
-            use_standard_formatting = self._should_use_standard_formatting(session)
-            formatting_agent = (
-                self.agent_3_standard_formatting if use_standard_formatting
-                else self.agent_3_formatting
-            )
-
-            agent_type = "standard" if use_standard_formatting else "personalized"
-            print(f"Using {agent_type} formatting agent for session {session_id}")
+            timezone = self._get_user_timezone(user_id)
 
             self._process_events_for_session(
                 session_id=session_id,
                 user_id=user_id,
                 events=identification_result.events,
-                formatting_agent=formatting_agent,
+                timezone=timezone,
             )
 
             # Mark session as complete
