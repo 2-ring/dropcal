@@ -86,7 +86,7 @@ def stream_session_updates(session_id: str):
                 if current_status in ['processed', 'error']:
                     data = json.dumps({
                         'status': current_status,
-                        'has_events': len(session.get('processed_events', [])) > 0
+                        'has_events': len(session.get('event_ids') or session.get('processed_events') or []) > 0
                     })
                     yield f"event: complete\ndata: {data}\n\n"
                     break

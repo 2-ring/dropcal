@@ -13,6 +13,7 @@ import type {
   UploadFileResponse,
   ApiError,
 } from './types';
+import type { CalendarEvent } from '../workspace/events/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -382,6 +383,59 @@ export async function addSessionToCalendar(
   });
 
   return handleResponse(response);
+}
+
+// ============================================================================
+// Events API
+// ============================================================================
+
+/**
+ * Get events for a session from the events table.
+ * Falls back to processed_events blob for old sessions.
+ */
+export async function getSessionEvents(
+  sessionId: string,
+  isGuest: boolean = false
+): Promise<CalendarEvent[]> {
+  if (isGuest) {
+    const accessToken = GuestSessionManager.getAccessToken(sessionId);
+    if (!accessToken) {
+      throw new Error('Access token not found for guest session.');
+    }
+    const response = await fetch(
+      `${API_URL}/api/sessions/guest/${sessionId}/events?access_token=${encodeURIComponent(accessToken)}`,
+      { method: 'GET', headers: { 'Content-Type': 'application/json' } }
+    );
+    const data = await handleResponse<{ events: CalendarEvent[] }>(response);
+    return data.events;
+  }
+
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_URL}/api/sessions/${sessionId}/events`, {
+    method: 'GET',
+    headers,
+  });
+  const data = await handleResponse<{ events: CalendarEvent[] }>(response);
+  return data.events;
+}
+
+/**
+ * Update an event (persists edits and bumps version).
+ */
+export async function updateEvent(
+  eventId: string,
+  updates: Partial<CalendarEvent>
+): Promise<CalendarEvent> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_URL}/api/events/${eventId}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(updates),
+  });
+
+  const data = await handleResponse<{ event: CalendarEvent }>(response);
+  return data.event;
 }
 
 // ============================================================================

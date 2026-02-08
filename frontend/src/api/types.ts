@@ -28,6 +28,7 @@ export interface Session {
   extracted_events?: any[];
   processed_events?: any[];
   conflicts?: any[];
+  event_ids?: string[];
   added_to_calendar: boolean;
   calendar_event_ids?: string[];
   error_message?: string;

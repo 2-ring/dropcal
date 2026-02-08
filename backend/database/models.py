@@ -1136,6 +1136,29 @@ class Event:
         return response.data[0]
 
     @staticmethod
+    def increment_version(event_id: str) -> Dict[str, Any]:
+        """
+        Increment the version counter for an event.
+        Called on every user edit to track changes for provider sync.
+
+        Args:
+            event_id: Event UUID
+
+        Returns:
+            Dict containing updated event data
+        """
+        supabase = get_supabase()
+        event = Event.get_by_id(event_id)
+        if not event:
+            raise ValueError(f"Event {event_id} not found")
+
+        new_version = (event.get('version') or 1) + 1
+        response = supabase.table("events").update({
+            "version": new_version
+        }).eq("id", event_id).execute()
+        return response.data[0]
+
+    @staticmethod
     def confirm_draft(
         event_id: str,
         user_edits: Optional[Dict[str, Any]] = None

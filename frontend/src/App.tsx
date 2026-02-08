@@ -29,6 +29,7 @@ import {
   getSession,
   pollSession,
   addSessionToCalendar,
+  getSessionEvents,
   createGuestTextSession,
   uploadGuestFile,
   getGuestSession,
@@ -67,6 +68,7 @@ function AppContent() {
   // Session state (from backend)
   const [currentSession, setCurrentSession] = useState<BackendSession | null>(null)
   const [sessionHistory, setSessionHistory] = useState<BackendSession[]>([])
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false)
 
   // Guest mode state
   const [isGuestMode, setIsGuestMode] = useState(false)
@@ -93,7 +95,11 @@ function AppContent() {
             console.log('Guest sessions migrated to user account')
             addNotification(createSuccessNotification('Your guest sessions have been saved to your account!'))
             // Refresh session history to show migrated sessions
-            getUserSessions().then(setSessionHistory).catch(console.error)
+            setIsLoadingSessions(true)
+            getUserSessions()
+              .then(setSessionHistory)
+              .catch(console.error)
+              .finally(() => setIsLoadingSessions(false))
           })
           .catch(error => {
             console.error('Failed to migrate guest sessions:', error)
@@ -127,14 +133,30 @@ function AppContent() {
         : getSession(sessionId)
 
       fetchSession
-        .then(session => {
+        .then(async session => {
           setCurrentSession(session)
 
-          if (session.processed_events && session.processed_events.length > 0) {
-            setCalendarEvents(session.processed_events as CalendarEvent[])
-            setAppState('review')
-          } else {
-            setAppState('input')
+          // Fetch events from events table (falls back to processed_events on backend)
+          try {
+            const events = await getSessionEvents(session.id, !user && isGuestSession)
+            if (events.length > 0) {
+              setCalendarEvents(events)
+              setAppState('review')
+            } else if (session.processed_events && session.processed_events.length > 0) {
+              // Backward compat for old sessions without event_ids
+              setCalendarEvents(session.processed_events as CalendarEvent[])
+              setAppState('review')
+            } else {
+              setAppState('input')
+            }
+          } catch {
+            // Fallback to processed_events blob if events endpoint fails
+            if (session.processed_events && session.processed_events.length > 0) {
+              setCalendarEvents(session.processed_events as CalendarEvent[])
+              setAppState('review')
+            } else {
+              setAppState('input')
+            }
           }
         })
         .catch(error => {
@@ -165,7 +187,11 @@ function AppContent() {
   useEffect(() => {
     if (user && user.id !== lastLoadedUserId.current) {
       lastLoadedUserId.current = user.id
-      getUserSessions().then(setSessionHistory).catch(console.error)
+      setIsLoadingSessions(true)
+      getUserSessions()
+        .then(setSessionHistory)
+        .catch(console.error)
+        .finally(() => setIsLoadingSessions(false))
 
       // Sync calendar with provider (smart backend decides strategy)
       syncCalendar()
@@ -255,15 +281,22 @@ function AppContent() {
         !user // isGuest parameter
       )
 
-      // Check if events were found
-      if (!completedSession.processed_events || completedSession.processed_events.length === 0) {
-        setFeedbackMessage("Hmm, we couldn't find any events in there. Try a different file!")
-        setAppState('input')
-        return
+      // Fetch events from events table
+      const events = await getSessionEvents(completedSession.id, !user)
+
+      if (events.length === 0) {
+        // Backward compat: try processed_events blob
+        if (completedSession.processed_events && completedSession.processed_events.length > 0) {
+          setCalendarEvents(completedSession.processed_events as CalendarEvent[])
+        } else {
+          setFeedbackMessage("Hmm, we couldn't find any events in there. Try a different file!")
+          setAppState('input')
+          return
+        }
+      } else {
+        setCalendarEvents(events)
       }
 
-      // Display results
-      setCalendarEvents(completedSession.processed_events as CalendarEvent[])
       setAppState('review')
 
       // Navigate to the session URL
@@ -271,7 +304,11 @@ function AppContent() {
 
       // Refresh session history (only for authenticated users)
       if (user) {
-        getUserSessions().then(setSessionHistory).catch(console.error)
+        setIsLoadingSessions(true)
+        getUserSessions()
+          .then(setSessionHistory)
+          .catch(console.error)
+          .finally(() => setIsLoadingSessions(false))
       }
 
     } catch (error) {
@@ -333,15 +370,22 @@ function AppContent() {
         !user // isGuest parameter
       )
 
-      // Check if events were found
-      if (!completedSession.processed_events || completedSession.processed_events.length === 0) {
-        setFeedbackMessage("The text doesn't appear to contain any calendar events.")
-        setAppState('input')
-        return
+      // Fetch events from events table
+      const events = await getSessionEvents(completedSession.id, !user)
+
+      if (events.length === 0) {
+        // Backward compat: try processed_events blob
+        if (completedSession.processed_events && completedSession.processed_events.length > 0) {
+          setCalendarEvents(completedSession.processed_events as CalendarEvent[])
+        } else {
+          setFeedbackMessage("The text doesn't appear to contain any calendar events.")
+          setAppState('input')
+          return
+        }
+      } else {
+        setCalendarEvents(events)
       }
 
-      // Display results
-      setCalendarEvents(completedSession.processed_events as CalendarEvent[])
       setAppState('review')
 
       // Navigate to the session URL
@@ -349,7 +393,11 @@ function AppContent() {
 
       // Refresh session history (only for authenticated users)
       if (user) {
-        getUserSessions().then(setSessionHistory).catch(console.error)
+        setIsLoadingSessions(true)
+        getUserSessions()
+          .then(setSessionHistory)
+          .catch(console.error)
+          .finally(() => setIsLoadingSessions(false))
       }
 
     } catch (error) {
@@ -476,7 +524,7 @@ function AppContent() {
     timestamp: new Date(session.created_at),
     inputType: session.input_type as 'text' | 'image' | 'audio',
     status: session.status === 'processed' ? 'completed' : session.status === 'error' ? 'error' : 'active',
-    eventCount: session.processed_events?.length || 0,
+    eventCount: session.event_ids?.length || session.processed_events?.length || 0,
   }))
 
   return (
@@ -493,6 +541,7 @@ function AppContent() {
         currentSessionId={currentSession?.id}
         onSessionClick={handleSessionClick}
         onNewSession={handleNewSession}
+        isLoadingSessions={isLoadingSessions}
       />
       <Toaster
         position="bottom-center"

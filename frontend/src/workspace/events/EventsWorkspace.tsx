@@ -14,6 +14,7 @@ import {
   eventItemVariants
 } from './animations'
 import { getAccessToken } from '../../auth/supabase'
+import { updateEvent } from '../../api/backend-client'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
@@ -106,6 +107,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
   const handleEventSave = (updatedEvent: CalendarEvent) => {
     if (editingEventIndex === null) return
 
+    // Optimistic local update
     setEditedEvents(prev => {
       const updated = [...prev]
       updated[editingEventIndex] = updatedEvent
@@ -116,6 +118,20 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
       description: 'Your changes have been saved',
       duration: 2000
     })
+
+    // Persist to backend if event has an id (exists in events table)
+    if (updatedEvent.id) {
+      updateEvent(updatedEvent.id, updatedEvent)
+        .then(persisted => {
+          // Update with server response (has bumped version)
+          setEditedEvents(prev => {
+            const updated = [...prev]
+            updated[editingEventIndex] = persisted
+            return updated
+          })
+        })
+        .catch(err => console.error('Failed to persist event edit:', err))
+    }
   }
 
   const handleCloseEdit = () => {
@@ -183,6 +199,19 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
 
         // Update state with modified events
         setEditedEvents(modifiedEvents)
+
+        // Persist modified events that have ids to backend
+        for (const event of modifiedEvents) {
+          if (event?.id) {
+            updateEvent(event.id, event)
+              .then(persisted => {
+                setEditedEvents(prev =>
+                  prev.map(e => e?.id === persisted.id ? persisted : e)
+                )
+              })
+              .catch(err => console.error('Failed to persist AI edit:', err))
+          }
+        }
 
         // Dismiss loading and show success
         toast.dismiss(loadingToast)

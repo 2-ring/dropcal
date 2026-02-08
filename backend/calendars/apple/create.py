@@ -6,7 +6,8 @@ Creates events in Apple Calendar from universal format using CalDAV.
 from typing import Dict, Any, List, Tuple, Optional
 
 from . import auth, fetch, transform
-from database.models import Session
+from database.models import Session, Event
+from events.service import EventService
 
 
 def create_event(
@@ -61,85 +62,77 @@ def create_events_from_session(
     calendar_id: str = 'primary'
 ) -> Tuple[List[str], List[Dict[str, Any]]]:
     """
-    Create all events from a session's processed_events in Apple Calendar.
+    Create Apple Calendar events from a session's events.
 
-    Checks for conflicts before creating each event.
-
-    Args:
-        user_id: User's UUID
-        session_id: Session UUID containing processed events
-        calendar_id: Calendar ID (default 'primary')
-
-    Returns:
-        Tuple of (calendar_event_ids, conflicts):
-        - calendar_event_ids: List of created event IDs
-        - conflicts: List of conflicting events that prevented creation
-
-    Raises:
-        ValueError: If session not found, no events in session, or user not authenticated
+    Reads from events table (via session.event_ids), falls back to processed_events.
+    Records sync in provider_syncs after creation.
     """
-    # Get session
     session = Session.get_by_id(session_id)
     if not session:
         raise ValueError(f"Session {session_id} not found")
 
-    # Get events from session
-    events = session.get('processed_events', [])
-    if not events:
-        raise ValueError(f"No processed events in session {session_id}")
-
-    # Check authentication
     if not auth.is_authenticated(user_id):
         raise ValueError(f"User {user_id} not authenticated with Apple Calendar")
+
+    # Build event tuples: (event_data_for_api, dropcal_event_id)
+    event_tuples = []
+    event_ids = session.get('event_ids') or []
+
+    if event_ids:
+        for eid in event_ids:
+            event_row = Event.get_by_id(eid)
+            if event_row and not event_row.get('deleted_at'):
+                cal_event = EventService.event_row_to_calendar_event(event_row)
+                api_event = {k: v for k, v in cal_event.items()
+                             if k not in ('id', 'version', 'provider_syncs')}
+                event_tuples.append((api_event, eid))
+    else:
+        events = session.get('processed_events') or []
+        if not events:
+            raise ValueError(f"No events found for session {session_id}")
+        for event in events:
+            event_tuples.append((event, None))
 
     calendar_event_ids = []
     all_conflicts = []
 
-    for event in events:
-        # Check for conflicts
-        start_time = event.get('start', {}).get('dateTime')
-        end_time = event.get('end', {}).get('dateTime')
+    for event_data, dropcal_event_id in event_tuples:
+        start_time = event_data.get('start', {}).get('dateTime')
+        end_time = event_data.get('end', {}).get('dateTime')
 
         if start_time and end_time:
             try:
                 conflicts = fetch.check_conflicts(
-                    user_id=user_id,
-                    start_time=start_time,
-                    end_time=end_time,
-                    calendar_id=calendar_id
+                    user_id=user_id, start_time=start_time,
+                    end_time=end_time, calendar_id=calendar_id
                 )
-
                 if conflicts:
-                    # Store conflict info
-                    conflict_info = {
-                        'proposed_event': event,
+                    all_conflicts.append({
+                        'proposed_event': event_data,
                         'conflicting_events': conflicts
-                    }
-                    all_conflicts.append(conflict_info)
-                    print(f"Skipping event due to {len(conflicts)} conflict(s): {event.get('summary')}")
+                    })
                     continue
-
             except Exception as e:
                 print(f"Error checking conflicts for event: {e}")
-                # Continue anyway if conflict check fails
 
-        # No conflicts, create the event
         try:
-            created_event = create_event(
-                user_id=user_id,
-                event_data=event,
-                calendar_id=calendar_id
-            )
+            created_event = create_event(user_id=user_id, event_data=event_data, calendar_id=calendar_id)
 
             if created_event:
-                event_id = created_event.get('id', 'apple-event-' + str(len(calendar_event_ids)))
-                calendar_event_ids.append(event_id)
-                print(f"Created Apple Calendar event: {created_event.get('summary')} (ID: {event_id})")
+                provider_event_id = created_event.get('id', f'apple-event-{len(calendar_event_ids)}')
+                calendar_event_ids.append(provider_event_id)
+                if dropcal_event_id:
+                    EventService.sync_to_provider(
+                        event_id=dropcal_event_id,
+                        provider='apple',
+                        provider_event_id=provider_event_id,
+                        calendar_id=calendar_id
+                    )
             else:
-                print(f"Failed to create event: {event.get('summary')}")
+                print(f"Failed to create event: {event_data.get('summary')}")
 
         except Exception as e:
-            print(f"Error creating event {event.get('summary')}: {e}")
+            print(f"Error creating event {event_data.get('summary')}: {e}")
             continue
 
     return calendar_event_ids, all_conflicts

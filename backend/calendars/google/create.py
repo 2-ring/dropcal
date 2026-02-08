@@ -7,7 +7,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from typing import Dict, Optional, List, Tuple
 
-from database.models import Session as DBSession
+from database.models import Session as DBSession, Event
+from events.service import EventService
 from . import auth, fetch
 
 
@@ -59,7 +60,11 @@ def create_events_from_session(
     calendar_id: str = 'primary'
 ) -> Tuple[List[str], List[Dict]]:
     """
-    Create calendar events from a session's processed_events.
+    Create Google Calendar events from a session's events.
+
+    Reads events from the events table (via session.event_ids). After creating
+    each event in Google Calendar, records the sync in provider_syncs.
+    Falls back to session.processed_events for old sessions.
 
     Args:
         user_id: User's UUID
@@ -68,60 +73,78 @@ def create_events_from_session(
 
     Returns:
         Tuple of (calendar_event_ids, conflicts)
-        - calendar_event_ids: List of created event IDs
-        - conflicts: List of detected conflicts with details
 
     Raises:
-        ValueError: If session not found or no processed events
+        ValueError: If session not found or no events
         PermissionError: If session doesn't belong to user
-        Exception: If event creation fails
     """
-    # Get session
     session = DBSession.get_by_id(session_id)
     if not session:
         raise ValueError(f"Session {session_id} not found")
-
-    # Verify session belongs to user
     if session.get('user_id') != user_id:
         raise PermissionError("Session does not belong to user")
 
-    # Get processed events
-    processed_events = session.get('processed_events', [])
-    if not processed_events:
-        raise ValueError("No processed events in session")
+    # Build list of (event_data_for_api, dropcal_event_id) tuples
+    event_tuples = []
+    event_ids = session.get('event_ids') or []
+
+    if event_ids:
+        # New path: read from events table
+        for eid in event_ids:
+            event_row = Event.get_by_id(eid)
+            if event_row and not event_row.get('deleted_at'):
+                cal_event = EventService.event_row_to_calendar_event(event_row)
+                # Strip metadata fields before sending to Google API
+                api_event = {k: v for k, v in cal_event.items()
+                             if k not in ('id', 'version', 'provider_syncs')}
+                event_tuples.append((api_event, eid))
+    else:
+        # Backward compat: fall back to processed_events blob
+        processed_events = session.get('processed_events') or []
+        if not processed_events:
+            raise ValueError("No events found for session")
+        for event in processed_events:
+            event_tuples.append((event, None))
+
+    if not event_tuples:
+        raise ValueError("No events found for session")
 
     calendar_event_ids = []
     all_conflicts = []
 
-    for event in processed_events:
-        # Check for conflicts first
-        start_time = event.get('start', {}).get('dateTime')
-        end_time = event.get('end', {}).get('dateTime')
+    for event_data, dropcal_event_id in event_tuples:
+        # Check for conflicts
+        start_time = event_data.get('start', {}).get('dateTime')
+        end_time = event_data.get('end', {}).get('dateTime')
 
         if start_time and end_time:
             conflicts = fetch.check_conflicts(user_id, start_time, end_time, calendar_id)
-
             if conflicts:
                 all_conflicts.append({
-                    'event_summary': event.get('summary'),
+                    'event_summary': event_data.get('summary'),
                     'proposed_start': start_time,
                     'proposed_end': end_time,
                     'conflicts': conflicts
                 })
 
-        # Create event regardless of conflicts (user can decide what to do)
-        created_event = create_event(user_id, event, calendar_id)
+        # Create event regardless of conflicts
+        created_event = create_event(user_id, event_data, calendar_id)
 
         if created_event:
             calendar_event_ids.append(created_event['id'])
+            # Record sync in provider_syncs
+            if dropcal_event_id:
+                EventService.sync_to_provider(
+                    event_id=dropcal_event_id,
+                    provider='google',
+                    provider_event_id=created_event['id'],
+                    calendar_id=calendar_id
+                )
         else:
-            # Failed to create event
-            raise Exception(f"Failed to create event: {event.get('summary')}")
+            raise Exception(f"Failed to create event: {event_data.get('summary')}")
 
-    # Update session with calendar event IDs
+    # Update session
     DBSession.mark_added_to_calendar(session_id, calendar_event_ids)
-
-    # Also store conflicts in session
     if all_conflicts:
         DBSession.update_events(session_id, conflicts=all_conflicts)
 

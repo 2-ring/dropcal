@@ -499,6 +499,75 @@ def edit_event():
         return jsonify({'error': f'Event modification failed: {str(e)}'}), 500
 
 
+@app.route('/api/events/<event_id>', methods=['PATCH'])
+@require_auth
+def update_event(event_id):
+    """
+    Update a single event. Persists user edits from the workspace.
+
+    Requires authentication. Only allows updating events owned by the user.
+    Bumps the event version so provider sync status can detect changes.
+
+    Accepts CalendarEvent-shaped JSON body with any subset of fields.
+    """
+    try:
+        user_id = request.user_id
+
+        event = Event.get_by_id(event_id)
+        if not event:
+            return jsonify({'error': 'Event not found'}), 404
+        if event.get('user_id') != user_id:
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        # Map frontend CalendarEvent fields → flat DB columns
+        updates = {}
+        if 'summary' in data:
+            updates['summary'] = data['summary']
+        if 'location' in data:
+            updates['location'] = data['location']
+        if 'description' in data:
+            updates['description'] = data['description']
+        if 'calendar' in data:
+            updates['calendar_name'] = data['calendar']
+
+        if 'start' in data:
+            start = data['start']
+            if 'dateTime' in start:
+                updates['start_time'] = start['dateTime']
+            if 'date' in start:
+                updates['start_date'] = start['date']
+                updates['is_all_day'] = True
+            if 'timeZone' in start:
+                updates['timezone'] = start['timeZone']
+
+        if 'end' in data:
+            end = data['end']
+            if 'dateTime' in end:
+                updates['end_time'] = end['dateTime']
+            if 'date' in end:
+                updates['end_date'] = end['date']
+
+        if updates:
+            updates['user_modified'] = True
+            Event.update(event_id, updates)
+            # Bump version so provider sync detects the change
+            Event.increment_version(event_id)
+
+        # Return the updated event in CalendarEvent format
+        updated_event = Event.get_by_id(event_id)
+        return jsonify({
+            'success': True,
+            'event': EventService.event_row_to_calendar_event(updated_event)
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to update event: {str(e)}'}), 500
+
+
 # ============================================================================
 # Personalization Endpoints
 # ============================================================================
@@ -954,6 +1023,43 @@ def get_session_by_id(session_id):
         return jsonify({'error': f'Failed to get session: {str(e)}'}), 500
 
 
+@app.route('/api/sessions/<session_id>/events', methods=['GET'])
+@require_auth
+def get_session_events(session_id):
+    """
+    Get events for a session from the events table, formatted as CalendarEvents.
+
+    Requires authentication. Only returns events for sessions owned by the user.
+    Falls back to session.processed_events for backward compat with old sessions.
+    """
+    try:
+        user_id = request.user_id
+        session = DBSession.get_by_id(session_id)
+
+        if not session:
+            return jsonify({'error': 'Session not found'}), 404
+        if session.get('user_id') != user_id:
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        # Try events table first (new path)
+        events = EventService.get_events_by_session(session_id)
+
+        # Backward compat: fall back to processed_events blob for old sessions
+        if not events:
+            processed = session.get('processed_events') or []
+            if processed:
+                events = processed
+
+        return jsonify({
+            'success': True,
+            'events': events,
+            'count': len(events)
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to get events: {str(e)}'}), 500
+
+
 @app.route('/api/sessions', methods=['GET'])
 @require_auth
 def get_user_sessions():
@@ -1163,6 +1269,43 @@ def get_guest_session(session_id):
     except Exception as e:
         logger.error(f"Failed to get guest session: {e}")
         return jsonify({'error': f'Failed to get session: {str(e)}'}), 500
+
+
+@app.route('/api/sessions/guest/<session_id>/events', methods=['GET'])
+@limiter.limit("50 per hour")
+def get_guest_session_events(session_id):
+    """
+    Get events for a guest session from the events table.
+
+    Requires access_token query parameter for security.
+    Falls back to session.processed_events for backward compat.
+    """
+    try:
+        access_token = request.args.get('access_token')
+        if not access_token:
+            return jsonify({'error': 'Access token required'}), 401
+
+        session = DBSession.verify_guest_token(session_id, access_token)
+        if not session:
+            return jsonify({'error': 'Invalid session or access token'}), 403
+
+        # Try events table first
+        events = EventService.get_events_by_session(session_id)
+
+        # Backward compat: fall back to processed_events blob
+        if not events:
+            processed = session.get('processed_events') or []
+            if processed:
+                events = processed
+
+        return jsonify({
+            'success': True,
+            'events': events,
+            'count': len(events)
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to get events: {str(e)}'}), 500
 
 
 # ============================================================================

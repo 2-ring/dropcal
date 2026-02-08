@@ -284,28 +284,135 @@ class EventService:
         return Event.confirm_draft(event_id, user_edits)
 
     @staticmethod
+    def event_row_to_calendar_event(event_row: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert an events table row to frontend CalendarEvent format.
+
+        Maps flat DB columns (start_time, timezone, etc.) to the Google Calendar
+        API shape the frontend expects ({start: {dateTime, timeZone}, ...}).
+
+        Args:
+            event_row: Dict from events table
+
+        Returns:
+            Dict in CalendarEvent format with metadata fields
+        """
+        tz = event_row.get('timezone') or 'America/New_York'
+
+        if event_row.get('is_all_day'):
+            start = {'date': event_row.get('start_date'), 'timeZone': tz}
+            end = {'date': event_row.get('end_date'), 'timeZone': tz}
+        else:
+            start = {'dateTime': event_row.get('start_time'), 'timeZone': tz}
+            end = {'dateTime': event_row.get('end_time'), 'timeZone': tz}
+
+        result = {
+            'id': event_row['id'],
+            'summary': event_row.get('summary', ''),
+            'start': start,
+            'end': end,
+            'version': event_row.get('version', 1),
+            'provider_syncs': event_row.get('provider_syncs', []),
+        }
+
+        # Optional fields
+        if event_row.get('location'):
+            result['location'] = event_row['location']
+        if event_row.get('description'):
+            result['description'] = event_row['description']
+        if event_row.get('calendar_name'):
+            result['calendar'] = event_row['calendar_name']
+
+        # Recurrence and attendees are not stored as flat columns —
+        # pull from system_suggestion (the original Agent 3 output)
+        system_suggestion = event_row.get('system_suggestion') or {}
+        if system_suggestion.get('recurrence'):
+            result['recurrence'] = system_suggestion['recurrence']
+        if system_suggestion.get('attendees'):
+            result['attendees'] = system_suggestion['attendees']
+
+        return result
+
+    @staticmethod
+    def get_events_by_session(session_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all events for a session from the events table, formatted as CalendarEvents.
+
+        Args:
+            session_id: Session UUID
+
+        Returns:
+            List of CalendarEvent dicts sorted by start time
+        """
+        session = Session.get_by_id(session_id)
+        if not session:
+            return []
+
+        event_ids = session.get('event_ids') or []
+        if not event_ids:
+            return []
+
+        events = []
+        for event_id in event_ids:
+            event_row = Event.get_by_id(event_id)
+            if event_row and not event_row.get('deleted_at'):
+                events.append(EventService.event_row_to_calendar_event(event_row))
+
+        # Sort by start dateTime or date
+        def sort_key(e):
+            start = e.get('start', {})
+            return start.get('dateTime') or start.get('date') or ''
+
+        events.sort(key=sort_key)
+        return events
+
+    @staticmethod
     def sync_to_provider(
         event_id: str,
+        provider: str,
         provider_event_id: str,
-        provider_calendar_id: str
+        calendar_id: str
     ) -> Dict[str, Any]:
         """
-        Mark event as synced to provider (after creating in Google Calendar).
+        Record that an event was synced to a calendar provider.
+
+        Appends/upserts a sync entry in provider_syncs with the current version.
+        The event stays provider='dropcal' — provider_syncs tracks where it's been pushed.
 
         Args:
             event_id: Event UUID
-            provider_event_id: Google Calendar event ID
-            provider_calendar_id: Google Calendar ID
+            provider: Provider name ('google', 'microsoft', 'apple')
+            provider_event_id: Provider's event ID (e.g. Google Calendar event ID)
+            calendar_id: Provider calendar ID (e.g. 'primary')
 
         Returns:
             Updated event
         """
-        return Event.update(event_id, {
-            "provider": "google",  # Change from dropcal to google
-            "provider_event_id": provider_event_id,
-            "provider_account_id": provider_calendar_id,
-            "last_synced_at": datetime.utcnow().isoformat()
-        })
+        event = Event.get_by_id(event_id)
+        if not event:
+            raise ValueError(f"Event {event_id} not found")
+
+        syncs = list(event.get('provider_syncs') or [])
+
+        entry = {
+            'provider': provider,
+            'provider_event_id': provider_event_id,
+            'calendar_id': calendar_id,
+            'synced_at': datetime.utcnow().isoformat(),
+            'synced_version': event.get('version', 1)
+        }
+
+        # Upsert: replace existing entry for this provider, or append
+        replaced = False
+        for i, s in enumerate(syncs):
+            if s.get('provider') == provider:
+                syncs[i] = entry
+                replaced = True
+                break
+        if not replaced:
+            syncs.append(entry)
+
+        return Event.update(event_id, {'provider_syncs': syncs})
 
     @staticmethod
     def get_conflicting_events(

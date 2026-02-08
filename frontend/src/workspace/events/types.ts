@@ -17,7 +17,16 @@ export interface CalendarDateTime {
   timeZone: string
 }
 
+export interface ProviderSync {
+  provider: string
+  provider_event_id: string
+  calendar_id: string
+  synced_at: string
+  synced_version: number
+}
+
 export interface CalendarEvent {
+  id?: string
   summary: string
   start: CalendarDateTime
   end: CalendarDateTime
@@ -26,6 +35,25 @@ export interface CalendarEvent {
   recurrence?: string[]
   attendees?: string[]
   calendar?: string
+  version?: number
+  provider_syncs?: ProviderSync[]
+}
+
+/**
+ * Derive the sync status of an event for a specific calendar provider.
+ * - 'draft': never synced to this provider
+ * - 'applied': synced and up to date
+ * - 'edited': synced but event has been edited since
+ */
+export function getEventSyncStatus(
+  event: CalendarEvent,
+  activeProvider?: string
+): 'draft' | 'applied' | 'edited' {
+  if (!activeProvider || !event.provider_syncs) return 'draft'
+  const sync = event.provider_syncs.find(s => s.provider === activeProvider)
+  if (!sync) return 'draft'
+  if (sync.synced_version === event.version) return 'applied'
+  return 'edited'
 }
 
 export interface IdentifiedEvent {
