@@ -26,9 +26,10 @@ import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import './SettingsPopup.css';
 import { useState, useEffect, useRef } from 'react';
-import { getCalendarProviders, setPrimaryCalendarProvider, disconnectCalendarProvider, getUserPreferences, sendAppleCredentials } from '../api/backend-client';
+import { getCalendarProviders, setPrimaryCalendarProvider, disconnectCalendarProvider, getUserPreferences, sendAppleCredentials, updateUserPreferences } from '../api/backend-client';
 import { Tooltip } from '../components/Tooltip';
 import { useTheme } from '../theme';
+import { useAuth } from '../auth/AuthContext';
 
 interface SettingsPopupProps {
   onClose: () => void;
@@ -52,16 +53,20 @@ type ViewMode = 'main' | 'integrations' | 'apple-connect';
 
 export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoading = false, triggerRef }: SettingsPopupProps) {
   const navigate = useNavigate();
-  const { signOut, signIn } = useAuth();
+  const { signOut, signIn, preferences, setPreferences } = useAuth();
   const popupRef = useRef<HTMLDivElement>(null);
   const { themeMode, toggleTheme } = useTheme();
 
   // View state
   const [viewMode, setViewMode] = useState<ViewMode>('main');
 
-  // Settings state (will be persisted to backend/localStorage in future)
-  const [useInternationalDate, setUseInternationalDate] = useState(false);
-  const [userTimezone, setUserTimezone] = useState<string | null>(null);
+  // Settings state - initialized from backend preferences
+  const [useInternationalDate, setUseInternationalDate] = useState(
+    preferences.date_format === 'DD/MM/YYYY'
+  );
+  const [userTimezone, setUserTimezone] = useState<string | null>(
+    preferences.timezone || null
+  );
   const [logoutHovered, setLogoutHovered] = useState(false);
   const [hoveredStar, setHoveredStar] = useState<string | null>(null);
   const [hoveredSignOut, setHoveredSignOut] = useState<string | null>(null);
@@ -362,7 +367,15 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
 
               <button
                 className="settings-popup-item"
-                onClick={() => setUseInternationalDate(!useInternationalDate)}
+                onClick={() => {
+                  const newValue = !useInternationalDate;
+                  setUseInternationalDate(newValue);
+                  const newFormat = newValue ? 'DD/MM/YYYY' : 'MM/DD/YYYY';
+                  setPreferences(prev => ({ ...prev, date_format: newFormat as 'DD/MM/YYYY' | 'MM/DD/YYYY' }));
+                  updateUserPreferences({ date_format: newFormat as 'DD/MM/YYYY' | 'MM/DD/YYYY' }).catch((err) => {
+                    console.error('Failed to save date format preference:', err);
+                  });
+                }}
               >
                 <AnimatePresence mode="wait">
                   <motion.div

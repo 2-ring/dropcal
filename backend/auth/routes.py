@@ -112,7 +112,7 @@ def sync_user_profile():
             user = User.get_by_id(user_id)
 
         # Migrate guest sessions to authenticated user account
-        request_data = request.get_json() or {}
+        request_data = request.get_json(silent=True) or {}
         guest_session_ids = request_data.get('guest_session_ids', [])
         migrated_sessions = []
 
@@ -254,6 +254,56 @@ def update_user_profile():
 
     except Exception as e:
         return jsonify({'error': f'Failed to update profile: {str(e)}'}), 500
+
+
+@auth_bp.route('/api/auth/preferences', methods=['PUT'])
+@require_auth
+def update_user_preferences():
+    """
+    Update the authenticated user's preferences (theme, date format, etc.).
+
+    Merges provided keys into existing preferences JSONB column.
+
+    Expects JSON body with any subset of:
+    {
+        "theme_mode": "light" | "dark",
+        "date_format": "MM/DD/YYYY" | "DD/MM/YYYY",
+        "timezone": "America/New_York",
+        "autoAddEvents": true | false,
+        "conflictBehavior": "warn" | "skip" | "add"
+    }
+    """
+    try:
+        user_id = request.user_id
+        data = request.get_json()
+
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        allowed_keys = {'theme_mode', 'date_format', 'timezone', 'autoAddEvents', 'conflictBehavior'}
+        updates = {k: v for k, v in data.items() if k in allowed_keys}
+
+        if not updates:
+            return jsonify({'error': 'No valid preference keys provided'}), 400
+
+        # Merge into existing preferences
+        user = User.get_by_id(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        current_prefs = user.get('preferences') or {}
+        current_prefs.update(updates)
+
+        updated_user = User.update_preferences(user_id, current_prefs)
+
+        return jsonify({
+            'success': True,
+            'preferences': updated_user.get('preferences', {}),
+            'message': 'Preferences updated successfully'
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to update preferences: {str(e)}'}), 500
 
 
 # ============================================================================

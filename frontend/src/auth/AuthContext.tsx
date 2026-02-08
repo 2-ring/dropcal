@@ -12,12 +12,22 @@ import {
   signOut as authSignOut,
   onAuthStateChange,
 } from './supabase';
-import { syncUserProfile } from '../api/backend-client';
+import { syncUserProfile, getUserProfile } from '../api/backend-client';
+
+export interface UserPreferences {
+  theme_mode?: 'light' | 'dark';
+  date_format?: 'MM/DD/YYYY' | 'DD/MM/YYYY';
+  timezone?: string;
+  autoAddEvents?: boolean;
+  conflictBehavior?: 'warn' | 'skip' | 'add';
+}
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  preferences: UserPreferences;
+  setPreferences: React.Dispatch<React.SetStateAction<UserPreferences>>;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -31,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [preferences, setPreferences] = useState<UserPreferences>({});
 
   useEffect(() => {
     // Initialize session on mount
@@ -42,6 +53,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (currentSession) {
           const currentUser = await getCurrentUser();
           setUser(currentUser);
+
+          // Fetch preferences from backend profile
+          try {
+            const profile = await getUserProfile();
+            if (profile.user?.preferences) {
+              setPreferences(profile.user.preferences);
+            }
+          } catch {
+            // Preferences will use defaults
+          }
         }
       } catch (error) {
         console.error('Failed to initialize auth:', error);
@@ -66,11 +87,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const result = await syncUserProfile();
           console.log(result.is_new_user ? 'Account created successfully' : 'Welcome back');
           console.log('User profile synced:', result.user);
+
+          // Fetch full profile to get preferences
+          const profile = await getUserProfile();
+          if (profile.user?.preferences) {
+            setPreferences(profile.user.preferences);
+          }
         } catch (error) {
           console.error('Failed to sync user profile:', error);
         }
       } else {
         setUser(null);
+        setPreferences({});
       }
 
       setLoading(false);
@@ -105,6 +133,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     user,
     loading,
+    preferences,
+    setPreferences,
     signIn,
     signOut,
   };

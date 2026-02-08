@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import type { Theme, ThemeMode } from './types';
 import { lightTheme } from './lightTheme';
 import { darkTheme } from './darkTheme';
+import { useAuth } from '../auth/AuthContext';
+import { updateUserPreferences } from '../api/backend-client';
 
 interface ThemeContextType {
   theme: Theme;
@@ -36,17 +38,44 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
+  const { session, preferences, setPreferences } = useAuth();
+  const syncedFromBackend = useRef(false);
+
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
-    // Initialize from localStorage or default to light
+    // Initialize from localStorage for instant load (no flash)
     const saved = localStorage.getItem('theme-mode');
     return (saved === 'dark' || saved === 'light') ? saved : 'light';
   });
+
+  // Sync theme from backend preferences when they load
+  useEffect(() => {
+    if (session && preferences.theme_mode && !syncedFromBackend.current) {
+      syncedFromBackend.current = true;
+      setThemeModeState(preferences.theme_mode);
+      localStorage.setItem('theme-mode', preferences.theme_mode);
+    }
+  }, [session, preferences.theme_mode]);
+
+  // Reset sync flag on logout
+  useEffect(() => {
+    if (!session) {
+      syncedFromBackend.current = false;
+    }
+  }, [session]);
 
   const theme = themeMode === 'light' ? lightTheme : darkTheme;
 
   const setThemeMode = (mode: ThemeMode) => {
     setThemeModeState(mode);
     localStorage.setItem('theme-mode', mode);
+
+    // Persist to backend if authenticated
+    if (session) {
+      setPreferences(prev => ({ ...prev, theme_mode: mode }));
+      updateUserPreferences({ theme_mode: mode }).catch((err) => {
+        console.error('Failed to save theme preference:', err);
+      });
+    }
   };
 
   const toggleTheme = () => {

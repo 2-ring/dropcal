@@ -292,6 +292,32 @@ export async function updateUserProfile(updates: {
   return handleResponse(response);
 }
 
+/**
+ * Update user preferences (theme, date format, etc.).
+ * Merges provided keys into existing preferences.
+ */
+export async function updateUserPreferences(prefs: {
+  theme_mode?: 'light' | 'dark';
+  date_format?: 'MM/DD/YYYY' | 'DD/MM/YYYY';
+  timezone?: string;
+  autoAddEvents?: boolean;
+  conflictBehavior?: 'warn' | 'skip' | 'add';
+}): Promise<{
+  success: boolean;
+  preferences: Record<string, any>;
+  message: string;
+}> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_URL}/api/auth/preferences`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(prefs),
+  });
+
+  return handleResponse(response);
+}
+
 // ============================================================================
 // Google Calendar Integration
 // ============================================================================

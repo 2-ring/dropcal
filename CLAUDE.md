@@ -36,6 +36,8 @@ Current calendar tools require semi-structured input or manual entry. DropCal ha
 
 **Documentation:** Only create markdown files for genuinely insightful information that will be useful an hour+ later. No completion reports, summaries of work just done, or self-evident documentation.
 
+**Available CLIs:** The AWS CLI (`aws`) and Supabase CLI (`supabase`) are installed and authenticated. Use them directly for infrastructure tasks, database operations, migrations, and deployments.
+
 ---
 
 **Built for Hack@Brown 2026 | Marshall Wace Track**

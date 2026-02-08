@@ -26,7 +26,7 @@ export async function signInWithGoogle() {
     provider: 'google',
     options: {
       scopes: 'email profile openid',
-      redirectTo: window.location.origin,
+      redirectTo: 'https://dropcal.ai',
     },
   });
 
