@@ -9,7 +9,6 @@ import {
   getSession,
   getCurrentUser,
   signInWithGoogle,
-  signInWithGoogleCalendar,
   signOut as authSignOut,
   onAuthStateChange,
 } from './supabase';
@@ -31,7 +30,6 @@ interface AuthContextType {
   setPreferences: React.Dispatch<React.SetStateAction<UserPreferences>>;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
-  connectGoogleCalendar: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -147,15 +145,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const connectGoogleCalendar = async () => {
-    try {
-      await signInWithGoogleCalendar();
-    } catch (error) {
-      console.error('Google Calendar connection failed:', error);
-      throw error;
-    }
-  };
-
   const value: AuthContextType = {
     session,
     user,
@@ -164,7 +153,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPreferences,
     signIn,
     signOut,
-    connectGoogleCalendar,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

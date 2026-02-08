@@ -203,12 +203,6 @@
   flex: 1;
 }
 
-.header-wordmark {
-  height: calc(var(--dock-height) * 1.15);
-  width: auto;
-  object-fit: contain;
-  transition: opacity 0.3s ease;
-}
 
 .header-right {
   display: flex;

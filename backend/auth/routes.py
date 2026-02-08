@@ -92,7 +92,7 @@ def sync_user_profile():
                     "email": auth_user.email,
                     "display_name": profile['display_name'],
                     "photo_url": profile['photo_url'],
-                    "usage": ["auth"],
+                    "usage": ["auth", "calendar"],
                     "linked_at": "now"
                 }]
             }
@@ -105,7 +105,7 @@ def sync_user_profile():
                 provider=provider,
                 provider_id=profile['provider_id'],
                 email=auth_user.email,
-                usage=["auth"],
+                usage=["auth", "calendar"],
                 display_name=profile['display_name'],
                 photo_url=profile['photo_url']
             )

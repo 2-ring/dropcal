@@ -52,7 +52,7 @@ type ViewMode = 'main' | 'integrations' | 'apple-connect';
 
 export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoading = false, triggerRef }: SettingsPopupProps) {
   const navigate = useNavigate();
-  const { signOut, connectGoogleCalendar, preferences, setPreferences } = useAuth();
+  const { signOut, signIn, preferences, setPreferences } = useAuth();
   const popupRef = useRef<HTMLDivElement>(null);
   const { themeMode, toggleTheme } = useTheme();
 
@@ -186,9 +186,8 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
 
   const handleConnectNew = async (provider: 'google' | 'microsoft' | 'apple') => {
     if (provider === 'google') {
-      // Use Google Calendar-scoped sign-in to request calendar permissions
-      await connectGoogleCalendar();
-      // After redirect and sign-in completes, refresh calendar providers
+      // Sign-in includes calendar scopes, so this reconnects Google Calendar
+      await signIn();
       setTimeout(() => fetchCalendarProviders(), 2000);
     } else if (provider === 'microsoft') {
       try {
@@ -448,7 +447,9 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
             <>
               {['google', 'microsoft', 'apple'].map((provider) => {
                 const calendar = calendars.find(cal => cal.provider === provider && cal.isConnected);
-                const isConnected = !!calendar;
+                // Google is always connected when signed in (auth = calendar)
+                const isGoogleAuth = provider === 'google';
+                const isConnected = isGoogleAuth || !!calendar;
                 const isDefault = calendar?.isDefault;
 
                 if (!isConnected) {
@@ -464,10 +465,10 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                       {provider === 'apple' && <AppleLogo size={20} weight="duotone" />}
                       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '1px' }}>
                         <span style={{ lineHeight: '1.2' }}>{getProviderName(provider)}</span>
-                        <span style={{ fontSize: '11px', color: '#999', lineHeight: '1.2' }}>Sign in</span>
+                        <span style={{ fontSize: '11px', color: '#999', lineHeight: '1.2' }}>Connect</span>
                       </div>
                       <div className="settings-integration-actions">
-                        <Tooltip content={`Sign in to ${getProviderName(provider)}`}>
+                        <Tooltip content={`Connect ${getProviderName(provider)}`}>
                           <div style={{ display: 'flex' }}>
                             <SignIn size={20} weight="regular" />
                           </div>
@@ -477,7 +478,7 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                   );
                 }
 
-                // Connected: only individual icons are clickable
+                // Connected: show status and actions
                 return (
                   <div key={provider} className="settings-popup-item settings-integration-row" style={{ cursor: 'default' }}>
                     {provider === 'google' && <GoogleLogo size={20} weight="duotone" />}
@@ -485,7 +486,7 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                     {provider === 'apple' && <AppleLogo size={20} weight="duotone" />}
                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '1px' }}>
                       <span style={{ lineHeight: '1.2' }}>{getProviderName(provider)}</span>
-                      <span style={{ fontSize: '11px', color: '#999', lineHeight: '1.2' }}>{calendar!.email}</span>
+                      <span style={{ fontSize: '11px', color: '#999', lineHeight: '1.2' }}>{calendar?.email || userEmail}</span>
                     </div>
                     <div className="settings-integration-actions">
                       <Tooltip content={isDefault ? 'Primary calendar' : 'Set as primary'}>
@@ -499,16 +500,19 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                           <Star size={20} weight={isDefault || hoveredStar === provider ? 'duotone' : 'regular'} style={{ color: '#666' }} />
                         </button>
                       </Tooltip>
-                      <Tooltip content="Sign out">
-                        <button
-                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex' }}
-                          onClick={() => handleDisconnect(provider)}
-                          onMouseEnter={() => setHoveredSignOut(provider)}
-                          onMouseLeave={() => setHoveredSignOut(null)}
-                        >
-                          <SignOut size={20} weight={hoveredSignOut === provider ? 'bold' : 'regular'} style={{ color: '#d32f2f' }} />
-                        </button>
-                      </Tooltip>
+                      {/* Only show disconnect for non-Google providers (Google is the auth provider) */}
+                      {!isGoogleAuth && (
+                        <Tooltip content="Disconnect">
+                          <button
+                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex' }}
+                            onClick={() => handleDisconnect(provider)}
+                            onMouseEnter={() => setHoveredSignOut(provider)}
+                            onMouseLeave={() => setHoveredSignOut(null)}
+                          >
+                            <SignOut size={20} weight={hoveredSignOut === provider ? 'bold' : 'regular'} style={{ color: '#d32f2f' }} />
+                          </button>
+                        </Tooltip>
+                      )}
                     </div>
                   </div>
                 );

@@ -8,9 +8,6 @@ import { TopBar, BottomBar } from './Bar'
 import { Event } from './Event'
 import { DateHeader, MonthHeader } from './DateHeader'
 import { EventEditView } from './EventEditView'
-import { useTheme } from '../../theme/ThemeProvider'
-import wordmarkImageLight from '../../assets/brand/light/word.png'
-import wordmarkImageDark from '../../assets/brand/dark/word.png'
 import './EventsWorkspace.css'
 import {
   listContainerVariants,
@@ -37,11 +34,6 @@ interface EventsWorkspaceProps {
 }
 
 export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingConfig = [], expectedEventCount }: EventsWorkspaceProps) {
-  const { themeMode } = useTheme()
-
-  // Select wordmark image based on theme
-  const wordmarkImage = themeMode === 'dark' ? wordmarkImageDark : wordmarkImageLight
-
   const [changeRequest, setChangeRequest] = useState('')
   const [isChatExpanded, setIsChatExpanded] = useState(false)
   const [editingEventIndex, setEditingEventIndex] = useState<number | null>(null)
@@ -316,7 +308,6 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
   return (
     <div className="event-confirmation">
       <TopBar
-        wordmarkImage={wordmarkImage}
         eventCount={events.filter(e => e !== null).length}
         isLoading={isLoading}
         expectedEventCount={expectedEventCount}

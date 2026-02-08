@@ -32,7 +32,7 @@ export function AuthModal({
   const defaults = {
     calendar: {
       title: 'Sign In to Add to Calendar',
-      message: 'Connect your Google Calendar to automatically add these events.',
+      message: 'Sign in with Google to add events directly to your calendar.',
     },
     session_limit: {
       title: 'Free Sessions Used Up',

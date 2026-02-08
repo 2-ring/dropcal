@@ -4,13 +4,13 @@ import Skeleton from 'react-loading-skeleton'
 import type { LoadingStateConfig } from './types'
 import { CalendarSelector } from './CalendarSelector'
 import { Tooltip } from '../../components/Tooltip'
+import { WordMark } from '../../components/WordMark'
 
 // ============================================================================
 // TOP BAR
 // ============================================================================
 
 interface TopBarProps {
-  wordmarkImage: string
   eventCount: number
   isLoading: boolean
   expectedEventCount?: number
@@ -20,7 +20,6 @@ interface TopBarProps {
 }
 
 export function TopBar({
-  wordmarkImage,
   eventCount,
   isLoading,
   expectedEventCount,
@@ -35,7 +34,7 @@ export function TopBar({
           <CalendarSelector isLoading={isLoadingCalendars} isMinimized={isEditingEvent} />
         </div>
         <div className="header-center">
-          <img src={wordmarkImage} alt="DropCal" className="header-wordmark" />
+          <WordMark size={28} />
         </div>
         <div className="header-right">
           {isLoading && expectedEventCount === undefined ? (
