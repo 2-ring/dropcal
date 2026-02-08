@@ -361,6 +361,30 @@ export async function addSessionToCalendar(
 }
 
 // ============================================================================
+// Microsoft Calendar Connection
+// ============================================================================
+
+/**
+ * Send Microsoft OAuth tokens to backend for calendar connection.
+ */
+export async function sendMicrosoftTokens(tokenData: {
+  access_token: string;
+  refresh_token?: string;
+  expires_in?: number;
+  email?: string;
+}): Promise<{ success: boolean; message: string; provider: string }> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_URL}/api/auth/microsoft/connect`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(tokenData),
+  });
+
+  return handleResponse(response);
+}
+
+// ============================================================================
 // Calendar Provider Management
 // ============================================================================
 

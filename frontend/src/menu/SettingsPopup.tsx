@@ -181,9 +181,13 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
       // After sign-in completes, refresh calendar providers
       setTimeout(() => fetchCalendarProviders(), 1000);
     } else if (provider === 'microsoft') {
-      // TODO: Implement Microsoft OAuth flow
-      console.log('Microsoft OAuth not yet implemented');
-      alert('Microsoft calendar integration coming soon!');
+      try {
+        const { connectMicrosoftCalendar } = await import('../auth/microsoft');
+        await connectMicrosoftCalendar();
+        await fetchCalendarProviders();
+      } catch (error) {
+        console.error('Microsoft Calendar connection failed:', error);
+      }
     } else if (provider === 'apple') {
       // TODO: Implement Apple Calendar flow (requires Apple ID + app password)
       console.log('Apple Calendar integration not yet implemented');
