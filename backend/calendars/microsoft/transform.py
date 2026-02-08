@@ -147,6 +147,13 @@ def from_universal(universal_event: Dict[str, Any]) -> Dict[str, Any]:
             }
             ms_event['attendees'].append(ms_attendee)
 
+    # Convert recurrence (RRULE → Microsoft Graph format)
+    recurrence_rules = universal_event.get('recurrence')
+    if recurrence_rules:
+        ms_recurrence = _rrule_to_ms_recurrence(recurrence_rules, start)
+        if ms_recurrence:
+            ms_event['recurrence'] = ms_recurrence
+
     # Convert colorId back to categories
     if universal_event.get('_microsoft_categories'):
         # Preserve original categories if they exist (round-trip)
@@ -272,3 +279,98 @@ def _map_color_to_category(color_id: str) -> str:
     }
 
     return color_map.get(color_id, 'General')
+
+
+def _rrule_to_ms_recurrence(
+    rrule_list: List[str],
+    start: Dict[str, Any]
+) -> Optional[Dict[str, Any]]:
+    """
+    Convert RRULE string(s) to Microsoft Graph recurrence object.
+
+    Args:
+        rrule_list: List of RRULE strings, e.g. ["RRULE:FREQ=WEEKLY;BYDAY=MO,WE"]
+        start: Start date/time dict with 'dateTime' or 'date' key
+
+    Returns:
+        Microsoft Graph recurrence dict or None if parsing fails
+    """
+    import re
+
+    if not rrule_list:
+        return None
+
+    # Parse the first RRULE (Microsoft only supports one recurrence pattern)
+    rule = rrule_list[0]
+    if rule.startswith('RRULE:'):
+        rule = rule[6:]
+
+    # Parse RRULE parameters into a dict
+    params = {}
+    for part in rule.split(';'):
+        if '=' in part:
+            key, value = part.split('=', 1)
+            params[key] = value
+
+    freq = params.get('FREQ', '')
+    interval = int(params.get('INTERVAL', '1'))
+
+    # Map RRULE day codes to Microsoft day names
+    day_map = {
+        'MO': 'monday', 'TU': 'tuesday', 'WE': 'wednesday',
+        'TH': 'thursday', 'FR': 'friday', 'SA': 'saturday', 'SU': 'sunday'
+    }
+
+    # Build recurrence pattern
+    pattern = {'interval': interval, 'firstDayOfWeek': 'sunday'}
+
+    if freq == 'DAILY':
+        pattern['type'] = 'daily'
+    elif freq == 'WEEKLY':
+        pattern['type'] = 'weekly'
+        byday = params.get('BYDAY', '')
+        if byday:
+            pattern['daysOfWeek'] = [day_map[d] for d in byday.split(',') if d in day_map]
+        else:
+            # Default to the day of the start date
+            start_dt = start.get('dateTime') or start.get('date', '')
+            if start_dt:
+                from datetime import datetime as dt
+                try:
+                    date_str = start_dt[:10]
+                    day_idx = dt.strptime(date_str, '%Y-%m-%d').weekday()
+                    days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+                    pattern['daysOfWeek'] = [days[day_idx]]
+                except (ValueError, IndexError):
+                    pattern['daysOfWeek'] = ['monday']
+    elif freq == 'MONTHLY':
+        bymonthday = params.get('BYMONTHDAY')
+        if bymonthday:
+            pattern['type'] = 'absoluteMonthly'
+            pattern['dayOfMonth'] = int(bymonthday)
+        else:
+            pattern['type'] = 'absoluteMonthly'
+            pattern['dayOfMonth'] = 1
+    elif freq == 'YEARLY':
+        pattern['type'] = 'absoluteYearly'
+        pattern['month'] = 1
+        pattern['dayOfMonth'] = 1
+    else:
+        return None
+
+    # Build recurrence range
+    start_date = (start.get('dateTime') or start.get('date', ''))[:10]
+    recurrence_range = {'type': 'noEnd', 'startDate': start_date}
+
+    # Handle UNTIL and COUNT
+    if 'UNTIL' in params:
+        until = params['UNTIL']
+        # UNTIL can be YYYYMMDD or YYYYMMDDTHHMMSSZ
+        if len(until) >= 8:
+            recurrence_range['type'] = 'endDate'
+            recurrence_range['endDate'] = f'{until[:4]}-{until[4:6]}-{until[6:8]}'
+    elif 'COUNT' in params:
+        recurrence_range['type'] = 'numbered'
+        recurrence_range['numberOfOccurrences'] = int(params['COUNT'])
+
+    return {'pattern': pattern, 'range': recurrence_range}

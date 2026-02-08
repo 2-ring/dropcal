@@ -67,11 +67,7 @@ export function AuthModal({
         )}
 
         <WordMark size={24} />
-
-        <div className="auth-modal-spacer" />
         <h2 className="display-text auth-modal-heading">{heading}</h2>
-        <div className="auth-modal-spacer" />
-
         <div className="auth-modal-buttons">
           <MenuButton onClick={signIn} icon={GoogleIcon} variant="signin">
             Sign in with Google

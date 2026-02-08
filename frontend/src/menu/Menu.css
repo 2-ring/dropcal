@@ -291,10 +291,10 @@
 }
 
 .processing-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--text-tertiary);
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background-color: var(--border);
   flex-shrink: 0;
   animation: processingPulse 1.5s ease-in-out infinite;
 }

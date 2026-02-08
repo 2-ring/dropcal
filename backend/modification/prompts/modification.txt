@@ -98,6 +98,40 @@ Result:
   "recurrence": null
 }}
 
+Edit: "Make it repeat every week"
+Result:
+{{
+  "summary": "Team Meeting",
+  "start": {{"dateTime": "2026-02-05T14:00:00-05:00", "timeZone": "America/New_York"}},
+  "end": {{"dateTime": "2026-02-05T15:00:00-05:00", "timeZone": "America/New_York"}},
+  "location": "Conference Room A",
+  "description": "Weekly sync",
+  "recurrence": ["RRULE:FREQ=WEEKLY;BYDAY=WE"]
+}}
+(Note: BYDAY inferred from the event's start day, Wednesday)
+
+Edit: "Change to every other week on Monday, Wednesday, Friday"
+Result:
+{{
+  "summary": "Team Meeting",
+  "start": {{"dateTime": "2026-02-05T14:00:00-05:00", "timeZone": "America/New_York"}},
+  "end": {{"dateTime": "2026-02-05T15:00:00-05:00", "timeZone": "America/New_York"}},
+  "location": "Conference Room A",
+  "description": "Weekly sync",
+  "recurrence": ["RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE,FR"]
+}}
+
+Edit: "Make it daily until March 15"
+Result:
+{{
+  "summary": "Team Meeting",
+  "start": {{"dateTime": "2026-02-05T14:00:00-05:00", "timeZone": "America/New_York"}},
+  "end": {{"dateTime": "2026-02-05T15:00:00-05:00", "timeZone": "America/New_York"}},
+  "location": "Conference Room A",
+  "description": "Weekly sync",
+  "recurrence": ["RRULE:FREQ=DAILY;UNTIL=20260315"]
+}}
+
 VALIDATION:
 - Always ensure end time is after start time
 - Keep ISO 8601 format strict

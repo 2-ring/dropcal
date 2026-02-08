@@ -178,6 +178,19 @@ def from_universal(universal_event: Dict[str, Any]) -> Calendar:
             attendee_addr.params['ROLE'] = 'REQ-PARTICIPANT'
             event.add('attendee', attendee_addr)
 
+    # Convert recurrence (RRULE → iCalendar RRULE property)
+    recurrence_rules = universal_event.get('recurrence')
+    if recurrence_rules:
+        for rule in recurrence_rules:
+            rrule_str = rule
+            if rrule_str.startswith('RRULE:'):
+                rrule_str = rrule_str[6:]
+            try:
+                rrule_dict = _parse_rrule_string(rrule_str)
+                event.add('rrule', rrule_dict)
+            except Exception as e:
+                print(f"Warning: Could not add RRULE '{rrule_str}': {e}")
+
     # Convert colorId to iCalendar COLOR property (RFC 7986)
     if universal_event.get('_apple_color'):
         # Preserve original Apple color if it exists (round-trip)
@@ -394,3 +407,50 @@ def _map_google_to_ical_color(color_id: str) -> str:
     }
 
     return color_map.get(color_id, 'blue')  # Default to blue
+
+
+def _parse_rrule_string(rrule_str: str) -> Dict[str, Any]:
+    """
+    Parse an RRULE parameter string into a dict suitable for icalendar's event.add('rrule', ...).
+
+    The icalendar library expects a dict like:
+        {'freq': 'weekly', 'byday': ['MO', 'WE'], 'interval': 2}
+
+    Args:
+        rrule_str: RRULE parameters without the "RRULE:" prefix,
+                   e.g. "FREQ=WEEKLY;BYDAY=MO,WE;INTERVAL=2"
+
+    Returns:
+        Dict for icalendar's rrule property
+    """
+    result = {}
+
+    for part in rrule_str.split(';'):
+        if '=' not in part:
+            continue
+        key, value = part.split('=', 1)
+        key = key.strip().upper()
+
+        if key == 'FREQ':
+            result['freq'] = value.lower()
+        elif key == 'INTERVAL':
+            result['interval'] = int(value)
+        elif key == 'COUNT':
+            result['count'] = int(value)
+        elif key == 'UNTIL':
+            # Parse UNTIL date: YYYYMMDD or YYYYMMDDTHHMMSSZ
+            if len(value) == 8:
+                result['until'] = datetime(int(value[:4]), int(value[4:6]), int(value[6:8]),
+                                           tzinfo=pytz.UTC)
+            elif len(value) >= 15:
+                result['until'] = datetime(int(value[:4]), int(value[4:6]), int(value[6:8]),
+                                           int(value[9:11]), int(value[11:13]), int(value[13:15]),
+                                           tzinfo=pytz.UTC)
+        elif key == 'BYDAY':
+            result['byday'] = value.split(',')
+        elif key == 'BYMONTHDAY':
+            result['bymonthday'] = int(value)
+        elif key == 'BYMONTH':
+            result['bymonth'] = int(value)
+
+    return result

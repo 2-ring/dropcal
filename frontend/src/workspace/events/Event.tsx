@@ -1,7 +1,8 @@
-import { Equals as EqualsIcon, MapPin as LocationIcon, CheckCircle, ArrowsClockwise } from '@phosphor-icons/react'
+import { Equals as EqualsIcon, MapPin as LocationIcon, ArrowsClockwise as RepeatIcon, CheckCircle, ArrowsClockwise } from '@phosphor-icons/react'
 import Skeleton from 'react-loading-skeleton'
 import type { CalendarEvent } from './types'
 import { getEventSyncStatus } from './types'
+import { formatRecurrence } from './recurrence'
 
 interface GoogleCalendar {
   id: string
@@ -91,6 +92,16 @@ export function Event({
           <div className="event-confirmation-card-meta">
             <EqualsIcon size={16} weight="bold" className="meta-icon" />
             <span>{event.description}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Recurrence */}
+      {event.recurrence && event.recurrence.length > 0 && (
+        <div className="event-confirmation-card-row">
+          <div className="event-confirmation-card-meta">
+            <RepeatIcon size={16} weight="bold" className="meta-icon" />
+            <span>{formatRecurrence(event.recurrence)}</span>
           </div>
         </div>
       )}
