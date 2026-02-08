@@ -4,7 +4,7 @@ import type { SessionListItem } from '../sessions'
 import type { InputType } from '../sessions'
 import { Account } from './Account'
 import { MenuButton } from './MenuButton'
-import { SkeletonSessionGroup } from '../components/skeletons'
+import { SkeletonSessionGroup, SkeletonSessionItem } from '../components/skeletons'
 import { getCalendarProviders } from '../api/backend-client'
 import { Tooltip } from '../components/Tooltip'
 import { useTheme } from '../theme/ThemeProvider'
@@ -226,13 +226,16 @@ export function Menu({
                 <div key={period} className="chat-group">
                   <div className="chat-group-label">{period}</div>
                   {periodSessions.map((session) => {
+                    if (session.status === 'processing') {
+                      return <SkeletonSessionItem key={session.id} />
+                    }
                     const InputIcon = getInputIcon(session.inputType)
                     return (
                       <div
                         key={session.id}
                         className={`chat-entry ${
                           session.id === currentSessionId ? 'active' : ''
-                        } ${session.status === 'error' ? 'error' : ''}`}
+                        }`}
                         onClick={() => onSessionClick(session.id)}
                       >
                         <InputIcon size={16} weight="regular" className="chat-entry-icon" />

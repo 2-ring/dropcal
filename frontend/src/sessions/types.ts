@@ -98,7 +98,7 @@ export interface Session {
   calendarEvents: CalendarEvent[]
 
   // Session status
-  status: 'active' | 'completed' | 'cancelled' | 'error'
+  status: 'active' | 'processing' | 'completed' | 'cancelled' | 'error'
   errorMessage?: string
 
   // Metadata for sidebar display

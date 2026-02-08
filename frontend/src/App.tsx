@@ -46,7 +46,7 @@ interface SessionListItem {
   title: string
   timestamp: Date
   inputType: 'text' | 'image' | 'audio' | 'document'
-  status: 'active' | 'completed' | 'error'
+  status: 'processing' | 'completed'
   eventCount: number
 }
 
@@ -215,6 +215,22 @@ function AppContent() {
     }
   }, [user])
 
+  // Auto-refresh session list when there are processing sessions (e.g. from a previous visit)
+  useEffect(() => {
+    const hasProcessingSessions = sessionHistory.some(
+      s => s.status === 'pending' || s.status === 'processing'
+    )
+    if (!hasProcessingSessions || !user) return
+
+    const interval = setInterval(() => {
+      getUserSessions()
+        .then(setSessionHistory)
+        .catch(console.error)
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [sessionHistory, user])
+
   const handleSidebarToggle = useCallback(() => {
     setSidebarOpen(prev => !prev)
   }, [])
@@ -262,6 +278,11 @@ function AppContent() {
       // Track guest session with access token
       if (!user && session.access_token) {
         GuestSessionManager.addGuestSession(session.id, session.access_token)
+      }
+
+      // Silently refresh session list so the new session appears as a skeleton
+      if (user) {
+        getUserSessions().then(setSessionHistory).catch(console.error)
       }
 
       setLoadingConfig(LOADING_MESSAGES.PROCESSING_FILE)
@@ -314,6 +335,10 @@ function AppContent() {
     } catch (error) {
       addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
       setAppState('input')
+      // Refresh session list so the failed session (now error status) gets filtered out
+      if (user) {
+        getUserSessions().then(setSessionHistory).catch(console.error)
+      }
     } finally {
       setIsProcessing(false)
     }
@@ -353,6 +378,11 @@ function AppContent() {
       // Track guest session with access token
       if (!user && session.access_token) {
         GuestSessionManager.addGuestSession(session.id, session.access_token)
+      }
+
+      // Silently refresh session list so the new session appears as a skeleton
+      if (user) {
+        getUserSessions().then(setSessionHistory).catch(console.error)
       }
 
       // Poll for completion (use guest endpoint if not authenticated)
@@ -403,6 +433,10 @@ function AppContent() {
     } catch (error) {
       addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
       setAppState('input')
+      // Refresh session list so the failed session (now error status) gets filtered out
+      if (user) {
+        getUserSessions().then(setSessionHistory).catch(console.error)
+      }
     } finally {
       setIsProcessing(false)
     }
@@ -517,15 +551,17 @@ function AppContent() {
     }
   }, [user, currentSession])
 
-  // Convert backend sessions to menu format
-  const menuSessions: SessionListItem[] = sessionHistory.map(session => ({
-    id: session.id,
-    title: session.title || session.input_content.substring(0, 50) + (session.input_content.length > 50 ? '...' : ''),
-    timestamp: new Date(session.created_at),
-    inputType: session.input_type as 'text' | 'image' | 'audio',
-    status: session.status === 'processed' ? 'completed' : session.status === 'error' ? 'error' : 'active',
-    eventCount: session.event_ids?.length || session.processed_events?.length || 0,
-  }))
+  // Convert backend sessions to menu format (filter out error sessions)
+  const menuSessions: SessionListItem[] = sessionHistory
+    .filter(session => session.status !== 'error')
+    .map(session => ({
+      id: session.id,
+      title: session.title || session.input_content.substring(0, 50) + (session.input_content.length > 50 ? '...' : ''),
+      timestamp: new Date(session.created_at),
+      inputType: session.input_type as 'text' | 'image' | 'audio',
+      status: session.status === 'processed' ? 'completed' as const : 'processing' as const,
+      eventCount: session.event_ids?.length || session.processed_events?.length || 0,
+    }))
 
   return (
     <div className="app">

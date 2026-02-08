@@ -28,6 +28,8 @@ interface AuthContextType {
   loading: boolean;
   preferences: UserPreferences;
   setPreferences: React.Dispatch<React.SetStateAction<UserPreferences>>;
+  primaryCalendarProvider: string | null;
+  setPrimaryCalendarProviderLocal: (provider: string | null) => void;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -42,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [preferences, setPreferences] = useState<UserPreferences>({});
+  const [primaryCalendarProvider, setPrimaryCalendarProvider] = useState<string | null>(null);
 
   useEffect(() => {
     // Initialize session on mount
@@ -59,6 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const profile = await getUserProfile();
             if (profile.user?.preferences) {
               setPreferences(profile.user.preferences);
+            }
+            if (profile.user?.primary_calendar_provider) {
+              setPrimaryCalendarProvider(profile.user.primary_calendar_provider);
             }
           } catch {
             // Preferences will use defaults
@@ -93,6 +99,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (profile.user?.preferences) {
               setPreferences(profile.user.preferences);
             }
+            if (profile.user?.primary_calendar_provider) {
+              setPrimaryCalendarProvider(profile.user.primary_calendar_provider);
+            }
           } catch (error) {
             console.error('Failed to sync user profile:', error);
           }
@@ -120,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setUser(null);
         setPreferences({});
+        setPrimaryCalendarProvider(null);
       }
 
       setLoading(false);
@@ -156,6 +166,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     preferences,
     setPreferences,
+    primaryCalendarProvider,
+    setPrimaryCalendarProviderLocal: setPrimaryCalendarProvider,
     signIn,
     signOut,
   };

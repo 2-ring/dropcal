@@ -50,7 +50,7 @@ type ViewMode = 'main' | 'integrations' | 'apple-connect';
 
 export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoading = false, triggerRef }: SettingsPopupProps) {
   const navigate = useNavigate();
-  const { signOut, signIn, preferences, setPreferences } = useAuth();
+  const { signOut, signIn, preferences, setPreferences, primaryCalendarProvider, setPrimaryCalendarProviderLocal } = useAuth();
   const popupRef = useRef<HTMLDivElement>(null);
   const { themeMode, toggleTheme } = useTheme();
 
@@ -155,6 +155,8 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
           isDefault: cal.provider === provider,
         }))
       );
+      // Update AuthContext so the rest of the app sees the change
+      setPrimaryCalendarProviderLocal(provider);
     } catch (error) {
       console.error('Failed to set primary provider:', error);
       // Refresh to get correct state
@@ -449,13 +451,12 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                   );
                 }
 
-                // Connected: click row to set as primary
+                // Connected: click row to set as primary (or show as active)
                 return (
                   <button
                     key={provider}
-                    className="settings-popup-item settings-integration-row"
-                    onClick={() => !isDefault && handleSetDefault(provider)}
-                    style={{ cursor: isDefault ? 'default' : 'pointer' }}
+                    className={`settings-popup-item settings-integration-row ${isDefault ? 'settings-integration-active' : ''}`}
+                    onClick={() => handleSetDefault(provider)}
                   >
                     {provider === 'google' && <GoogleLogo size={20} weight="duotone" />}
                     {provider === 'microsoft' && <MicrosoftOutlookLogo size={20} weight="duotone" />}
@@ -464,11 +465,9 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                       <span style={{ lineHeight: '1.2' }}>{getProviderName(provider)}</span>
                       <span style={{ fontSize: '11px', color: '#999', lineHeight: '1.2' }}>{calendar?.email || userEmail}</span>
                     </div>
-                    {isDefault && (
-                      <div className="settings-integration-actions">
-                        <Star size={20} weight="duotone" style={{ color: '#666' }} />
-                      </div>
-                    )}
+                    <div className="settings-integration-actions">
+                      <Star size={16} weight={isDefault ? 'duotone' : 'regular'} style={{ color: isDefault ? 'var(--text-primary)' : 'var(--text-disabled)', transition: 'all 0.15s ease' }} />
+                    </div>
                   </button>
                 );
               })}
