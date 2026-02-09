@@ -19,37 +19,38 @@ calendar_bp = Blueprint('calendar', __name__)
 calendar_service = CalendarService()
 
 
-def resolve_calendar_name_to_id(calendar_name: str, calendar_service: CalendarService) -> Optional[str]:
+def resolve_calendar_to_id(calendar_value: str, calendar_service: CalendarService) -> Optional[str]:
     """
-    Resolve human-readable calendar name to Google Calendar ID.
+    Resolve a calendar reference to a provider calendar ID.
+
+    Handles both provider calendar IDs (modern flow) and display names (legacy).
+    The pipeline now outputs IDs directly, but this handles backward compatibility.
 
     Args:
-        calendar_name: Name like "Classes", "UAPPLY", "Default", "Primary"
+        calendar_value: Provider calendar ID or display name (e.g. "Classes", "Default")
         calendar_service: CalendarService instance
 
     Returns:
-        Calendar ID if found, None if not found (caller defaults to 'primary')
+        Calendar ID if resolved, None if not found (caller defaults to 'primary')
     """
     try:
-        # Handle special case: "Default" or "Primary" → 'primary'
-        if calendar_name.lower() in ['default', 'primary']:
+        if calendar_value.lower() in ['default', 'primary']:
             return 'primary'
 
-        # Get user's calendar list
+        # Check if value is already a valid calendar ID
         calendars = calendar_service.get_calendar_list()
-
-        # Find matching calendar (case-insensitive)
         for cal in calendars:
-            cal_name = cal.get('summary', '')
-            cal_id = cal.get('id', '')
+            if cal.get('id', '') == calendar_value:
+                return calendar_value
 
-            if cal_name.lower() == calendar_name.lower():
-                return cal_id
+        # Fall back to name matching (legacy support)
+        for cal in calendars:
+            if cal.get('summary', '').lower() == calendar_value.lower():
+                return cal.get('id', '')
 
-        # Calendar not found
         return None
 
-    except Exception as e:
+    except Exception:
         return None
 
 
@@ -155,12 +156,12 @@ def create_calendar_event():
             return jsonify({'error': 'Event start and end times are required'}), 400
 
         # Extract calendar assignment if present (not part of Google API format)
-        calendar_name = event_data.pop('calendar', None)
+        calendar_value = event_data.pop('calendar', None)
 
-        # Resolve calendar name to calendar ID
+        # Resolve to provider calendar ID (handles both IDs and display names)
         calendar_id = None
-        if calendar_name:
-            calendar_id = resolve_calendar_name_to_id(calendar_name, calendar_service)
+        if calendar_value:
+            calendar_id = resolve_calendar_to_id(calendar_value, calendar_service)
 
         # Format attendees if provided (convert list of strings to list of dicts)
         if 'attendees' in event_data and event_data['attendees']:

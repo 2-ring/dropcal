@@ -559,7 +559,7 @@ def update_event(event_id):
         if 'description' in data:
             updates['description'] = data['description']
         if 'calendar' in data:
-            updates['calendar_name'] = data['calendar']
+            updates['calendar_name'] = data['calendar']  # frontend sends provider calendar ID
 
         if 'start' in data:
             start = data['start']

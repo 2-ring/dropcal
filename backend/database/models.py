@@ -1041,7 +1041,7 @@ class Event:
             description: Event description
             location: Event location
             timezone: IANA timezone
-            calendar_name: Calendar name
+            calendar_name: Provider calendar ID (DB column named 'calendar_name' for legacy reasons)
             color_id: Color ID
             original_input: Original raw input (for dropcal events)
             extracted_facts: Agent 2 output (for dropcal events)
