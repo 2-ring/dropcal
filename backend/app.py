@@ -136,7 +136,7 @@ from config.audio import print_audio_config
 llm_agent_1 = create_text_model('agent_1_identification')
 llm_agent_2 = create_text_model('agent_2_extraction')
 llm_agent_4 = create_text_model('agent_4_modification')
-llm_agent_5 = create_text_model('agent_5_preferences')
+llm_agent_3 = create_text_model('agent_3_preferences')
 llm_pattern_discovery = create_text_model('pattern_discovery')
 llm_session_processor = create_text_model('session_processor')
 
@@ -162,7 +162,7 @@ data_collection_service = DataCollectionService(calendar_service)
 agent_1_identification = EventIdentificationAgent(llm_agent_1)
 agent_2_extraction = EventExtractionAgent(llm_agent_2)
 agent_4_modification = EventModificationAgent(llm_agent_4)
-agent_3_personalization = PersonalizationAgent(llm_agent_5)
+agent_3_personalization = PersonalizationAgent(llm_agent_3)
 
 # Initialize input processor factory and register all processors
 input_processor_factory = InputProcessorFactory()
@@ -851,7 +851,7 @@ def discover_patterns():
     Uses the new simplified approach:
     - Statistical analysis for style patterns
     - LLM-based calendar and color pattern summaries
-    - Stores patterns for use by Agent 5
+    - Stores patterns for use by Agent 3
 
     Requires authentication. User ID is extracted from JWT token.
 

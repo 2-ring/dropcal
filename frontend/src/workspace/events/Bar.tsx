@@ -11,7 +11,7 @@ import type { Notification } from '../input/notifications'
 // INPUT DISPLAY
 // ============================================================================
 
-type InputType = 'text' | 'image' | 'audio' | 'document' | 'email'
+type InputType = 'text' | 'image' | 'audio' | 'document' | 'pdf' | 'email'
 
 interface InputInfo {
   type: InputType
@@ -23,6 +23,7 @@ function getInputIcon(inputType: InputType) {
     case 'image':
       return Images
     case 'document':
+    case 'pdf':
       return Files
     case 'audio':
       return Microphone
@@ -35,18 +36,15 @@ function getInputIcon(inputType: InputType) {
 
 function getInputSummary(input: InputInfo): string {
   switch (input.type) {
-    case 'image': {
+    case 'image':
       return '1 Image'
-    }
-    case 'audio': {
-      return 'Audio'
-    }
-    case 'document': {
+    case 'audio':
+      return '1 Audio'
+    case 'document':
+    case 'pdf':
       return '1 File'
-    }
     case 'text':
-    case 'email':
-    default: {
+    case 'email': {
       const len = input.content?.length || 0
       if (len >= 1000) {
         const k = Math.round(len / 1000)
@@ -54,6 +52,8 @@ function getInputSummary(input: InputInfo): string {
       }
       return `${len} Chars`
     }
+    default:
+      return '1 File'
   }
 }
 

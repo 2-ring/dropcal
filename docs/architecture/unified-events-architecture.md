@@ -88,7 +88,7 @@ color_id VARCHAR(10)          -- Google Calendar color
 original_input TEXT           -- Raw user input
 extracted_facts JSONB         -- Agent 2 output
 
--- Agent 5 tracking
+-- Agent 3 tracking
 system_suggestion JSONB       -- Original suggestion
 user_modified BOOLEAN         -- Did user edit?
 correction_history JSONB[]    -- Audit log of changes
@@ -134,7 +134,7 @@ WHERE user_id = $1
 LIMIT 500;
 ```
 
-### 3. Similarity Search (for Agent 5)
+### 3. Similarity Search (for Agent 3)
 
 ```sql
 -- Find similar events using vector search
@@ -264,7 +264,7 @@ CREATE TABLE event_corrections (
 ```sql
 -- Correction data lives ON the event itself
 CREATE TABLE events (
-  system_suggestion JSONB,       -- What Agent 5 suggested
+  system_suggestion JSONB,       -- What Agent 3 suggested
   user_modified BOOLEAN,          -- Did user change it?
   correction_history JSONB[],     -- Audit log
   -- Current state is the event columns (summary, time, etc.)

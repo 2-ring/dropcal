@@ -5,7 +5,7 @@ import {
   ArrowFatUp as ArrowFatUpIcon
 } from '@phosphor-icons/react'
 import isURL from 'validator/lib/isURL'
-import { useNotifications, createErrorNotification } from '../../notifications'
+import { useNotifications, createErrorNotification, getFriendlyErrorMessage } from '../../notifications'
 
 interface LinkProps {
   onClose: () => void
@@ -75,9 +75,7 @@ export function Link({ onClose, onSubmit, submitRef }: LinkProps) {
       setIsValid(false)
     } catch (err) {
       console.error('Failed to fetch URL:', err)
-      addNotification(createErrorNotification(
-        err instanceof Error ? err.message : 'Could not retrieve content from the URL. Please try again.'
-      ))
+      addNotification(createErrorNotification(getFriendlyErrorMessage(err)))
     }
   }
 

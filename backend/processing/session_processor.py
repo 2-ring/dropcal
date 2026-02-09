@@ -346,8 +346,8 @@ class SessionProcessor:
                 trace_id=session_id
             )
 
-            # Determine if vision is needed
-            requires_vision = file_type in ['image', 'pdf']
+            # Determine if vision is needed (only images; PDFs use text extraction)
+            requires_vision = file_type == 'image'
 
             if file_type == 'audio':
                 text = f"[Audio file content from {file_path}]"

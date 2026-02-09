@@ -17,7 +17,8 @@ import {
   createValidationErrorNotification,
   createSuccessNotification,
   createWarningNotification,
-  createErrorNotification
+  createErrorNotification,
+  getFriendlyErrorMessage
 } from './workspace/input/notifications'
 import type { CalendarEvent, LoadingStateConfig } from './workspace/events/types'
 import { LOADING_MESSAGES } from './workspace/events/types'
@@ -333,7 +334,7 @@ function AppContent() {
 
     } catch (error) {
       console.error('Text processing failed:', error)
-      addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
+      addNotification(createErrorNotification(getFriendlyErrorMessage(error)))
       setAppState('input')
       if (user) {
         getUserSessions().then(setSessionHistory).catch(console.error)
@@ -438,7 +439,7 @@ function AppContent() {
 
     } catch (error) {
       console.error('File processing failed:', error)
-      addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
+      addNotification(createErrorNotification(getFriendlyErrorMessage(error)))
       setAppState('input')
       if (user) {
         getUserSessions().then(setSessionHistory).catch(console.error)

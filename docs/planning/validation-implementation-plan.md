@@ -249,7 +249,7 @@ Validation is complete when:
 ### Secondary (if needed):
 - [backend/app.py](backend/app.py) - Add ValidationError handling around agent calls (lines 226-240)
 - [backend/extraction/agents/facts.py](backend/extraction/agents/facts.py) - Optional: add retry logic if validation fails
-- [backend/extraction/agents/formatting.py](backend/extraction/agents/formatting.py) - Optional: add retry logic if validation fails
+- [backend/preferences/agent.py](backend/preferences/agent.py) - Optional: add retry logic if validation fails
 
 ### Testing:
 - Create `backend/tests/test_validation.py` - Unit tests for validators

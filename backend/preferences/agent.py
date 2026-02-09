@@ -411,7 +411,7 @@ match the user's discovered patterns and similar events.
             # Convert event to dict for querying
             facts_dict = event.model_dump()
 
-            # Query corrections (Agent 5 use case)
+            # Query corrections (Agent 3 use case)
             query_service = CorrectionQueryService()
             corrections = query_service.query_for_preference_application(
                 user_id=user_id,

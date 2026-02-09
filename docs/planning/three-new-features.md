@@ -18,7 +18,7 @@ Agent 2 (Facts Extraction): backend/extraction/agents/facts.py
 Extracts location: Optional[str] as free-form text
 Rules: Physical locations only (no virtual meeting links)
 Examples: "Conference Room B", "Starbucks", "Puerto Rico"
-Agent 3 (Standard Formatting): backend/extraction/agents/standard_formatting.py
+Agent 3 (Preferences): backend/preferences/agent.py
 
 Passes location through as-is
 No geocoding or validation
@@ -290,7 +290,7 @@ Extracts people: List[str] - names mentioned ("Sarah", "John")
 Extracts attendees: List[str] - email addresses ONLY (explicitly mentioned)
 Rule: Only extracts attendees if email addresses are in the input
 Example: "Meeting with Sarah" → people=["Sarah"], attendees=null
-Agent 3 (Formatting): backend/extraction/agents/standard_formatting.py
+Agent 3 (Preferences): backend/preferences/agent.py
 
 Outputs CalendarEvent.attendees: List[str]
 Current behavior: Passes through facts.people (names, not emails)

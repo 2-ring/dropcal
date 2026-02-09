@@ -123,7 +123,7 @@ export function EventEditView({
     if (freq === 'NONE') {
       setRecurrenceConfig(null)
       setShowRecurrenceEditor(false)
-      handleChange('recurrence', undefined)
+      handleChange('recurrence', null)
       return
     }
     const config = getDefaultConfig(freq, editedEvent.start.dateTime)

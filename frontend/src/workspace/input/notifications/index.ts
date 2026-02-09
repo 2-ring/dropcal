@@ -7,5 +7,6 @@ export {
   createWarningNotification,
   createInfoNotification,
   createErrorNotification,
+  getFriendlyErrorMessage,
 } from './notificationHelpers'
 export type { Notification, NotificationVariant } from './types'

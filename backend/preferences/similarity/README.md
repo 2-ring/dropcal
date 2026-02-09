@@ -336,7 +336,7 @@ def analyze_with_similarity(self, events):
     return patterns
 ```
 
-### 2. Few-Shot Example Selection (Agent 5)
+### 2. Few-Shot Example Selection (Agent 3)
 
 Use similarity to find examples for LLM style transfer:
 
@@ -606,7 +606,7 @@ scipy==1.11.4                  # Optimization
 ### Integration (Phase 3 Remaining)
 
 5. ⏳ Integrate with `PatternAnalysisService` for similarity-based clustering
-6. ⏳ Integrate with `PreferenceApplicationAgent` (Agent 5) for few-shot examples
+6. ⏳ Integrate with `PreferenceApplicationAgent` (Agent 3) for few-shot examples
 7. ⏳ Create API endpoint `/api/similarity/search`
 8. ⏳ Test end-to-end with real user data
 

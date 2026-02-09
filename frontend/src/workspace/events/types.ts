@@ -33,7 +33,7 @@ export interface CalendarEvent {
   end: CalendarDateTime
   location?: string
   description?: string
-  recurrence?: string[]
+  recurrence?: string[] | null
   attendees?: string[]
   calendar?: string
   version?: number

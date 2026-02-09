@@ -1045,7 +1045,7 @@ class Event:
             color_id: Color ID
             original_input: Original raw input (for dropcal events)
             extracted_facts: Agent 2 output (for dropcal events)
-            system_suggestion: Agent 5 output (for dropcal events)
+            system_suggestion: Agent 3 output (for dropcal events)
             event_embedding: 384-dim embedding vector
 
         Returns:

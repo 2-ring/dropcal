@@ -8,22 +8,21 @@ Production: dropcal.ai (frontend) / api.dropcal.ai (backend)
 
 ### Agent Pipeline
 
-The core is a 5-agent LangChain pipeline. Each agent inherits from `BaseAgent` (`backend/core/base_agent.py`), uses `.with_structured_output(PydanticModel)` for typed returns, and loads prompts from a `prompts/` directory relative to its own file.
+The core is a 3-agent LangChain pipeline, plus a separate modification agent for user edits. Each agent inherits from `BaseAgent` (`backend/core/base_agent.py`), uses `.with_structured_output(PydanticModel)` for typed returns, and loads prompts from a `prompts/` directory relative to its own file.
 
 ```
-Input → Agent 1 (Identification) → Agent 2 (Extraction) → Agent 3 (Formatting)
+Input → Agent 1 (Identification) → Agent 2 (Extraction) → Agent 3 (Preferences, conditional)
                                          ↕ parallel per event
-        Agent 4 (Modification) ← user edits
-        Agent 5 (Preferences)  ← learned patterns
+
+Modification Agent ← user edits (separate from pipeline)
 ```
 
 | Agent | File | Input → Output | Job |
 |-------|------|---------------|-----|
 | 1 - Identification | `extraction/agents/identification.py` | raw text/image → `IdentificationResult` | Find all events in input |
-| 2 - Extraction | `extraction/agents/facts.py` | per-event raw_text → `ExtractedFacts` | Normalize dates/times/fields |
-| 3 - Formatting | `extraction/agents/formatting.py` | `ExtractedFacts` → `CalendarEvent` | Format for calendar API |
-| 4 - Modification | `modification/agent.py` | user edit request → modified event | Handle user corrections |
-| 5 - Preferences | `preferences/agent.py` | event + patterns → personalized event | Apply learned preferences |
+| 2 - Extraction | `extraction/agents/facts.py` | per-event raw_text → `CalendarEvent` | Extract facts and format for calendar API |
+| 3 - Preferences | `preferences/agent.py` | `CalendarEvent` + patterns → personalized `CalendarEvent` | Apply learned preferences |
+| Modification | `modification/agent.py` | user edit request → modified event | Handle user corrections (not part of main pipeline) |
 
 All Pydantic models live in `backend/extraction/models.py`. Agents 2+3 run in parallel per event using threads with a `db_lock` (because `Session.add_event` does read-modify-write).
 

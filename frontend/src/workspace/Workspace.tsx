@@ -24,7 +24,7 @@ interface WorkspaceProps {
   // Events state props
   calendarEvents: (CalendarEvent | null)[]
   expectedEventCount?: number
-  inputType?: 'text' | 'image' | 'audio' | 'document' | 'email'
+  inputType?: 'text' | 'image' | 'audio' | 'document' | 'pdf' | 'email'
   inputContent?: string
 
   // Handlers

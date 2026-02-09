@@ -24,9 +24,8 @@ class TextModelConfig:
     # AI Pipeline Agents
     agent_1_identification: TextProvider = 'grok'
     agent_2_extraction: TextProvider = 'grok'
-    agent_3_formatting: TextProvider = 'grok'
+    agent_3_preferences: TextProvider = 'grok'
     agent_4_modification: TextProvider = 'grok'
-    agent_5_preferences: TextProvider = 'grok'
 
     # Supporting Services
     pattern_discovery: TextProvider = 'grok'
@@ -42,9 +41,8 @@ class TextModelConfig:
         return cls(
             agent_1_identification='grok',
             agent_2_extraction='grok',
-            agent_3_formatting='grok',
+            agent_3_preferences='grok',
             agent_4_modification='grok',
-            agent_5_preferences='grok',
             pattern_discovery='grok',
             session_processor='grok'
         )
@@ -55,9 +53,8 @@ class TextModelConfig:
         return cls(
             agent_1_identification='claude',
             agent_2_extraction='claude',
-            agent_3_formatting='claude',
+            agent_3_preferences='claude',
             agent_4_modification='claude',
-            agent_5_preferences='claude',
             pattern_discovery='claude',
             session_processor='claude'
         )
@@ -68,9 +65,8 @@ class TextModelConfig:
         return cls(
             agent_1_identification='grok',      # Vision - Grok works
             agent_2_extraction='claude',        # Complex parsing - Claude better
-            agent_3_formatting='grok',          # Simple formatting - Grok fine
+            agent_3_preferences='claude',       # Personalization - Claude better
             agent_4_modification='grok',        # Simple edits - Grok fine
-            agent_5_preferences='claude',       # Personalization - Claude better
             pattern_discovery='claude',         # Pattern analysis - Claude better
             session_processor='grok'            # Conversations - Grok fine
         )
@@ -173,9 +169,8 @@ def print_text_config():
     print("\nAI PIPELINE AGENTS:")
     print(f"  Agent 1 (Identification):     {CONFIG.agent_1_identification.upper()}")
     print(f"  Agent 2 (Extraction):          {CONFIG.agent_2_extraction.upper()}")
-    print(f"  Agent 3 (Formatting):          {CONFIG.agent_3_formatting.upper()}")
+    print(f"  Agent 3 (Preferences):         {CONFIG.agent_3_preferences.upper()}")
     print(f"  Agent 4 (Modification):        {CONFIG.agent_4_modification.upper()}")
-    print(f"  Agent 5 (Preferences):         {CONFIG.agent_5_preferences.upper()}")
     print("\nSUPPORTING SERVICES:")
     print(f"  Pattern Discovery:             {CONFIG.pattern_discovery.upper()}")
     print(f"  Session Processor:             {CONFIG.session_processor.upper()}")

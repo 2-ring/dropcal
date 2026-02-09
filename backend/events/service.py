@@ -55,7 +55,7 @@ class EventService:
             color_id: Color ID
             original_input: Original raw text input
             extracted_facts: Agent 2 output
-            system_suggestion: Agent 5 output
+            system_suggestion: Agent 3 output
 
         Returns:
             Created event dict
@@ -443,7 +443,7 @@ class EventService:
     @staticmethod
     def get_user_corrections(user_id: str) -> List[Dict[str, Any]]:
         """
-        Get events where user modified Agent 5 suggestions (for feedback loop).
+        Get events where user modified Agent 3 suggestions (for feedback loop).
 
         Args:
             user_id: User's UUID

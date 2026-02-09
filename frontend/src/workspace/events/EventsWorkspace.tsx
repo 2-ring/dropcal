@@ -23,6 +23,7 @@ import {
   createSuccessNotification,
   createWarningNotification,
   createErrorNotification,
+  getFriendlyErrorMessage,
 } from '../input/notifications'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
@@ -44,7 +45,7 @@ interface EventsWorkspaceProps {
   isLoading?: boolean
   loadingConfig?: LoadingStateConfig[]
   expectedEventCount?: number
-  inputType?: 'text' | 'image' | 'audio' | 'document' | 'email'
+  inputType?: 'text' | 'image' | 'audio' | 'document' | 'pdf' | 'email'
   inputContent?: string
   onBack?: () => void
   sessionId?: string
@@ -127,7 +128,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
           // Still null after refresh attempt — notify user
           if (result === null) {
             addNotification(createWarningNotification(
-              'Calendar session expired. Please sign in again to restore your calendars.'
+              'Your calendar session expired. Sign in again to reconnect!'
             ))
             result = [DEFAULT_CALENDAR]
           }
@@ -243,11 +244,11 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
             onEventsChanged?.(validEvents)
             return updated
           })
-          addNotification(createSuccessNotification('Your changes have been saved'))
+          addNotification(createSuccessNotification('Got it, changes saved!'))
         })
         .catch(err => {
           console.error('Failed to persist event edit:', err)
-          addNotification(createErrorNotification('Failed to save changes'))
+          addNotification(createErrorNotification("Couldn't save that change. Mind trying again?"))
         })
     }
   }
@@ -330,15 +331,13 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
           }
         }
 
-        addNotification(createSuccessNotification('Changes applied!'))
+        addNotification(createSuccessNotification('Done, changes applied!'))
         runConflictCheck()
 
         // Close chat after successful edit
         setIsChatExpanded(false)
       } catch (error) {
-        addNotification(createErrorNotification(
-          error instanceof Error ? error.message : 'Failed to apply changes'
-        ))
+        addNotification(createErrorNotification(getFriendlyErrorMessage(error)))
       } finally {
         setIsProcessingEdit(false)
       }
@@ -380,9 +379,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
           }
         }
       } catch (error) {
-        addNotification(createErrorNotification(
-          error instanceof Error ? error.message : 'Failed to sync to calendar'
-        ))
+        addNotification(createErrorNotification(getFriendlyErrorMessage(error)))
       } finally {
         setIsAddingToCalendar(false)
       }
@@ -396,13 +393,13 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
       const result = await syncEvent(event.id)
       const action = result.action
       if (action === 'updated') {
-        addNotification(createSuccessNotification(`"${event.summary}" updated in calendar`))
+        addNotification(createSuccessNotification(`"${event.summary}" updated in your calendar!`))
       } else if (action === 'skipped') {
-        addNotification(createSuccessNotification(`"${event.summary}" already up to date`))
+        addNotification(createSuccessNotification(`"${event.summary}" is already up to date!`))
       } else if (action === 'created') {
-        addNotification(createSuccessNotification(`"${event.summary}" added to calendar`))
+        addNotification(createSuccessNotification(`"${event.summary}" added to your calendar!`))
       } else {
-        addNotification(createErrorNotification(`Failed to sync "${event.summary}"`))
+        addNotification(createErrorNotification(`Hmm, couldn't sync "${event.summary}". Give it another try!`))
       }
       // Update local state with the fresh event from server (has updated provider_syncs)
       if (result.event) {
@@ -416,9 +413,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
         })
       }
     } catch (error) {
-      addNotification(createErrorNotification(
-        error instanceof Error ? error.message : 'Failed to sync event'
-      ))
+      addNotification(createErrorNotification(getFriendlyErrorMessage(error)))
     }
   }
 
@@ -434,14 +429,12 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
       } catch (error) {
         // Re-add on failure
         setEditedEvents(prev => [...prev, event])
-        addNotification(createErrorNotification(
-          error instanceof Error ? error.message : 'Failed to remove event'
-        ))
+        addNotification(createErrorNotification(getFriendlyErrorMessage(error)))
         return
       }
     }
 
-    addNotification(createSuccessNotification(`"${event.summary}" removed`))
+    addNotification(createSuccessNotification(`"${event.summary}" removed!`))
   }
 
   const formatDate = (dateTime: string, endDateTime?: string): string => {
