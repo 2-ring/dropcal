@@ -332,12 +332,9 @@ function AppContent() {
       navigate(`/s/${completedSession.id}`)
 
     } catch (error) {
-      // Only show error if user is still viewing this session
-      if (activeViewSessionRef.current === null || activeViewSessionRef.current === currentSession?.id) {
-        addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
-        setAppState('input')
-      }
-      // Always refresh session list so the failed session gets filtered out
+      console.error('Text processing failed:', error)
+      addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
+      setAppState('input')
       if (user) {
         getUserSessions().then(setSessionHistory).catch(console.error)
       }
@@ -440,12 +437,9 @@ function AppContent() {
       navigate(`/s/${completedSession.id}`)
 
     } catch (error) {
-      // Only show error if user is still viewing this session
-      if (activeViewSessionRef.current === null || activeViewSessionRef.current === currentSession?.id) {
-        addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
-        setAppState('input')
-      }
-      // Always refresh session list so the failed session gets filtered out
+      console.error('File processing failed:', error)
+      addNotification(createErrorNotification("Oops! Something went wrong. Mind trying that again?"))
+      setAppState('input')
       if (user) {
         getUserSessions().then(setSessionHistory).catch(console.error)
       }
@@ -536,6 +530,11 @@ function AppContent() {
     }
   }, [user, currentSession])
 
+  // Handle events changed in EventsWorkspace (edits, syncs) — keep parent state in sync
+  const handleEventsChanged = useCallback((events: CalendarEvent[]) => {
+    setCalendarEvents(events)
+  }, [])
+
   // Handle event deletion: update sessionHistory so sidebar reflects the change
   const handleEventDeleted = useCallback((eventId: string, sessionId?: string, remainingCount?: number) => {
     if (!sessionId) return
@@ -609,6 +608,7 @@ function AppContent() {
           onClearFile={handleClearFile}
           onConfirm={handleAddToCalendar}
           onEventDeleted={handleEventDeleted}
+          onEventsChanged={handleEventsChanged}
           onMenuToggle={handleSidebarToggle}
           onNewSession={handleNewSession}
           sessionId={currentSession?.id}

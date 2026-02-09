@@ -32,7 +32,9 @@ class EventService:
         color_id: Optional[str] = None,
         original_input: Optional[str] = None,
         extracted_facts: Optional[Dict] = None,
-        system_suggestion: Optional[Dict] = None
+        system_suggestion: Optional[Dict] = None,
+        recurrence: Optional[list] = None,
+        attendees: Optional[list] = None
     ) -> Dict[str, Any]:
         """
         Create a DropCal event (draft or confirmed).
@@ -85,7 +87,9 @@ class EventService:
             original_input=original_input,
             extracted_facts=extracted_facts,
             system_suggestion=system_suggestion,
-            event_embedding=event_embedding
+            event_embedding=event_embedding,
+            recurrence=recurrence,
+            attendees=attendees
         )
 
         # Link to session
@@ -324,13 +328,15 @@ class EventService:
         if event_row.get('calendar_name'):
             result['calendar'] = event_row['calendar_name']
 
-        # Recurrence and attendees are not stored as flat columns —
-        # pull from system_suggestion (the original Agent 3 output)
+        # Recurrence and attendees: read from top-level columns first,
+        # fall back to system_suggestion for events created before migration
         system_suggestion = event_row.get('system_suggestion') or {}
-        if system_suggestion.get('recurrence'):
-            result['recurrence'] = system_suggestion['recurrence']
-        if system_suggestion.get('attendees'):
-            result['attendees'] = system_suggestion['attendees']
+        recurrence = event_row.get('recurrence') or system_suggestion.get('recurrence')
+        attendees = event_row.get('attendees') or system_suggestion.get('attendees')
+        if recurrence:
+            result['recurrence'] = recurrence
+        if attendees:
+            result['attendees'] = attendees
 
         return result
 

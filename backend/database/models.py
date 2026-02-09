@@ -1019,7 +1019,9 @@ class Event:
         original_input: Optional[str] = None,
         extracted_facts: Optional[Dict] = None,
         system_suggestion: Optional[Dict] = None,
-        event_embedding: Optional[List[float]] = None
+        event_embedding: Optional[List[float]] = None,
+        recurrence: Optional[List] = None,
+        attendees: Optional[List] = None
     ) -> Dict[str, Any]:
         """
         Create a new event.
@@ -1090,6 +1092,10 @@ class Event:
             data["system_suggestion"] = system_suggestion
         if event_embedding:
             data["event_embedding"] = event_embedding
+        if recurrence:
+            data["recurrence"] = recurrence
+        if attendees:
+            data["attendees"] = attendees
 
         response = supabase.table("events").insert(data).execute()
         return response.data[0]

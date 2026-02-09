@@ -554,11 +554,11 @@ def update_event(event_id):
             if 'date' in end:
                 updates['end_date'] = end['date']
 
-        # Recurrence is stored inside system_suggestion JSONB
+        # Recurrence and attendees stored as top-level columns
         if 'recurrence' in data:
-            system_suggestion = dict(event.get('system_suggestion') or {})
-            system_suggestion['recurrence'] = data['recurrence']  # list of RRULE strings or None
-            updates['system_suggestion'] = system_suggestion
+            updates['recurrence'] = data['recurrence']  # list of RRULE strings or None
+        if 'attendees' in data:
+            updates['attendees'] = data['attendees']  # list of email strings or None
 
         if updates:
             updates['user_modified'] = True

@@ -2,7 +2,6 @@ import type { Session } from './types'
 import {
   createSessionOnBackend,
   updateSessionOnBackend,
-  getAllSessionsFromBackend,
   deleteSessionFromBackend,
 } from './backend'
 
@@ -62,37 +61,11 @@ export class SessionCache {
   private maxSessions = 50 // Keep last 50 sessions
   private listeners: Set<SessionCacheListener> = new Set()
   private backendSessionIds: Set<string> = new Set() // Track sessions that exist on backend
-  private isInitialized = false
 
   constructor() {
-    // Initialize sessions from backend + localStorage
-    this.initialize()
-  }
-
-  // Initialize cache from backend (with localStorage fallback)
-  private async initialize(): Promise<void> {
-    if (this.isInitialized) return
-
-    // First, try to load from backend
-    try {
-      const backendSessions = await getAllSessionsFromBackend()
-      if (backendSessions.length > 0) {
-        console.log(`Loaded ${backendSessions.length} sessions from backend`)
-        backendSessions.forEach(session => {
-          this.sessions.set(session.id, session)
-          this.backendSessionIds.add(session.id)
-        })
-        // Save to localStorage as cache
-        this.saveToStorage()
-        this.isInitialized = true
-        this.notify()
-        return
-      }
-    } catch (error) {
-      console.warn('Failed to load from backend, falling back to localStorage:', error)
-    }
-
-    // Fallback: load from localStorage
+    // Only load from localStorage on construction (synchronous, no auth needed).
+    // The backend fetch with temp-user-id is legacy dead code — the real session
+    // list is fetched via getUserSessions() in App.tsx.
     this.loadFromStorage()
 
     // Load backend session IDs from localStorage
@@ -102,11 +75,10 @@ export class SessionCache {
         const ids = JSON.parse(stored)
         this.backendSessionIds = new Set(ids)
       }
-    } catch (error) {
-      console.error('Failed to load backend session IDs:', error)
+    } catch {
+      // Ignore corrupted data
     }
 
-    this.isInitialized = true
   }
 
   // Load sessions from localStorage

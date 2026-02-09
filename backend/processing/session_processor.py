@@ -206,7 +206,9 @@ class SessionProcessor:
                         color_id=calendar_event.colorId,
                         original_input=event.raw_text,
                         extracted_facts=calendar_event.model_dump(),
-                        system_suggestion=calendar_event.model_dump()
+                        system_suggestion=calendar_event.model_dump(),
+                        recurrence=calendar_event.recurrence,
+                        attendees=calendar_event.attendees
                     )
 
                 return EventProcessingResult(

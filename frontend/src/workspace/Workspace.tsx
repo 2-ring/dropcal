@@ -35,6 +35,7 @@ interface WorkspaceProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onConfirm?: (editedEvents?: CalendarEvent[]) => Promise<any> | any
   onEventDeleted?: (eventId: string, sessionId?: string, remainingCount?: number) => void
+  onEventsChanged?: (events: CalendarEvent[]) => void
   onMenuToggle?: () => void
   onNewSession?: () => void
   sessionId?: string
@@ -57,6 +58,7 @@ export function Workspace({
   onClearFile,
   onConfirm,
   onEventDeleted,
+  onEventsChanged,
   onMenuToggle,
   onNewSession,
   sessionId,
@@ -131,6 +133,7 @@ export function Workspace({
           inputContent={inputContent}
           onConfirm={onConfirm}
           onEventDeleted={onEventDeleted}
+          onEventsChanged={onEventsChanged}
           onBack={onMenuToggle}
           sessionId={sessionId}
         />

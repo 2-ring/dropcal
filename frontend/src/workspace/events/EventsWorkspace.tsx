@@ -40,6 +40,7 @@ interface EventsWorkspaceProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onConfirm?: (editedEvents?: CalendarEvent[]) => Promise<any> | any
   onEventDeleted?: (eventId: string, sessionId?: string, remainingCount?: number) => void
+  onEventsChanged?: (events: CalendarEvent[]) => void
   isLoading?: boolean
   loadingConfig?: LoadingStateConfig[]
   expectedEventCount?: number
@@ -49,7 +50,7 @@ interface EventsWorkspaceProps {
   sessionId?: string
 }
 
-export function EventsWorkspace({ events, onConfirm, onEventDeleted, isLoading = false, loadingConfig = [], expectedEventCount, inputType, inputContent, onBack, sessionId }: EventsWorkspaceProps) {
+export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsChanged, isLoading = false, loadingConfig = [], expectedEventCount, inputType, inputContent, onBack, sessionId }: EventsWorkspaceProps) {
   const { calendarReady } = useAuth()
   const [changeRequest, setChangeRequest] = useState('')
   const [isChatExpanded, setIsChatExpanded] = useState(false)
@@ -143,10 +144,23 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, isLoading =
     fetchCalendars()
   }, [calendarReady])
 
-  // Sync editedEvents with events prop
+  // Sync editedEvents from prop only when session changes or events first arrive
+  const prevSessionIdRef = useRef(sessionId)
   useEffect(() => {
-    setEditedEvents(events)
-  }, [events])
+    const sessionChanged = sessionId !== prevSessionIdRef.current
+    prevSessionIdRef.current = sessionId
+
+    if (sessionChanged) {
+      // New session — reset to prop data
+      setEditedEvents(events)
+    } else if (editedEvents.length === 0 && events.some(e => e !== null)) {
+      // First batch of events arriving (pipeline streaming)
+      setEditedEvents(events)
+    } else if (isLoading) {
+      // Still loading — keep syncing from prop (streaming events)
+      setEditedEvents(events)
+    }
+  }, [events, sessionId, isLoading])
 
   // Check for conflicts when events finish loading
   useEffect(() => {
@@ -225,6 +239,8 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, isLoading =
           setEditedEvents(prev => {
             const updated = [...prev]
             updated[savedIndex] = persisted
+            const validEvents = updated.filter((e): e is CalendarEvent => e !== null)
+            onEventsChanged?.(validEvents)
             return updated
           })
           addNotification(createSuccessNotification('Your changes have been saved'))
@@ -303,9 +319,12 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, isLoading =
           if (event?.id) {
             updateEvent(event.id, event)
               .then(persisted => {
-                setEditedEvents(prev =>
-                  prev.map(e => e?.id === persisted.id ? persisted : e)
-                )
+                setEditedEvents(prev => {
+                  const updated = prev.map(e => e?.id === persisted.id ? persisted : e)
+                  const validEvents = updated.filter((e): e is CalendarEvent => e !== null)
+                  onEventsChanged?.(validEvents)
+                  return updated
+                })
               })
               .catch(err => console.error('Failed to persist AI edit:', err))
           }
@@ -355,6 +374,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, isLoading =
           try {
             const freshEvents = await getSessionEvents(sessionId)
             setEditedEvents(freshEvents)
+            onEventsChanged?.(freshEvents)
           } catch {
             // Non-critical — local state is still usable
           }
@@ -386,9 +406,14 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, isLoading =
       }
       // Update local state with the fresh event from server (has updated provider_syncs)
       if (result.event) {
-        setEditedEvents(prev => prev.map(e =>
-          e?.id === event.id ? result.event : e
-        ))
+        setEditedEvents(prev => {
+          const updated = prev.map(e =>
+            e?.id === event.id ? result.event : e
+          )
+          const validEvents = updated.filter((e): e is CalendarEvent => e !== null)
+          onEventsChanged?.(validEvents)
+          return updated
+        })
       }
     } catch (error) {
       addNotification(createErrorNotification(

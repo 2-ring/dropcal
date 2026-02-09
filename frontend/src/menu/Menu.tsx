@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react'
 import { Sidebar as SidebarIcon, Baby, CalendarBlank, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, GoogleLogo, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
 import type { SessionListItem } from '../sessions'
 import type { InputType } from '../sessions'
 import { Account } from './Account'
 import { MenuButton } from './MenuButton'
 import { SkeletonSessionGroup } from '../components/skeletons'
-import { getCalendarProviders } from '../api/backend-client'
+import { useAuth } from '../auth/AuthContext'
 import { Tooltip } from '../components/Tooltip'
 import { useTheme } from '../theme/ThemeProvider'
 import { Logo } from '../components/Logo'
@@ -34,34 +33,13 @@ export function Menu({
   isLoadingSessions = false,
 }: MenuProps) {
   const { themeMode } = useTheme()
+  const { primaryCalendarProvider } = useAuth()
 
   // Select brand images based on theme
   const wordImage = themeMode === 'dark' ? wordImageDark : wordImageLight
 
-  // State for primary calendar provider
-  const [primaryProvider, setPrimaryProvider] = useState<'google' | 'microsoft' | 'apple' | null>(null)
-
-  // Fetch primary calendar provider on mount
-  useEffect(() => {
-    const fetchPrimaryProvider = async () => {
-      try {
-        const response = await getCalendarProviders()
-        const primary = response.providers.find(p => p.is_primary && p.connected)
-        if (primary) {
-          setPrimaryProvider(primary.provider as 'google' | 'microsoft' | 'apple')
-        } else {
-          // Default to Google if no primary provider is set
-          setPrimaryProvider('google')
-        }
-      } catch (error) {
-        console.error('Failed to fetch calendar providers:', error)
-        // Default to Google on error
-        setPrimaryProvider('google')
-      }
-    }
-
-    fetchPrimaryProvider()
-  }, [])
+  // Use provider from auth context (already fetched during sign-in), default to Google
+  const primaryProvider = (primaryCalendarProvider as 'google' | 'microsoft' | 'apple') || 'google'
 
   // Get calendar URL based on provider
   const getCalendarUrl = () => {
