@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Notification } from './types'
 
 export function useNotificationQueue() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
+  const ttlTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Add a notification to the queue
   const addNotification = useCallback((notification: Notification) => {
@@ -54,6 +55,24 @@ export function useNotificationQueue() {
 
   // Get the current notification to display (first non-dismissed one)
   const currentNotification = notifications.find(n => !dismissedIds.has(n.id)) || null
+
+  // Auto-dismiss notifications with a TTL
+  useEffect(() => {
+    if (ttlTimerRef.current) {
+      clearTimeout(ttlTimerRef.current)
+      ttlTimerRef.current = null
+    }
+    if (currentNotification?.ttl) {
+      ttlTimerRef.current = setTimeout(() => {
+        dismissNotification(currentNotification.id)
+      }, currentNotification.ttl)
+    }
+    return () => {
+      if (ttlTimerRef.current) {
+        clearTimeout(ttlTimerRef.current)
+      }
+    }
+  }, [currentNotification?.id, currentNotification?.ttl, dismissNotification])
 
   return {
     currentNotification,

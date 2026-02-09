@@ -30,7 +30,7 @@ export function createValidationErrorNotification(error: string): Notification {
 /**
  * Helper to create success notifications
  */
-export function createSuccessNotification(message: string): Notification {
+export function createSuccessNotification(message: string, ttl = 3000): Notification {
   return {
     id: `success-${Date.now()}`,
     icon: CheckCircle,
@@ -39,13 +39,14 @@ export function createSuccessNotification(message: string): Notification {
     variant: 'success',
     persistent: false,
     priority: 5,
+    ttl,
   }
 }
 
 /**
  * Helper to create warning notifications
  */
-export function createWarningNotification(message: string): Notification {
+export function createWarningNotification(message: string, ttl = 5000): Notification {
   return {
     id: `warning-${Date.now()}`,
     icon: Warning,
@@ -54,6 +55,7 @@ export function createWarningNotification(message: string): Notification {
     variant: 'warning',
     persistent: false,
     priority: 7,
+    ttl,
   }
 }
 

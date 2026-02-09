@@ -578,6 +578,9 @@ def check_event_conflicts():
     Batch conflict check: for each event in the request, find overlapping
     events already in the user's calendar (excluding events from the
     same session so a session's own events don't conflict with themselves).
+
+    TODO: Recurring events — only the base occurrence is checked. Expand
+    RRULEs with python-dateutil to detect conflicts with future occurrences.
     """
     try:
         user_id = request.user_id

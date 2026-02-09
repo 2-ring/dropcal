@@ -79,9 +79,19 @@
 
 ---
 
-## 🟡 MAYBE (Nice-to-Have, Adds Value) - 9 tasks
+## 🟡 MAYBE (Nice-to-Have, Adds Value) - 10 tasks
 
 **High Value:**
+
+1. **[NEW] Multi-File Upload Support** - accept multiple images/files per session
+   - Accept multiple files in a single request, process each through the pipeline, merge/deduplicate identified events across files before passing to Agents 2+3
+   - Covers: multiple screenshots of a syllabus, several email screenshots, mixed file types in one drop
+   - Currently each file = separate session with no cross-file awareness
+   - Should integrate with the existing chunked identification system (`processing/chunked_identification.py`) — extend `identify_events_chunked` to handle multiple file inputs, reuse the same dedup/merge logic and parallel ThreadPoolExecutor infrastructure
+   - For vision inputs (multi-page PDFs, multiple images): split pages into groups, run Agent 1 on each group in parallel, merge with same dedup
+   - Should also support **cross-format requests** — e.g. a user drops 2 images + a text paste + a PDF in one session. Each input gets preprocessed into its native format, run through Agent 1 independently (text chunks use text path, images use vision path), then all identified events are merged/deduped together before Agents 2+3
+   - *Why MAYBE:* Important for power users dropping multiple screenshots. But single-file works for most cases and users can submit multiple sessions.
+   - *Value:* Better UX for image-heavy workflows, eliminates manual merging
 
 1. **[6] Reminders/Notifications** - extract from instructions, set calendar reminders
    - *Why MAYBE:* Users expect reminders on events. BUT they can set them manually in calendar after. Not a blocker.

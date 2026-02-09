@@ -327,6 +327,7 @@ def add_session_to_calendar(session_id):
     {
         "events": [...],  // User's edited events (for correction logging)
         "extracted_facts": [...]  // Optional: ExtractedFacts from Agent 2
+        "event_ids": [...]  // Optional: subset of event IDs to add (omit for all)
     }
 
     Returns:
@@ -369,8 +370,11 @@ def add_session_to_calendar(session_id):
                 # Don't fail the request if correction logging fails
                 print(f"Warning: Failed to log corrections: {e}")
 
+        # Optional: only create a subset of events
+        event_ids = request_data.get('event_ids')
+
         # Create events from session (uses primary provider)
-        calendar_event_ids, conflicts = factory.create_events_from_session(user_id, session_id)
+        calendar_event_ids, conflicts = factory.create_events_from_session(user_id, session_id, event_ids=event_ids)
 
         # Prepare response
         has_conflicts = len(conflicts) > 0

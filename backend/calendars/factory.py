@@ -182,7 +182,8 @@ def create_events_from_session(
     user_id: str,
     session_id: str,
     calendar_id: str = 'primary',
-    provider: Optional[str] = None
+    provider: Optional[str] = None,
+    event_ids: Optional[List[str]] = None
 ) -> Tuple[List[str], List[Dict]]:
     """
     Create calendar events from a session's processed_events.
@@ -192,6 +193,7 @@ def create_events_from_session(
         session_id: Session UUID
         calendar_id: Target calendar ID
         provider: Provider to use, or None to use primary
+        event_ids: Optional list of specific event IDs to create (omit for all)
 
     Returns:
         Tuple of (calendar_event_ids, conflicts)
@@ -200,4 +202,4 @@ def create_events_from_session(
         provider = get_user_primary_provider(user_id)
 
     _, _, create_module = get_provider_modules(provider)
-    return create_module.create_events_from_session(user_id, session_id, calendar_id)
+    return create_module.create_events_from_session(user_id, session_id, calendar_id, event_ids=event_ids)

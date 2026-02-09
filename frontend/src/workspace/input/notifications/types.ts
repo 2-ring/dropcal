@@ -10,4 +10,5 @@ export interface Notification {
   variant?: NotificationVariant
   persistent?: boolean // If true, will reappear after dismissing other notifications
   priority?: number // Higher priority shows first (default: 0)
+  ttl?: number // Auto-dismiss after this many milliseconds
 }

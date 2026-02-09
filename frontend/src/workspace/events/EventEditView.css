@@ -22,7 +22,7 @@
 }
 
 .event-edit-overlay .editable-content-wrapper:hover {
-  background-color: var(--interactive-light);
+  background-color: var(--primary-faint);
 }
 
 /* Editable input fields */
@@ -34,13 +34,13 @@
   padding: 0;
   margin: 0;
   font-family: inherit;
-  caret-color: var(--interactive);
+  caret-color: var(--primary);
   min-width: 0;
 }
 
 /* Allow overflow only when dropdowns are open */
 .event-edit-overlay .editable-content-wrapper:has(.time-dropdown),
-.event-edit-overlay .editable-content-wrapper:has(.date-dropdown),
+.event-edit-overlay .editable-content-wrapper:has(.date-calendar-dropdown),
 .event-edit-overlay .editable-content-wrapper:has(.timezone-dropdown) {
   overflow: visible;
 }
@@ -388,18 +388,18 @@ textarea.row-textarea {
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--interactive);
+  color: var(--primary);
   transition: background 0.2s ease;
   font-family: inherit;
 }
 
 .event-edit-expand-toggle:hover {
-  background: var(--interactive-light);
+  background: var(--primary-faint);
 }
 
 .expand-icon {
   transition: transform 0.2s ease;
-  color: var(--interactive);
+  color: var(--primary);
 }
 
 .expand-icon.expanded {
@@ -439,8 +439,8 @@ textarea.row-textarea {
 }
 
 .recurrence-chip.active {
-  background: var(--interactive);
-  border-color: var(--interactive);
+  background: var(--primary);
+  border-color: var(--primary);
   color: var(--background);
 }
 
@@ -477,7 +477,7 @@ textarea.row-textarea {
 }
 
 .recurrence-interval-input:focus {
-  border-color: var(--interactive);
+  border-color: var(--primary);
 }
 
 .recurrence-day-picker {
@@ -504,12 +504,12 @@ textarea.row-textarea {
 }
 
 .recurrence-day-chip:hover {
-  border-color: var(--interactive);
+  border-color: var(--primary);
 }
 
 .recurrence-day-chip.active {
-  background: var(--interactive);
-  border-color: var(--interactive);
+  background: var(--primary);
+  border-color: var(--primary);
   color: var(--background);
 }
 
@@ -543,7 +543,7 @@ textarea.row-textarea {
 }
 
 .recurrence-date-input:focus {
-  border-color: var(--interactive);
+  border-color: var(--primary);
 }
 
 /* Mobile Styles */

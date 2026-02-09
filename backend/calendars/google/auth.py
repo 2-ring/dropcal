@@ -72,6 +72,7 @@ def load_credentials(user_id: str) -> Optional[Credentials]:
 def is_authenticated(user_id: str) -> bool:
     """
     Check if user has valid Google Calendar credentials.
+    Attempts to refresh expired tokens before returning False.
 
     Args:
         user_id: User's UUID
@@ -81,7 +82,12 @@ def is_authenticated(user_id: str) -> bool:
     """
     try:
         credentials = load_credentials(user_id)
-        return credentials is not None and credentials.valid
+        if credentials is None:
+            return False
+        if credentials.valid:
+            return True
+        # Token exists but is expired — try refreshing
+        return refresh_if_needed(user_id, credentials)
     except Exception:
         return False
 

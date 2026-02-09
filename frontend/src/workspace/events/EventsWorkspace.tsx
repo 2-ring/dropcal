@@ -13,11 +13,11 @@ import {
   listContainerVariants,
   eventItemVariants
 } from './animations'
+import { useAuth } from '../../auth/AuthContext'
 import { getAccessToken } from '../../auth/supabase'
 import { updateEvent, checkEventConflicts } from '../../api/backend-client'
 import type { ConflictInfo } from '../../api/backend-client'
 import {
-  NotificationBar,
   useNotificationQueue,
   createSuccessNotification,
   createWarningNotification,
@@ -48,6 +48,7 @@ interface EventsWorkspaceProps {
 }
 
 export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingConfig = [], expectedEventCount, inputType, inputContent, onBack, sessionId }: EventsWorkspaceProps) {
+  const { user } = useAuth()
   const [changeRequest, setChangeRequest] = useState('')
   const [isChatExpanded, setIsChatExpanded] = useState(false)
   const [editingEventIndex, setEditingEventIndex] = useState<number | null>(null)
@@ -74,8 +75,12 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
     }
   }
 
-  // Fetch calendar list on mount
+  // Fetch calendar list when user is authenticated
   useEffect(() => {
+    if (!user) {
+      setIsLoadingCalendars(false)
+      return
+    }
     const fetchCalendars = async () => {
       setIsLoadingCalendars(true)
       try {
@@ -96,7 +101,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
       }
     }
     fetchCalendars()
-  }, [])
+  }, [user])
 
   // Sync editedEvents with events prop
   useEffect(() => {
@@ -532,19 +537,11 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
         </AnimatePresence>
       </div>
 
-      <AnimatePresence mode="wait">
-        {currentNotification && (
-          <NotificationBar
-            key={currentNotification.id}
-            notification={currentNotification}
-            onDismiss={dismissNotification}
-          />
-        )}
-      </AnimatePresence>
-
       <BottomBar
         isLoading={isLoading || isAddingToCalendar}
         loadingConfig={isAddingToCalendar ? [LOADING_MESSAGES.ADDING_TO_CALENDAR] : loadingConfig}
+        notification={currentNotification}
+        onDismissNotification={dismissNotification}
         isEditingEvent={editingEventIndex !== null}
         isChatExpanded={isChatExpanded}
         changeRequest={changeRequest}

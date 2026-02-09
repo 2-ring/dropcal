@@ -57,7 +57,8 @@ def create_event(
 def create_events_from_session(
     user_id: str,
     session_id: str,
-    calendar_id: str = 'primary'
+    calendar_id: str = 'primary',
+    event_ids: Optional[List[str]] = None
 ) -> Tuple[List[str], List[Dict]]:
     """
     Create Google Calendar events from a session's events.
@@ -70,6 +71,7 @@ def create_events_from_session(
         user_id: User's UUID
         session_id: Session UUID
         calendar_id: Target calendar ID (default: 'primary')
+        event_ids: Optional list of specific event IDs to create (omit for all)
 
     Returns:
         Tuple of (calendar_event_ids, conflicts)
@@ -86,11 +88,21 @@ def create_events_from_session(
 
     # Build list of (event_data_for_api, dropcal_event_id) tuples
     event_tuples = []
-    event_ids = session.get('event_ids') or []
+    session_event_ids = session.get('event_ids') or []
 
-    if event_ids:
+    # If caller specified a subset, filter to only those (and validate they belong to this session)
+    if event_ids is not None:
+        session_event_set = set(session_event_ids)
+        invalid = [eid for eid in event_ids if eid not in session_event_set]
+        if invalid:
+            raise ValueError(f"Event IDs not in session: {invalid}")
+        target_ids = event_ids
+    else:
+        target_ids = session_event_ids
+
+    if target_ids:
         # New path: read from events table
-        for eid in event_ids:
+        for eid in target_ids:
             event_row = Event.get_by_id(eid)
             if event_row and not event_row.get('deleted_at'):
                 cal_event = EventService.event_row_to_calendar_event(event_row)

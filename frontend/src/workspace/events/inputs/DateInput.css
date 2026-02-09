@@ -1,48 +1,29 @@
 .date-input-container {
   position: relative;
-  flex: 1;
-  min-width: 0;
+  display: inline-block;
 }
 
-.date-input {
-  width: 100%;
-  border: none;
-  outline: none;
-  background: transparent;
-  padding: 0;
-  margin: 0;
-  font-family: inherit;
-  font-size: inherit;
-  color: inherit;
-  caret-color: #7C8FFF;
+/* Display text (non-editing and editing states) */
+.date-input-display {
   cursor: pointer;
-  position: relative;
-  z-index: 2;
+  user-select: none;
 }
 
-.date-input[readonly] {
-  cursor: pointer;
-}
-
-.date-input:not([readonly]) {
-  cursor: text;
-}
-
-.date-dropdown {
+/* Calendar dropdown */
+.date-calendar-dropdown {
   position: absolute;
   top: calc(100% + 8px);
   left: -12px;
-  min-width: 200px;
-  max-height: 280px;
-  overflow-y: auto;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  width: 280px;
+  background: var(--background);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.16), 0 0 1px rgba(0, 0, 0, 0.1);
   z-index: 1000;
-  animation: dropdownSlideIn 0.15s ease-out;
+  padding: 16px;
+  animation: calendarSlideIn 0.15s ease-out;
 }
 
-@keyframes dropdownSlideIn {
+@keyframes calendarSlideIn {
   from {
     opacity: 0;
     transform: translateY(-4px);
@@ -53,72 +34,117 @@
   }
 }
 
-.date-option {
-  width: 100%;
-  padding: 10px 16px;
+/* Header: month label + nav arrows */
+.date-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.date-calendar-month-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.date-calendar-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.date-calendar-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   border: none;
   background: none;
-  text-align: left;
+  border-radius: 50%;
   cursor: pointer;
-  transition: background-color 0.1s;
-  border-radius: 0;
-  display: flex;
-  flex-direction: column;
+  color: var(--text-secondary);
+  transition: background-color 0.1s, color 0.1s;
+}
+
+.date-calendar-nav-btn:hover {
+  background-color: var(--background-hover);
+  color: var(--text-primary);
+}
+
+/* 7-column grid */
+.date-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
   gap: 2px;
 }
 
-.date-option:first-child {
-  border-radius: 12px 12px 0 0;
+/* Weekday headers */
+.date-calendar-weekday {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
 }
 
-.date-option:last-child {
-  border-radius: 0 0 12px 12px;
+/* Day cells */
+.date-calendar-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.1s;
+  font-family: inherit;
+  padding: 0;
 }
 
-.date-option:hover {
-  background-color: rgba(124, 143, 255, 0.08);
+.date-calendar-cell.empty {
+  cursor: default;
 }
 
-.date-option:active {
-  background-color: rgba(124, 143, 255, 0.15);
+.date-calendar-cell:not(.empty):hover {
+  background-color: var(--background-hover);
 }
 
-.date-option-label {
-  font-size: 14px;
-  color: #333;
+/* Today: outlined circle */
+.date-calendar-cell.today {
+  border: 1.5px solid var(--text-tertiary);
   font-weight: 500;
 }
 
-.date-option-sublabel {
-  font-size: 12px;
-  color: #666;
+/* Selected: filled circle with brand color */
+.date-calendar-cell.selected {
+  background-color: var(--primary);
+  color: var(--background);
+  font-weight: 600;
+  border: none;
 }
 
-.date-input-mobile {
+.date-calendar-cell.selected:hover {
+  background-color: var(--primary-hover);
+}
+
+/* Mobile: overlay native input on top of display text */
+.date-input-mobile-native {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
   border: none;
-  outline: none;
-  background: transparent;
   padding: 0;
   margin: 0;
-  font-family: inherit;
-  font-size: inherit;
-  color: inherit;
-}
-
-.date-dropdown::-webkit-scrollbar {
-  width: 6px;
-}
-
-.date-dropdown::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.date-dropdown::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
-}
-
-.date-dropdown::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
 }

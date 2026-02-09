@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
+import { CaretLeft, CaretRight } from '@phosphor-icons/react'
 import './DateInput.css'
 
 export interface DateInputProps {
@@ -11,140 +12,176 @@ export interface DateInputProps {
   className?: string
 }
 
-export function DateInputDesktop({ value, onChange, onFocus, onBlur, isEditing, placeholder, className }: DateInputProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [inputValue, setInputValue] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
+const WEEKDAY_HEADERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
-  useEffect(() => {
-    if (value) {
-      const date = new Date(value)
-      setInputValue(date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric'
-      }))
-    }
-  }, [value])
+function formatDisplay(value: string): string {
+  if (!value) return ''
+  const date = new Date(value)
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+}
 
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus()
-      const length = inputRef.current.value.length
-      inputRef.current.setSelectionRange(length, length)
-    }
-  }, [isEditing, inputValue])
+function isSameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+}
 
-  const generateDateSuggestions = () => {
-    const dates: { value: string; label: string; sublabel?: string }[] = []
-    const baseDate = new Date(value)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+function getCalendarDays(year: number, month: number): (number | null)[] {
+  const firstDay = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const days: (number | null)[] = []
 
-    // Get time from baseDate to preserve it
-    const hours = baseDate.getHours()
-    const minutes = baseDate.getMinutes()
-    const seconds = baseDate.getSeconds()
-
-    for (let i = 0; i < 14; i++) {
-      const date = new Date(today)
-      date.setDate(today.getDate() + i)
-      date.setHours(hours, minutes, seconds, 0)
-
-      let label = ''
-      let sublabel = ''
-
-      if (i === 0) {
-        label = 'Today'
-        sublabel = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-      } else if (i === 1) {
-        label = 'Tomorrow'
-        sublabel = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-      } else {
-        label = date.toLocaleDateString('en-US', {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric'
-        })
-      }
-
-      dates.push({
-        value: date.toISOString(),
-        label,
-        sublabel
-      })
-    }
-
-    return dates
+  for (let i = 0; i < firstDay; i++) {
+    days.push(null)
   }
+  for (let d = 1; d <= daysInMonth; d++) {
+    days.push(d)
+  }
+  return days
+}
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value
-    setInputValue(newValue)
-    if (newValue.length > 0) {
+export function DateInputDesktop({ value, onChange, onFocus, onBlur, isEditing, className }: DateInputProps) {
+  const selectedDate = useMemo(() => new Date(value), [value])
+  const [viewYear, setViewYear] = useState(selectedDate.getFullYear())
+  const [viewMonth, setViewMonth] = useState(selectedDate.getMonth())
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const today = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
+
+  const displayValue = useMemo(() => formatDisplay(value), [value])
+
+  // Reset view to selected date's month when opening
+  useEffect(() => {
+    if (isEditing) {
+      setViewYear(selectedDate.getFullYear())
+      setViewMonth(selectedDate.getMonth())
       setIsOpen(true)
     }
+  }, [isEditing, selectedDate])
+
+  const calendarDays = useMemo(() => getCalendarDays(viewYear, viewMonth), [viewYear, viewMonth])
+
+  const monthLabel = new Date(viewYear, viewMonth).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  })
+
+  const prevMonth = () => {
+    if (viewMonth === 0) {
+      setViewMonth(11)
+      setViewYear(y => y - 1)
+    } else {
+      setViewMonth(m => m - 1)
+    }
   }
 
-  const handleDateSelect = (dateValue: string) => {
-    onChange(dateValue)
+  const nextMonth = () => {
+    if (viewMonth === 11) {
+      setViewMonth(0)
+      setViewYear(y => y + 1)
+    } else {
+      setViewMonth(m => m + 1)
+    }
+  }
+
+  const handleDayClick = (day: number) => {
+    const base = new Date(value)
+    const newDate = new Date(
+      viewYear, viewMonth, day,
+      base.getHours(), base.getMinutes(), base.getSeconds()
+    )
+    onChange(newDate.toISOString())
     setIsOpen(false)
+    onBlur?.()
   }
 
-  const handleInputBlur = () => {
-    setTimeout(() => {
+  const handleContainerBlur = (e: React.FocusEvent) => {
+    // Only close if focus moves outside the container
+    if (containerRef.current && !containerRef.current.contains(e.relatedTarget as Node)) {
       setIsOpen(false)
       onBlur?.()
-    }, 200)
+    }
   }
 
-  const handleInputFocus = () => {
-    onFocus?.()
-    setIsOpen(true)
+  if (!isEditing) {
+    return <span className={className}>{displayValue}</span>
   }
-
-  const dateSuggestions = generateDateSuggestions()
-  const filteredSuggestions = dateSuggestions
-    .filter(d => !inputValue ||
-      d.label.toLowerCase().includes(inputValue.toLowerCase()) ||
-      d.sublabel?.toLowerCase().includes(inputValue.toLowerCase())
-    )
-    .slice(0, 10)
 
   return (
-    <div className="date-input-container">
-      <input
-        ref={inputRef}
-        type="text"
-        className={`date-input ${className || ''}`}
-        value={inputValue}
-        onChange={handleInputChange}
-        onFocus={handleInputFocus}
-        onBlur={handleInputBlur}
-        placeholder={placeholder || 'Enter date'}
-        readOnly={!isEditing}
-      />
+    <div className="date-input-container" ref={containerRef} onBlur={handleContainerBlur}>
+      <span
+        className={`date-input-display ${className || ''}`}
+        onClick={() => {
+          onFocus?.()
+          setIsOpen(prev => !prev)
+        }}
+      >
+        {displayValue}
+      </span>
 
-      {isOpen && isEditing && filteredSuggestions.length > 0 && (
-        <div className="date-dropdown">
-          {filteredSuggestions.map((date, index) => (
-            <button
-              key={index}
-              className="date-option"
-              onClick={() => handleDateSelect(date.value)}
-              type="button"
-            >
-              <span className="date-option-label">{date.label}</span>
-              {date.sublabel && <span className="date-option-sublabel">{date.sublabel}</span>}
-            </button>
-          ))}
+      {isOpen && (
+        <div className="date-calendar-dropdown">
+          {/* Month navigation */}
+          <div className="date-calendar-header">
+            <span className="date-calendar-month-label">{monthLabel}</span>
+            <div className="date-calendar-nav">
+              <button type="button" className="date-calendar-nav-btn" onClick={prevMonth}>
+                <CaretLeft size={16} weight="bold" />
+              </button>
+              <button type="button" className="date-calendar-nav-btn" onClick={nextMonth}>
+                <CaretRight size={16} weight="bold" />
+              </button>
+            </div>
+          </div>
+
+          {/* Weekday headers */}
+          <div className="date-calendar-grid">
+            {WEEKDAY_HEADERS.map((label, i) => (
+              <div key={`h-${i}`} className="date-calendar-weekday">{label}</div>
+            ))}
+
+            {/* Day cells */}
+            {calendarDays.map((day, i) => {
+              if (day === null) {
+                return <div key={`e-${i}`} className="date-calendar-cell empty" />
+              }
+
+              const cellDate = new Date(viewYear, viewMonth, day)
+              const isToday = isSameDay(cellDate, today)
+              const isSelected = isSameDay(cellDate, selectedDate)
+
+              return (
+                <button
+                  key={`d-${day}`}
+                  type="button"
+                  className={[
+                    'date-calendar-cell',
+                    isToday && !isSelected ? 'today' : '',
+                    isSelected ? 'selected' : '',
+                  ].filter(Boolean).join(' ')}
+                  onClick={() => handleDayClick(day)}
+                >
+                  {day}
+                </button>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
   )
 }
 
-export function DateInputMobile({ value, onChange, onFocus, onBlur, isEditing, placeholder, className }: DateInputProps) {
+export function DateInputMobile({ value, onChange, onFocus, onBlur, isEditing, className }: DateInputProps) {
   const [dateValue, setDateValue] = useState('')
 
   useEffect(() => {
@@ -168,17 +205,24 @@ export function DateInputMobile({ value, onChange, onFocus, onBlur, isEditing, p
     onChange(date.toISOString())
   }
 
+  const displayValue = formatDisplay(value)
+
+  if (!isEditing) {
+    return <span className={className}>{displayValue}</span>
+  }
+
   return (
-    <input
-      type="date"
-      className={`date-input-mobile ${className || ''}`}
-      value={dateValue}
-      onChange={handleDateChange}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      placeholder={placeholder}
-      readOnly={!isEditing}
-    />
+    <div className="date-input-container">
+      <span className={`date-input-display ${className || ''}`}>{displayValue}</span>
+      <input
+        type="date"
+        className="date-input-mobile-native"
+        value={dateValue}
+        onChange={handleDateChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
+      />
+    </div>
   )
 }
 

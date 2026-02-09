@@ -244,7 +244,7 @@ export function EventEditView({
                     </label>
                   </div>
                   <div className="row-main">
-                    <div className="editable-content-wrapper">
+                    <div className="editable-content-wrapper" onClick={(e) => handleEditClick('startDate', e)}>
                       <DateInput
                         value={editedEvent.start.dateTime}
                         onChange={(newDate) => {
@@ -280,7 +280,7 @@ export function EventEditView({
                     )}
                   </div>
                   <div className="row-main">
-                    <div className="editable-content-wrapper">
+                    <div className="editable-content-wrapper" onClick={(e) => handleEditClick('endDate', e)}>
                       <DateInput
                         value={editedEvent.end.dateTime}
                         onChange={(newDate) => {
