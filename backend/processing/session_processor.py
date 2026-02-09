@@ -18,7 +18,7 @@ from events.service import EventService
 from preferences.service import PersonalizationService
 from processing.parallel import process_events_parallel, EventProcessingResult
 from processing.chunked_identification import identify_events_chunked
-from config.posthog import set_tracking_context, flush_posthog
+from config.posthog import set_tracking_context, flush_posthog, capture_agent_error
 
 logger = logging.getLogger(__name__)
 
@@ -263,7 +263,7 @@ class SessionProcessor:
                         is_all_day=calendar_event.start.date is not None,
                         description=calendar_event.description,
                         location=calendar_event.location,
-                        calendar_name=calendar_event.calendar,
+                        calendar_name=calendar_event.calendar,  # provider calendar ID (DB column is named calendar_name)
                         color_id=calendar_event.colorId,
                         original_input=event.raw_text,
                         extracted_facts=calendar_event.model_dump(),
@@ -282,6 +282,10 @@ class SessionProcessor:
                     f"Error processing event {idx+1} in session {session_id}: "
                     f"{e}\n{traceback.format_exc()}"
                 )
+                capture_agent_error("extraction", e, {
+                    'session_id': session_id,
+                    'event_index': idx,
+                })
                 return EventProcessingResult(
                     index=idx, success=False,
                     warning=f"Event {idx+1}: {str(e)}",
@@ -374,7 +378,8 @@ class SessionProcessor:
 
         except Exception as e:
             error_message = str(e)
-            logger.error(f"Error processing session {session_id}: {error_message}")
+            logger.error(f"Error processing session {session_id}: {error_message}\n{traceback.format_exc()}")
+            capture_agent_error("pipeline", e, {'session_id': session_id, 'session_type': 'text'})
             flush_posthog()
             try:
                 DBSession.mark_error(session_id, error_message)
@@ -490,7 +495,8 @@ class SessionProcessor:
 
         except Exception as e:
             error_message = str(e)
-            logger.error(f"Error processing file session {session_id}: {error_message}")
+            logger.error(f"Error processing file session {session_id}: {error_message}\n{traceback.format_exc()}")
+            capture_agent_error("pipeline", e, {'session_id': session_id, 'session_type': 'file'})
             flush_posthog()
             try:
                 DBSession.mark_error(session_id, error_message)

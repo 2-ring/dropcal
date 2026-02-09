@@ -51,7 +51,7 @@ class EventService:
             description: Event description
             location: Event location
             timezone: IANA timezone
-            calendar_name: Calendar name
+            calendar_name: Provider calendar ID (stored in DB column 'calendar_name')
             color_id: Color ID
             original_input: Original raw text input
             extracted_facts: Agent 2 output
@@ -131,7 +131,7 @@ class EventService:
             start_date, end_date: Dates for all-day
             is_all_day: All-day flag
             description, location, timezone: Event details
-            calendar_name: Calendar name
+            calendar_name: Provider calendar ID (stored in DB column 'calendar_name')
             color_id: Color ID
             compute_embedding_now: Whether to compute embedding synchronously (default: False)
 
@@ -326,7 +326,7 @@ class EventService:
         if event_row.get('description'):
             result['description'] = event_row['description']
         if event_row.get('calendar_name'):
-            result['calendar'] = event_row['calendar_name']
+            result['calendar'] = event_row['calendar_name']  # DB column stores provider calendar ID
 
         # Recurrence and attendees: read from top-level columns first,
         # fall back to system_suggestion for events created before migration

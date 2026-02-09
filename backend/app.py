@@ -61,7 +61,7 @@ from processing.session_processor import SessionProcessor
 from config.processing import ProcessingConfig
 from processing.parallel import process_events_parallel, EventProcessingResult
 from processing.chunked_identification import identify_events_chunked
-from config.posthog import init_posthog, set_tracking_context, flush_posthog
+from config.posthog import init_posthog, set_tracking_context, flush_posthog, capture_agent_error
 
 # Import rate limit configuration
 from config.rate_limit import RateLimitConfig
@@ -386,6 +386,7 @@ def process_input():
             )
         except ValidationError as e:
             logger.error(f"Validation error in Agent 1 (Identification): {e}")
+            capture_agent_error("identification", e, {'error_stage': 'validation'})
             return jsonify({
                 'success': False,
                 'error': 'Event identification failed',
@@ -426,6 +427,7 @@ def process_input():
 
                 except ValidationError as e:
                     logger.error(f"Validation error in Agent 2 (Extraction) for event {idx+1}: {e}")
+                    capture_agent_error("extraction", e, {'error_stage': 'validation', 'event_index': idx})
                     return EventProcessingResult(
                         index=idx, success=False,
                         warning=f"Event {idx+1} ('{event.description[:50]}...'): Failed validation - {get_validation_summary(e)}"
@@ -433,6 +435,7 @@ def process_input():
 
             except Exception as e:
                 logger.error(f"Unexpected error processing event {idx+1}: {e}\n{traceback.format_exc()}")
+                capture_agent_error("extraction", e, {'event_index': idx})
                 return EventProcessingResult(
                     index=idx, success=False,
                     warning=f"Event {idx+1}: Unexpected error - {str(e)}",
@@ -463,6 +466,7 @@ def process_input():
     except ValidationError as e:
         # Top-level validation error (shouldn't happen if we caught all above)
         logger.error(f"Top-level validation error: {e}")
+        capture_agent_error("pipeline", e, {'error_stage': 'validation'})
         return jsonify({
             'success': False,
             'error': 'Event extraction failed due to validation errors',
@@ -473,6 +477,7 @@ def process_input():
     except Exception as e:
         # Catch-all for unexpected errors
         logger.error(f"Unexpected error in extraction pipeline: {e}\n{traceback.format_exc()}")
+        capture_agent_error("pipeline", e)
         return jsonify({
             'success': False,
             'error': f'Event extraction failed: {str(e)}',
@@ -516,6 +521,8 @@ def edit_event():
         })
 
     except Exception as e:
+        logger.error(f"Event modification failed: {e}\n{traceback.format_exc()}")
+        capture_agent_error("modification", e)
         return jsonify({'error': f'Event modification failed: {str(e)}'}), 500
 
 
@@ -748,7 +755,7 @@ def apply_preferences_endpoint():
                     limit=QueryLimits.PERSONALIZATION_HISTORICAL_LIMIT
                 )
             except Exception as e:
-                print(f"Warning: Could not fetch historical events: {e}")
+                logger.warning(f"Could not fetch historical events: {e}")
                 historical_events = []
 
             personalized_event = agent_3_personalization.execute(
@@ -791,9 +798,8 @@ def apply_preferences_endpoint():
             })
 
     except Exception as e:
-        print(f"Error in preference application: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error in preference application: {e}\n{traceback.format_exc()}")
+        capture_agent_error("personalization", e)
         return jsonify({'error': f'Preference application failed: {str(e)}'}), 500
 
 
@@ -931,9 +937,8 @@ def discover_patterns():
         })
 
     except Exception as e:
-        print(f"Error in pattern discovery: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error in pattern discovery: {e}\n{traceback.format_exc()}")
+        capture_agent_error("pattern_discovery", e)
         return jsonify({'error': f'Pattern discovery failed: {str(e)}'}), 500
 
 

@@ -102,6 +102,46 @@ def flush_posthog():
             logger.warning(f"PostHog: Flush failed: {e}")
 
 
+def capture_agent_error(agent_name: str, error: Exception, extra: dict = None):
+    """
+    Capture an agent execution error as a PostHog event.
+    Shows up alongside LLM generation events for full pipeline visibility.
+
+    Args:
+        agent_name: Which agent failed (e.g., "identification", "extraction")
+        error: The exception that occurred
+        extra: Optional dict of additional properties (session_id, event_index, etc.)
+    """
+    if not _posthog_client:
+        return
+
+    try:
+        distinct_id = getattr(_local, 'distinct_id', None) or 'anonymous'
+        trace_id = getattr(_local, 'trace_id', None)
+
+        properties = {
+            '$ai_trace_id': trace_id,
+            'agent_name': agent_name,
+            'error_type': type(error).__name__,
+            'error_message': str(error),
+        }
+        if extra:
+            properties.update(extra)
+
+        _posthog_client.capture(
+            distinct_id=distinct_id,
+            event='$ai_generation',
+            properties={
+                **properties,
+                '$ai_is_error': True,
+                '$ai_provider': 'pipeline',
+                '$ai_model': f'agent:{agent_name}',
+            },
+        )
+    except Exception as e:
+        logger.debug(f"PostHog: Failed to capture error event: {e}")
+
+
 def get_posthog_client():
     """Get the raw PostHog client for custom events (feature flags, etc.)."""
     return _posthog_client

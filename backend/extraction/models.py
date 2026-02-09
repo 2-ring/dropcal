@@ -68,7 +68,7 @@ class ExtractedFacts(BaseModel):
     recurrence: RecurrenceInfo = Field(description="Recurrence pattern information")
     calendar: Optional[str] = Field(
         default=None,
-        description="Calendar name where this event should be created. Examples: 'Classes', 'Work', 'UAPPLY', 'Default'. If None, will use primary calendar. Based on learned calendar usage patterns."
+        description="Calendar display name from user's instructions (e.g. 'Classes', 'Work'). Agent 3 resolves this to a provider calendar ID. If None, primary calendar is used."
     )
 
     @field_validator('title')

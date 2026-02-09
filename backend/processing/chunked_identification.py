@@ -13,7 +13,7 @@ from extraction.agents.identification import EventIdentificationAgent
 from extraction.models import IdentifiedEvent, IdentificationResult
 from processing.text_chunker import split_text
 from config.processing import ProcessingConfig
-from config.posthog import set_tracking_context
+from config.posthog import set_tracking_context, capture_agent_error
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +130,7 @@ def _process_chunk(
         return agent.execute(chunk_text, {}, requires_vision=False)
     except Exception as e:
         logger.error(f"Chunk {chunk_index} failed: {e}")
+        capture_agent_error("identification", e, {'chunk_index': chunk_index})
         raise
 
 
