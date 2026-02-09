@@ -9,6 +9,7 @@ import {
   PaintBrush,
   Calendar,
   CalendarCheck,
+  Pen,
 } from '@phosphor-icons/react'
 
 // Calendar event types

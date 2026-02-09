@@ -14,6 +14,7 @@ Note: Colors are not analyzed - they're a visual output determined by category a
 
 from typing import Dict, List, Optional
 from collections import defaultdict, Counter
+from datetime import datetime
 import json
 from langchain_anthropic import ChatAnthropic
 from pydantic import BaseModel
@@ -82,8 +83,19 @@ class PatternDiscoveryService:
 
         # 2. Category patterns (one LLM call per calendar/category)
         print(f"\n[2/2] Analyzing category usage patterns...")
-        category_patterns = self._discover_category_patterns(events, calendars)
+        events_by_category = self._group_events_by_calendar(events, calendars)
+        category_patterns = self._discover_category_patterns(events, calendars, events_by_category)
         print(f"✓ Category patterns discovered for {len(category_patterns)} categories")
+
+        # Build per-calendar metadata for incremental refresh tracking
+        now = datetime.utcnow().isoformat() + 'Z'
+        calendar_metadata = {}
+        for calendar in calendars:
+            cal_id = calendar.get('id')
+            calendar_metadata[cal_id] = {
+                'events_analyzed': len(events_by_category.get(cal_id, [])),
+                'last_refreshed': now
+            }
 
         print(f"\n{'='*60}")
         print(f"PATTERN DISCOVERY COMPLETE")
@@ -93,7 +105,8 @@ class PatternDiscoveryService:
             'user_id': user_id,
             'category_patterns': category_patterns,
             'style_stats': style_stats,
-            'total_events_analyzed': len(events)
+            'total_events_analyzed': len(events),
+            'calendar_metadata': calendar_metadata
         }
 
     # =========================================================================
@@ -198,7 +211,8 @@ class PatternDiscoveryService:
     def _discover_category_patterns(
         self,
         events: List[Dict],
-        calendars: List[Dict]
+        calendars: List[Dict],
+        events_by_category: Optional[Dict] = None
     ) -> Dict[str, Dict]:
         """
         For each category (calendar in Google, category in Microsoft),
@@ -210,8 +224,9 @@ class PatternDiscoveryService:
             Dict mapping category_id to pattern summary
         """
 
-        # Group events by category (calendar)
-        events_by_category = self._group_events_by_calendar(events, calendars)
+        # Group events by category (calendar) if not pre-computed
+        if events_by_category is None:
+            events_by_category = self._group_events_by_calendar(events, calendars)
 
         category_patterns = {}
 

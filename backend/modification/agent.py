@@ -60,20 +60,20 @@ class EventModificationAgent(BaseAgent):
         if calendar_names:
             calendars_block = f"\n\nAVAILABLE CALENDARS:\n{', '.join(calendar_names)}\nWhen moving events between calendars, only use these names."
 
-        system_prompt = self.prompt_template.format(
-            current_date=current_date,
-            current_time=current_time
-        )
-
+        # Use the raw prompt template directly in ChatPromptTemplate so that
+        # double-brace JSON examples (e.g. {{"summary": ...}}) are preserved
+        # as LangChain literal braces, not interpreted by Python str.format().
         chain = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
+            ("system", self.prompt_template),
             ("human", "EVENTS:\n{events}{calendars}\n\nINSTRUCTION:\n{instruction}")
         ]) | self.llm
 
         result = chain.invoke({
             "events": events_block,
             "calendars": calendars_block,
-            "instruction": instruction
+            "instruction": instruction,
+            "current_date": current_date,
+            "current_time": current_time,
         }, config=get_invoke_config("modification"))
 
         return result

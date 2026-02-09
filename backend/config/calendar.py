@@ -42,3 +42,20 @@ class CollectionConfig:
     # Calendar list/event defaults
     DEFAULT_LIST_EVENTS_LIMIT: int = 100
     DEFAULT_CALENDAR_LIST_LIMIT: int = 10
+
+
+class RefreshConfig:
+    """Incremental pattern refresh thresholds."""
+
+    # Minimum days between refreshes of the same calendar
+    MIN_REFRESH_INTERVAL_DAYS: int = 7
+
+    # Event count growth thresholds (either triggers refresh)
+    EVENT_GROWTH_RATIO: float = 0.5        # 50% more events
+    EVENT_GROWTH_ABSOLUTE: int = 50        # or 50+ more events
+
+    # Max events to fetch per calendar for refresh analysis
+    MAX_EVENTS_PER_CALENDAR: int = 500
+
+    # Time range for event fetching (days)
+    EVENT_LOOKBACK_DAYS: int = 365

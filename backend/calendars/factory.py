@@ -109,7 +109,8 @@ def list_events(
     user_id: str,
     max_results: int = CollectionConfig.DEFAULT_LIST_EVENTS_LIMIT,
     time_min: Optional[str] = None,
-    provider: Optional[str] = None
+    provider: Optional[str] = None,
+    calendar_id: str = 'primary'
 ) -> List[Dict]:
     """
     List events from user's calendar.
@@ -119,6 +120,7 @@ def list_events(
         max_results: Maximum number of events to return
         time_min: Lower bound for event start time (ISO format)
         provider: Provider to use, or None to use primary
+        calendar_id: Specific calendar to fetch from (default: 'primary')
 
     Returns:
         List of events in universal format
@@ -127,7 +129,7 @@ def list_events(
         provider = get_user_primary_provider(user_id)
 
     _, fetch_module, _ = get_provider_modules(provider)
-    return fetch_module.list_events(user_id, max_results, time_min)
+    return fetch_module.list_events(user_id, max_results, time_min, calendar_id=calendar_id)
 
 
 def check_conflicts(

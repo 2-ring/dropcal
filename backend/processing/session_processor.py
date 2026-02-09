@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class SessionProcessor:
     """Processes sessions through the full AI pipeline."""
 
-    def __init__(self, llm, input_processor_factory: InputProcessorFactory, llm_personalization=None):
+    def __init__(self, llm, input_processor_factory: InputProcessorFactory, llm_personalization=None, pattern_refresh_service=None):
         """
         Initialize the session processor with agents.
 
@@ -34,6 +34,7 @@ class SessionProcessor:
             llm: LangChain LLM instance for agents
             input_processor_factory: Factory for processing files
             llm_personalization: Optional separate LLM for personalization agent
+            pattern_refresh_service: Optional PatternRefreshService for incremental refresh
         """
         self.llm = llm
         self.input_processor_factory = input_processor_factory
@@ -45,6 +46,7 @@ class SessionProcessor:
 
         # Services
         self.personalization_service = PersonalizationService()
+        self.pattern_refresh_service = pattern_refresh_service
 
         # Initialize title generator
         self.title_generator = get_title_generator()
