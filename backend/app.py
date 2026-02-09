@@ -85,7 +85,7 @@ CORS(app,
      origins=allowed_origins,
      supports_credentials=True,
      allow_headers=['Content-Type', 'Authorization'],
-     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+     methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'])
 
 # Configure rate limiting
 # Default limits are generous (authenticated users make many calls on page load).

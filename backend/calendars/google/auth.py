@@ -88,7 +88,8 @@ def is_authenticated(user_id: str) -> bool:
             return True
         # Token exists but is expired — try refreshing
         return refresh_if_needed(user_id, credentials)
-    except Exception:
+    except Exception as e:
+        print(f"Google Calendar auth check failed for user {user_id}: {e}")
         return False
 
 

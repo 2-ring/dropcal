@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
-import { CalendarStar, TrashSimple } from '@phosphor-icons/react'
+import { CalendarStar, ArrowsClockwise, TrashSimple } from '@phosphor-icons/react'
 import type { CalendarEvent } from './types'
+import { getEventSyncStatus } from './types'
 
 const TRIGGER_THRESHOLD = 80
 const VELOCITY_THRESHOLD = 500
@@ -9,13 +10,18 @@ const VELOCITY_THRESHOLD = 500
 interface SwipeableEventProps {
   children: React.ReactNode
   event: CalendarEvent
+  activeProvider?: string
   onSwipeRight?: (event: CalendarEvent) => void
   onSwipeLeft?: (event: CalendarEvent) => void
 }
 
-export function SwipeableEvent({ children, event, onSwipeRight, onSwipeLeft }: SwipeableEventProps) {
+export function SwipeableEvent({ children, event, activeProvider, onSwipeRight, onSwipeLeft }: SwipeableEventProps) {
   const x = useMotionValue(0)
   const [swiping, setSwiping] = useState(false)
+
+  // Determine if this is a create (draft) or sync (already created)
+  const syncStatus = getEventSyncStatus(event, activeProvider)
+  const isSync = syncStatus !== 'draft'
 
   // Icon wrapper width = exposed gap so icon centers in it
   const addGap = useTransform(x, (v) => Math.max(0, v))
@@ -25,9 +31,9 @@ export function SwipeableEvent({ children, event, onSwipeRight, onSwipeLeft }: S
   const addOpacity = useTransform(x, [0, TRIGGER_THRESHOLD], [0, 1])
   const removeOpacity = useTransform(x, [-TRIGGER_THRESHOLD, 0], [1, 0])
 
-  // Subtle scale pop near threshold
-  const addScale = useTransform(x, [0, TRIGGER_THRESHOLD * 0.6, TRIGGER_THRESHOLD], [0.5, 0.85, 1.15])
-  const removeScale = useTransform(x, [-TRIGGER_THRESHOLD, -TRIGGER_THRESHOLD * 0.6, 0], [1.15, 0.85, 0.5])
+  // Icon opacity (fades in faster than background)
+  const addIconOpacity = useTransform(x, [0, TRIGGER_THRESHOLD * 0.5], [0, 1])
+  const removeIconOpacity = useTransform(x, [-TRIGGER_THRESHOLD * 0.5, 0], [1, 0])
 
   const handleDragEnd = (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
     const currentX = x.get()
@@ -36,39 +42,37 @@ export function SwipeableEvent({ children, event, onSwipeRight, onSwipeLeft }: S
     const triggeredRight = currentX > TRIGGER_THRESHOLD || (currentX > 40 && velocity > VELOCITY_THRESHOLD)
     const triggeredLeft = currentX < -TRIGGER_THRESHOLD || (currentX < -40 && velocity < -VELOCITY_THRESHOLD)
 
+    // Spring back to original position
+    animate(x, 0, { type: 'spring', stiffness: 500, damping: 50 })
+
     if (triggeredRight && onSwipeRight) {
-      animate(x, 400, { type: 'spring', stiffness: 300, damping: 25 }).then(() => {
-        onSwipeRight(event)
-        x.set(0)
-      })
+      onSwipeRight(event)
     } else if (triggeredLeft && onSwipeLeft) {
-      animate(x, -400, { type: 'spring', stiffness: 300, damping: 25 }).then(() => {
-        onSwipeLeft(event)
-        x.set(0)
-      })
-    } else {
-      animate(x, 0, { type: 'spring', stiffness: 500, damping: 30 })
+      onSwipeLeft(event)
     }
 
     setSwiping(false)
   }
 
+  const AddIcon = isSync ? ArrowsClockwise : CalendarStar
+  const addBgClass = isSync ? 'swipe-bg-sync' : 'swipe-bg-add'
+
   return (
     <div className="swipeable-event-container">
-      {/* Add: full-bleed green bg + icon centered in exposed gap */}
-      <motion.div className="swipe-bg swipe-bg-add" style={{ opacity: addOpacity }}>
+      {/* Right swipe: create (green) or sync (yellow) */}
+      <motion.div className={`swipe-bg ${addBgClass}`} style={{ opacity: addOpacity }}>
         <motion.div className="swipe-icon-wrapper" style={{ width: addGap }}>
-          <motion.div className="swipe-bg-content" style={{ scale: addScale }}>
-            <CalendarStar size={20} weight="duotone" />
+          <motion.div className="swipe-bg-content" style={{ opacity: addIconOpacity }}>
+            <AddIcon size={28} weight={isSync ? 'bold' : 'duotone'} />
           </motion.div>
         </motion.div>
       </motion.div>
 
-      {/* Remove: full-bleed red bg + icon centered in exposed gap */}
+      {/* Left swipe: remove (red) */}
       <motion.div className="swipe-bg swipe-bg-remove" style={{ opacity: removeOpacity }}>
         <motion.div className="swipe-icon-wrapper" style={{ width: removeGap }}>
-          <motion.div className="swipe-bg-content" style={{ scale: removeScale }}>
-            <TrashSimple size={20} weight="fill" />
+          <motion.div className="swipe-bg-content" style={{ opacity: removeIconOpacity }}>
+            <TrashSimple size={28} weight="fill" />
           </motion.div>
         </motion.div>
       </motion.div>
@@ -78,8 +82,9 @@ export function SwipeableEvent({ children, event, onSwipeRight, onSwipeLeft }: S
         className="swipeable-card"
         style={{ x }}
         drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.25}
+        dragConstraints={{ left: -TRIGGER_THRESHOLD, right: TRIGGER_THRESHOLD }}
+        dragElastic={0.15}
+        dragMomentum={false}
         onDragStart={() => setSwiping(true)}
         onDragEnd={handleDragEnd}
         whileDrag={{ cursor: 'grabbing' }}

@@ -1006,6 +1006,11 @@
   justify-content: flex-start;
 }
 
+.swipe-bg-sync {
+  background-color: #F59E0B;
+  justify-content: flex-start;
+}
+
 .swipe-bg-remove {
   background-color: #EF4444;
   justify-content: flex-end;

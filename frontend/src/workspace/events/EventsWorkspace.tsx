@@ -118,16 +118,17 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
             if (refreshResult.refreshed) {
               result = await fetchCalendarList()
             }
-            if (result === null && refreshResult.needs_reauth) {
-              addNotification(createWarningNotification(
-                'Calendar session expired. Please sign in again to restore your calendars.'
-              ))
-              result = [DEFAULT_CALENDAR]
-            }
           } catch {
             // Refresh attempt itself failed
           }
-          result = result ?? [DEFAULT_CALENDAR]
+
+          // Still null after refresh attempt — notify user
+          if (result === null) {
+            addNotification(createWarningNotification(
+              'Calendar session expired. Please sign in again to restore your calendars.'
+            ))
+            result = [DEFAULT_CALENDAR]
+          }
         }
 
         setCalendars(result)
@@ -187,28 +188,32 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
   }
 
   const handleSaveEdit = () => {
+    flushPendingEdit()
+    handleCloseEdit()
+  }
+
+  const flushPendingEdit = () => {
     if (pendingEditRef.current) {
       handleEventSave(pendingEditRef.current)
       pendingEditRef.current = null
     }
-    handleCloseEdit()
   }
 
   const handleEventSave = (updatedEvent: CalendarEvent) => {
     if (editingEventIndex === null) return
 
-    // Optimistic local update — bump version so sync badge immediately shows "Apply edits"
+    // Optimistic local update — bump version so sync badge immediately shows "Edits applied"
+    const savedIndex = editingEventIndex
     const optimisticEvent = {
       ...updatedEvent,
       version: (updatedEvent.version ?? 1) + 1,
     }
     setEditedEvents(prev => {
       const updated = [...prev]
-      updated[editingEventIndex] = optimisticEvent
+      updated[savedIndex] = optimisticEvent
       return updated
     })
 
-    addNotification(createSuccessNotification('Your changes have been saved'))
     runConflictCheck()
 
     // Persist to backend if event has an id (exists in events table)
@@ -218,15 +223,20 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
           // Update with server response (has bumped version)
           setEditedEvents(prev => {
             const updated = [...prev]
-            updated[editingEventIndex] = persisted
+            updated[savedIndex] = persisted
             return updated
           })
+          addNotification(createSuccessNotification('Your changes have been saved'))
         })
-        .catch(err => console.error('Failed to persist event edit:', err))
+        .catch(err => {
+          console.error('Failed to persist event edit:', err)
+          addNotification(createErrorNotification('Failed to save changes'))
+        })
     }
   }
 
   const handleCloseEdit = () => {
+    flushPendingEdit()
     setEditingEventIndex(null)
   }
 
@@ -610,6 +620,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
                         <div className="event-date-event-single">
                           <SwipeableEvent
                             event={event}
+                            activeProvider="google"
                             onSwipeRight={handleSwipeAdd}
                             onSwipeLeft={handleSwipeDelete}
                           >
