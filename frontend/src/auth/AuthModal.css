@@ -42,29 +42,6 @@
   }
 }
 
-/* Close Button */
-.auth-modal-close {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: transparent;
-  border: none;
-  border-radius: 50%;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.auth-modal-close:hover {
-  background-color: var(--background-hover);
-  color: var(--text-primary);
-}
-
 /* Heading */
 .auth-modal-heading {
   font-size: 2rem;

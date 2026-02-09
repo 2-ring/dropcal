@@ -8,6 +8,7 @@ import {
   Info,
   PaintBrush,
   Calendar,
+  CalendarCheck,
 } from '@phosphor-icons/react'
 
 // Calendar event types
@@ -120,4 +121,7 @@ export const LOADING_MESSAGES = {
     message: `Processing event ${current} of ${total}...`,
     icon: Calendar,
   }),
+
+  // Adding to calendar
+  ADDING_TO_CALENDAR: { message: 'Adding to calendar...', icon: CalendarCheck },
 } as const

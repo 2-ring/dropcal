@@ -32,7 +32,7 @@ interface WorkspaceProps {
   onAudioSubmit: (audioBlob: Blob) => void
   onTextSubmit: (text: string) => void
   onClearFile: () => void
-  onConfirm?: () => void
+  onConfirm?: (editedEvents?: CalendarEvent[]) => Promise<void> | void
   onMenuToggle?: () => void
   onNewSession?: () => void
 }

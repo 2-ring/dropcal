@@ -3,7 +3,6 @@
  * Desktop: centered popup. Mobile: bottom sheet.
  */
 
-import { X } from '@phosphor-icons/react';
 import { useAuth } from './AuthContext';
 import { WordMark } from '../components/WordMark';
 import { MenuButton } from '../menu/MenuButton';
@@ -12,7 +11,6 @@ import './AuthModal.css';
 interface AuthModalProps {
   isOpen: boolean;
   onClose?: () => void;
-  showCloseButton?: boolean;
   heading?: string;
 }
 
@@ -44,7 +42,6 @@ const AppleIcon = (
 export function AuthModal({
   isOpen,
   onClose,
-  showCloseButton = false,
   heading = "Let's get you signed in.",
 }: AuthModalProps) {
   const { signIn } = useAuth();
@@ -52,7 +49,7 @@ export function AuthModal({
   if (!isOpen) return null;
 
   const handleBackdropClick = (e: React.MouseEvent) => {
-    if (showCloseButton && e.target === e.currentTarget) {
+    if (e.target === e.currentTarget) {
       onClose?.();
     }
   };
@@ -60,12 +57,6 @@ export function AuthModal({
   return (
     <div className="auth-modal-backdrop" onClick={handleBackdropClick}>
       <div className="auth-modal">
-        {showCloseButton && onClose && (
-          <button className="auth-modal-close" onClick={onClose} aria-label="Close">
-            <X size={20} weight="regular" />
-          </button>
-        )}
-
         <WordMark size={24} />
         <h2 className="display-text auth-modal-heading">{heading}</h2>
         <div className="auth-modal-buttons">

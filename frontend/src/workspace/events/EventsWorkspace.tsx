@@ -4,6 +4,7 @@ import 'react-loading-skeleton/dist/skeleton.css'
 import { toast } from 'sonner'
 import type { CalendarEvent } from './types'
 import type { LoadingStateConfig } from './types'
+import { LOADING_MESSAGES } from './types'
 import { TopBar, BottomBar } from './Bar'
 import { Event } from './Event'
 import { DateHeader, MonthHeader } from './DateHeader'
@@ -28,7 +29,7 @@ interface GoogleCalendar {
 
 interface EventsWorkspaceProps {
   events: (CalendarEvent | null)[]
-  onConfirm?: (editedEvents?: CalendarEvent[]) => void
+  onConfirm?: (editedEvents?: CalendarEvent[]) => Promise<void> | void
   isLoading?: boolean
   loadingConfig?: LoadingStateConfig[]
   expectedEventCount?: number
@@ -43,6 +44,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
   const [editingEventIndex, setEditingEventIndex] = useState<number | null>(null)
   const [editedEvents, setEditedEvents] = useState<(CalendarEvent | null)[]>(events)
   const [isProcessingEdit, setIsProcessingEdit] = useState(false)
+  const [isAddingToCalendar, setIsAddingToCalendar] = useState(false)
   const [calendars, setCalendars] = useState<GoogleCalendar[]>([])
   const [isLoadingCalendars, setIsLoadingCalendars] = useState(true)
   const [isScrollable, setIsScrollable] = useState(false)
@@ -257,12 +259,16 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
     }
   }
 
-  // Wrap onConfirm to pass edited events
-  const handleConfirm = () => {
+  // Wrap onConfirm to pass edited events and show loading in the bottom bar
+  const handleConfirm = async () => {
     if (onConfirm) {
-      // Filter out null events and pass edited events
       const validEditedEvents = editedEvents.filter((e): e is CalendarEvent => e !== null)
-      onConfirm(validEditedEvents)
+      setIsAddingToCalendar(true)
+      try {
+        await onConfirm(validEditedEvents)
+      } finally {
+        setIsAddingToCalendar(false)
+      }
     }
   }
 
@@ -495,8 +501,8 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
       </div>
 
       <BottomBar
-        isLoading={isLoading}
-        loadingConfig={loadingConfig}
+        isLoading={isLoading || isAddingToCalendar}
+        loadingConfig={isAddingToCalendar ? [LOADING_MESSAGES.ADDING_TO_CALENDAR] : loadingConfig}
         isEditingEvent={editingEventIndex !== null}
         isChatExpanded={isChatExpanded}
         changeRequest={changeRequest}

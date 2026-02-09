@@ -27,10 +27,10 @@ class ProcessingConfig:
     # --- Text Chunking (Agent 1) ---
 
     # Minimum text length (chars) before chunking kicks in
-    CHUNK_THRESHOLD: int = 8_000
+    CHUNK_THRESHOLD: int = 15_000
 
     # Target size per chunk in characters
-    CHUNK_TARGET_SIZE: int = 10_000
+    CHUNK_TARGET_SIZE: int = 15_000
 
     # Overlap between adjacent chunks in characters
     CHUNK_OVERLAP: int = 500

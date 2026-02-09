@@ -75,7 +75,7 @@ function AppContent() {
 
   // Guest mode state
   const [isGuestMode, setIsGuestMode] = useState(false)
-  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authModalHeading, setAuthModalHeading] = useState<string | null>(null)
 
   // Check guest mode on mount
   useEffect(() => {
@@ -122,7 +122,7 @@ function AppContent() {
 
       if (!user && !isGuestSession) {
         // Not authenticated and not their guest session
-        setShowAuthModal(true)
+        setAuthModalHeading('Sign in to view this session.')
         navigate('/')
         return
       }
@@ -170,7 +170,7 @@ function AppContent() {
 
           const errorMessage = error instanceof Error ? error.message : 'Unknown error'
           if (errorMessage.includes('authentication') || errorMessage.includes('requires authentication')) {
-            setShowAuthModal(true)
+            setAuthModalHeading('Sign in to continue.')
           } else {
             toast.error('Failed to Load Session', {
               description: 'The session could not be found.',
@@ -252,7 +252,7 @@ function AppContent() {
 
     // Check if guest and at limit
     if (!user && GuestSessionManager.hasReachedLimit()) {
-      setShowAuthModal(true)
+      setAuthModalHeading("You've used all 3 free sessions. Sign in to keep going.")
       return
     }
 
@@ -366,7 +366,7 @@ function AppContent() {
 
     // Check if guest and at limit
     if (!user && GuestSessionManager.hasReachedLimit()) {
-      setShowAuthModal(true)
+      setAuthModalHeading("You've used all 3 free sessions. Sign in to keep going.")
       return
     }
 
@@ -510,7 +510,7 @@ function AppContent() {
   const handleAddToCalendar = useCallback(async (editedEvents?: CalendarEvent[]) => {
     // Require auth for calendar operations
     if (!user) {
-      setShowAuthModal(true)
+      setAuthModalHeading('Sign in to add events to your calendar.')
       return
     }
 
@@ -523,16 +523,8 @@ function AppContent() {
     }
 
     try {
-      toast.loading('Adding to Calendar...', {
-        id: 'calendar-add',
-        description: 'Creating events in Google Calendar...',
-      })
-
       // Pass edited events for correction logging
       const result = await addSessionToCalendar(currentSession.id, editedEvents)
-
-      // Dismiss loading toast
-      toast.dismiss('calendar-add')
 
       // Show success message
       if (result.has_conflicts) {
@@ -552,8 +544,6 @@ function AppContent() {
       setCurrentSession(updatedSession)
 
     } catch (error) {
-      toast.dismiss('calendar-add')
-
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
 
       // Check if it's an auth error
@@ -586,8 +576,9 @@ function AppContent() {
   return (
     <div className="app">
       <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
+        isOpen={authModalHeading !== null}
+        onClose={() => setAuthModalHeading(null)}
+        heading={authModalHeading ?? undefined}
       />
       <Menu
         isOpen={sidebarOpen}
