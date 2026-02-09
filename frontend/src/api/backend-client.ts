@@ -66,17 +66,15 @@ export async function createTextSession(text: string): Promise<Session> {
 }
 
 /**
- * Upload a file (image or audio) and create a session.
+ * Upload a file and create a session. Backend auto-detects file type.
  */
 export async function uploadFile(
   file: File,
-  type: 'image' | 'audio' | 'pdf'
 ): Promise<{ session: Session; file_url: string }> {
   const token = await getAccessToken();
 
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('type', type);
 
   const headers: HeadersInit = {};
   if (token) {
@@ -679,15 +677,13 @@ export async function createGuestTextSession(text: string): Promise<Session> {
 }
 
 /**
- * Upload file as guest (no auth).
+ * Upload file as guest (no auth). Backend auto-detects file type.
  */
 export async function uploadGuestFile(
   file: File,
-  type: 'image' | 'audio' | 'pdf'
 ): Promise<{ session: Session; file_url: string }> {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('input_type', type);
 
   const response = await fetch(`${API_URL}/api/upload/guest`, {
     method: 'POST',

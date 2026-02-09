@@ -55,6 +55,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [primaryCalendarProvider, setPrimaryCalendarProvider] = useState<string | null>(null);
   const [calendarReady, setCalendarReady] = useState(false);
 
+  // Guard against duplicate token storage when Supabase fires both
+  // INITIAL_SESSION and SIGNED_IN during the same OAuth redirect
+  const syncInitiatedRef = React.useRef(false);
+
   useEffect(() => {
     // Initialize session on mount — always set user immediately
     const initializeAuth = async () => {
@@ -125,7 +129,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const shouldSync = event === 'SIGNED_IN' ||
           (event === 'INITIAL_SESSION' && hasProviderToken);
 
-        if (shouldSync) {
+        if (shouldSync && !syncInitiatedRef.current) {
+          syncInitiatedRef.current = true;
           // Background: sync profile, store tokens, load preferences
           (async () => {
             try {
@@ -168,6 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setPreferences({});
         setPrimaryCalendarProvider(null);
         setCalendarReady(false);
+        syncInitiatedRef.current = false;
 
         // Reset PostHog identity on sign-out
         posthog.reset();

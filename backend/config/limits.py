@@ -12,32 +12,10 @@ class FileLimits:
     MAX_AUDIO_SIZE_MB: int = 25
     MAX_PDF_SIZE_MB: int = 20
     MAX_TEXT_FILE_SIZE_MB: int = 10
+    MAX_DOCUMENT_SIZE_MB: int = 10
 
     # Global Flask upload limit (bytes) — must be >= largest per-type limit
     MAX_UPLOAD_BYTES: int = MAX_AUDIO_SIZE_MB * 1024 * 1024
-
-    # Allowed MIME types for file upload endpoint (binary files only)
-    # Text-based files (.txt, .md, .eml) are read client-side and sent via text session path
-    ALLOWED_MIME_TYPES: dict[str, list[str]] = {
-        'image': [
-            'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp',
-        ],
-        'audio': [
-            'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/webm',
-            'audio/ogg', 'audio/m4a', 'audio/x-m4a', 'audio/mp4',
-            'audio/flac',
-        ],
-        'pdf': [
-            'application/pdf',
-        ],
-    }
-
-    # Allowed file extensions for upload endpoint
-    ALLOWED_EXTENSIONS: dict[str, list[str]] = {
-        'image': ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'],
-        'audio': ['.mp3', '.wav', '.m4a', '.webm', '.ogg', '.mpeg', '.mpga', '.mp4', '.flac'],
-        'pdf': ['.pdf'],
-    }
 
 
 class EventLimits:

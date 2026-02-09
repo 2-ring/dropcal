@@ -14,6 +14,7 @@ class InputType(Enum):
     IMAGE = "image"
     PDF = "pdf"
     TEXT = "text"
+    DOCUMENT = "document"
 
 
 class ProcessingResult:

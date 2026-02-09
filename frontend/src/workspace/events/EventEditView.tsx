@@ -265,7 +265,7 @@ export function EventEditView({
                       />
                     </div>
                     {!isAllDay && (
-                      <div className="editable-content-wrapper">
+                      <div className="editable-content-wrapper" onClick={(e) => handleEditClick('startTime', e)}>
                         <TimeInput
                           value={editedEvent.start.dateTime}
                           onChange={(newTime) => {
@@ -301,7 +301,7 @@ export function EventEditView({
                       />
                     </div>
                     {!isAllDay && (
-                      <div className="editable-content-wrapper">
+                      <div className="editable-content-wrapper" onClick={(e) => handleEditClick('endTime', e)}>
                         <TimeInput
                           value={editedEvent.end.dateTime}
                           onChange={(newTime) => {

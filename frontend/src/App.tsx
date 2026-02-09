@@ -53,7 +53,7 @@ interface SessionListItem {
 
 // Main content component that handles all the business logic
 function AppContent() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, calendarReady } = useAuth()
   const navigate = useNavigate()
   const { sessionId } = useParams<{ sessionId?: string }>()
   const { addNotification } = useNotifications()
@@ -183,7 +183,7 @@ function AppContent() {
     }
   }, [sessionId, navigate, user, authLoading])
 
-  // Load session history and sync calendar when user logs in
+  // Load session history when user logs in
   // Use ref to avoid re-fetching when user object reference changes but ID is the same
   const lastLoadedUserId = useRef<string | null>(null)
   useEffect(() => {
@@ -194,8 +194,17 @@ function AppContent() {
         .then(setSessionHistory)
         .catch(console.error)
         .finally(() => setIsLoadingSessions(false))
+    } else if (!user) {
+      lastLoadedUserId.current = null
+    }
+  }, [user])
 
-      // Sync calendar with provider (smart backend decides strategy)
+  // Sync calendar once tokens are stored and ready
+  // Separate from session loading because calendarReady may be set after user
+  const lastSyncedUserId = useRef<string | null>(null)
+  useEffect(() => {
+    if (user && calendarReady && user.id !== lastSyncedUserId.current) {
+      lastSyncedUserId.current = user.id
       syncCalendar()
         .then(result => {
           if (result.skipped) {
@@ -213,9 +222,9 @@ function AppContent() {
           console.error('Calendar sync failed:', error)
         })
     } else if (!user) {
-      lastLoadedUserId.current = null
+      lastSyncedUserId.current = null
     }
-  }, [user])
+  }, [user, calendarReady])
 
   // Auto-refresh session list when there are processing sessions (e.g. from a previous visit)
   useEffect(() => {
@@ -375,17 +384,10 @@ function AppContent() {
     setLoadingConfig(LOADING_MESSAGES.READING_FILE)
 
     try {
-      // Determine file type for backend routing (binary files only)
-      const fileType: 'image' | 'audio' | 'pdf' = file.type.startsWith('audio/')
-        ? 'audio'
-        : file.type === 'application/pdf'
-          ? 'pdf'
-          : 'image'
-
-      // Route to guest or authenticated endpoint
+      // Upload file — backend auto-detects type from MIME/extension
       const { session } = user
-        ? await apiUploadFile(file, fileType)
-        : await uploadGuestFile(file, fileType)
+        ? await apiUploadFile(file)
+        : await uploadGuestFile(file)
 
       setCurrentSession(session)
       activeViewSessionRef.current = session.id

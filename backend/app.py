@@ -183,6 +183,11 @@ input_processor_factory.register_processor(InputType.TEXT, text_processor)
 pdf_processor = PDFProcessor()
 input_processor_factory.register_processor(InputType.PDF, pdf_processor)
 
+# Register document processor (docx, pptx, xlsx, html, csv, epub, etc.)
+from processors.document import DocumentProcessor
+document_processor = DocumentProcessor()
+input_processor_factory.register_processor(InputType.DOCUMENT, document_processor)
+
 # Initialize session processor
 session_processor = SessionProcessor(llm_session_processor, input_processor_factory)
 app.session_processor = session_processor
@@ -1025,13 +1030,13 @@ def create_text_session():
 @require_auth
 def upload_file_endpoint():
     """
-    Upload an image or audio file and create a session.
+    Upload a file and create a session.
 
     Requires authentication. User ID is extracted from JWT token.
+    File type is auto-detected from MIME type / extension.
 
     Expects multipart/form-data with:
     - file: The file to upload
-    - type: 'image' or 'audio'
 
     Returns the created session object with file path.
     """
@@ -1040,7 +1045,6 @@ def upload_file_endpoint():
             return jsonify({'error': 'No file provided'}), 400
 
         file = request.files['file']
-        file_type = request.form.get('type', 'image')  # 'image' or 'audio'
 
         # Get user_id from auth middleware (set by @require_auth)
         user_id = request.user_id
@@ -1048,10 +1052,11 @@ def upload_file_endpoint():
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
 
-        # Validate file type
-        if not FileStorage.validate_file_type(file.content_type, file_type):
+        # Auto-detect file type from MIME type / extension
+        file_type = FileStorage.detect_file_type(file.content_type, file.filename)
+        if not file_type:
             return jsonify({
-                'error': f'Invalid file type. Expected {file_type}, got {file.content_type}'
+                'error': f'Unsupported file type: {file.content_type} ({file.filename})'
             }), 400
 
         # Upload to Supabase Storage
@@ -1256,14 +1261,14 @@ def create_guest_text_session():
 @limiter.limit("10 per hour")
 def upload_guest_file():
     """
-    Upload an image or audio file as guest (no authentication required).
+    Upload a file as guest (no authentication required).
 
     Allows users to process up to 3 sessions before requiring sign-in.
     Rate limited to 10 requests per hour per IP address.
+    File type is auto-detected from MIME type / extension.
 
     Expects multipart/form-data with:
     - file: The file to upload
-    - input_type: 'image' or 'audio'
 
     Returns the created session object with guest_mode=True and file path.
     """
@@ -1272,15 +1277,15 @@ def upload_guest_file():
             return jsonify({'error': 'No file provided'}), 400
 
         file = request.files['file']
-        file_type = request.form.get('input_type', 'image')  # 'image' or 'audio'
 
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
 
-        # Validate file type
-        if not FileStorage.validate_file_type(file.content_type, file_type):
+        # Auto-detect file type from MIME type / extension
+        file_type = FileStorage.detect_file_type(file.content_type, file.filename)
+        if not file_type:
             return jsonify({
-                'error': f'Invalid file type. Expected {file_type}, got {file.content_type}'
+                'error': f'Unsupported file type: {file.content_type} ({file.filename})'
             }), 400
 
         # Generate anonymous guest ID (must be valid UUID for DB column)

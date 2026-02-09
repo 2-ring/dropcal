@@ -20,6 +20,21 @@ class FileStorage:
             'audio/ogg', 'audio/m4a', 'audio/x-m4a', 'audio/mp4', 'audio/flac',
         ],
         'pdf': ['application/pdf'],
+        'document': [
+            # Word
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            # PowerPoint
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            # Excel
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            # Web/data
+            'text/html', 'text/csv', 'text/tab-separated-values',
+            'application/json', 'text/xml', 'application/xml',
+            # eBook
+            'application/epub+zip',
+            # Rich text
+            'application/rtf', 'text/rtf',
+        ],
     }
 
     @staticmethod
@@ -114,13 +129,36 @@ class FileStorage:
             return False
 
     @staticmethod
+    def detect_file_type(mimetype: str, filename: str = '') -> Optional[str]:
+        """
+        Auto-detect file type category from MIME type or filename extension.
+
+        Returns the category key ('image', 'audio', 'pdf', 'document')
+        or None if the file type is not supported.
+        """
+        # Check MIME type against all categories
+        for category, mimes in FileStorage.ALLOWED_TYPES.items():
+            if mimetype in mimes:
+                return category
+
+        # Fallback: check file extension for common types
+        ext = os.path.splitext(filename)[1].lower() if filename else ''
+        EXT_MAP = {
+            '.docx': 'document', '.pptx': 'document', '.xlsx': 'document',
+            '.html': 'document', '.htm': 'document', '.csv': 'document',
+            '.json': 'document', '.xml': 'document', '.epub': 'document',
+            '.rtf': 'document', '.tsv': 'document', '.ipynb': 'document',
+        }
+        return EXT_MAP.get(ext)
+
+    @staticmethod
     def validate_file_type(mimetype: str, expected_type: str) -> bool:
         """
         Validate if file type is allowed.
 
         Args:
             mimetype: MIME type of the file
-            expected_type: Expected file type category ('image', 'audio', 'document')
+            expected_type: Expected file type category ('image', 'audio', 'pdf', 'document')
 
         Returns:
             bool: True if file type is allowed, False otherwise

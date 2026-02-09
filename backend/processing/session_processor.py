@@ -49,6 +49,37 @@ class SessionProcessor:
         # Initialize title generator
         self.title_generator = get_title_generator()
 
+    def _convert_document(self, file_path: str) -> str:
+        """
+        Download a document from Supabase storage and convert to text
+        using markitdown. Returns the extracted text.
+        """
+        import tempfile
+        from storage.file_handler import FileStorage
+        from markitdown import MarkItDown
+
+        # Download file bytes from Supabase
+        file_bytes = FileStorage.download_file(file_path)
+
+        # Write to temp file (markitdown needs a file path)
+        ext = os.path.splitext(file_path)[1] or '.docx'
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+            tmp.write(file_bytes)
+            tmp_path = tmp.name
+
+        try:
+            md = MarkItDown()
+            result = md.convert(tmp_path)
+            text = result.text_content
+
+            if not text or not text.strip():
+                raise ValueError("No text content could be extracted from the document")
+
+            logger.info(f"Document converted: {file_path} → {len(text)} chars")
+            return text
+        finally:
+            os.unlink(tmp_path)
+
     def _get_user_timezone(self, user_id: str) -> str:
         """Get user's timezone from their profile, default to America/New_York."""
         try:
@@ -295,7 +326,7 @@ class SessionProcessor:
         Args:
             session_id: ID of the session to process
             file_path: Path to the uploaded file (in Supabase storage)
-            file_type: Type of file ('image', 'audio', 'pdf')
+            file_type: Type of file ('image', 'audio', 'pdf', 'document')
         """
         try:
             # Update status to processing
@@ -317,6 +348,9 @@ class SessionProcessor:
             elif file_type == 'image':
                 text = f"[Image file at {file_path}]"
                 metadata = {'source': 'image', 'file_path': file_path, 'requires_vision': True}
+            elif file_type == 'document':
+                text = self._convert_document(file_path)
+                metadata = {'source': 'document', 'file_path': file_path}
             else:
                 text = file_path
                 metadata = {'source': file_type, 'file_path': file_path}
