@@ -283,12 +283,12 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
       try {
         const validEvents = editedEvents.filter((e): e is CalendarEvent => e !== null)
 
-        const calendarNames = calendars.map(c => c.summary)
+        const calendarList = calendars.map(c => ({ id: c.id, name: c.summary }))
 
         const response = await fetch(`${API_URL}/api/edit-event`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ events: validEvents, instruction, calendars: calendarNames }),
+          body: JSON.stringify({ events: validEvents, instruction, calendars: calendarList }),
         })
 
         if (!response.ok) {
@@ -535,17 +535,13 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
   }
 
 
-  const getCalendarColor = (calendarName: string | undefined): string => {
-    if (!calendarName || calendarName === 'Primary' || calendarName === 'Default') {
+  const getCalendarColor = (calendarId: string | undefined): string => {
+    if (!calendarId || calendarId === 'primary') {
       // Default color for primary calendar (Google Calendar blue)
       return '#1170C5'
     }
 
-    // Find matching calendar by ID or name (case-insensitive)
-    const calendar = calendars.find(cal =>
-      cal.id === calendarName || cal.summary.toLowerCase() === calendarName.toLowerCase()
-    )
-
+    const calendar = calendars.find(cal => cal.id === calendarId)
     return calendar?.backgroundColor || '#1170C5'
   }
 

@@ -49,7 +49,7 @@ interface EventEditViewProps {
   onClose: () => void
   onSave: (event: CalendarEvent) => void
   onChange?: (event: CalendarEvent) => void
-  getCalendarColor: (calendarName: string | undefined) => string
+  getCalendarColor: (calendarId: string | undefined) => string
 }
 
 type EditableField = 'summary' | 'location' | 'description' | 'startDate' | 'startTime' | 'endDate' | 'endTime' | 'timezone' | 'repeat'

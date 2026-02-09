@@ -250,7 +250,7 @@ class CalendarEvent(BaseModel):
     instructions: Optional[str] = Field(default=None, description="User's explicit requests: 'remind me 1 hour before', 'high priority'")
 
     # Set by extraction (if explicit) or personalization agent
-    calendar: Optional[str] = Field(default=None, description="Target calendar name. None = primary calendar.")
+    calendar: Optional[str] = Field(default=None, description="Target calendar ID (provider calendar ID). None = primary calendar.")
     colorId: Optional[str] = Field(default=None, description="Calendar color ID. Set by personalization agent.")
 
     @field_validator('summary')

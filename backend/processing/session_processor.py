@@ -18,7 +18,7 @@ from events.service import EventService
 from preferences.service import PersonalizationService
 from processing.parallel import process_events_parallel, EventProcessingResult
 from processing.chunked_identification import identify_events_chunked
-from config.posthog import set_tracking_context
+from config.posthog import set_tracking_context, flush_posthog
 
 logger = logging.getLogger(__name__)
 

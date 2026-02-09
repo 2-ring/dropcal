@@ -28,7 +28,7 @@ class EventModificationAgent(BaseAgent):
         self,
         events: List[Dict[str, Any]],
         instruction: str,
-        calendar_names: Optional[List[str]] = None
+        calendars: Optional[List[Dict[str, str]]] = None
     ) -> ModificationResult:
         """
         Apply a natural-language instruction to a list of events.
@@ -36,7 +36,7 @@ class EventModificationAgent(BaseAgent):
         Args:
             events: List of CalendarEvent dicts (the full session)
             instruction: User's edit request
-            calendar_names: Available calendar names the user has
+            calendars: Available calendars as [{id, name}] dicts
 
         Returns:
             ModificationResult with actions for affected events only
@@ -55,10 +55,11 @@ class EventModificationAgent(BaseAgent):
             event_lines.append(f"[{i}] {event}")
         events_block = "\n\n".join(event_lines)
 
-        # Build calendars context
+        # Build calendars context with IDs so the LLM outputs correct IDs
         calendars_block = ""
-        if calendar_names:
-            calendars_block = f"\n\nAVAILABLE CALENDARS:\n{', '.join(calendar_names)}\nWhen moving events between calendars, only use these names."
+        if calendars:
+            cal_lines = [f"- {c['name']} (ID: {c['id']})" for c in calendars]
+            calendars_block = f"\n\nAVAILABLE CALENDARS:\n" + "\n".join(cal_lines) + "\nWhen moving events between calendars, set the 'calendar' field to the calendar ID (not the name)."
 
         # Use the raw prompt template directly in ChatPromptTemplate so that
         # double-brace JSON examples (e.g. {{"summary": ...}}) are preserved

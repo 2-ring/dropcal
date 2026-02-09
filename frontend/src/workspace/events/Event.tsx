@@ -25,7 +25,7 @@ interface EventProps {
   formatDate: (dateTime: string, endDateTime?: string) => string
   formatTime: (dateTime: string) => string
   formatTimeRange: (start: string, end: string) => string
-  getCalendarColor: (calendarName: string | undefined) => string
+  getCalendarColor: (calendarId: string | undefined) => string
 
   // Sync status
   activeProvider?: string
