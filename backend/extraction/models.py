@@ -4,7 +4,7 @@ Extracted from app.py for better organization.
 """
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Optional, List
+from typing import Optional, List, Literal
 import re
 from datetime import datetime
 import pytz
@@ -306,3 +306,31 @@ class CalendarEvent(BaseModel):
                             raise ValueError(f"Invalid BYDAY code '{day}', must be one of {valid_days}")
 
         return v
+
+
+# ============================================================================
+# Agent 4: Event Modification
+# ============================================================================
+
+class EventAction(BaseModel):
+    """A single modification action targeting one event by index."""
+    index: int = Field(description="0-based index of the event in the input list")
+    action: Literal["edit", "delete"] = Field(
+        description="'edit' to modify the event (edited_event required), 'delete' to remove it"
+    )
+    edited_event: Optional['CalendarEvent'] = Field(
+        default=None,
+        description="The full modified CalendarEvent. Required when action='edit', omit for 'delete'."
+    )
+
+
+class ModificationResult(BaseModel):
+    """Result of the multi-event modification agent."""
+    actions: List[EventAction] = Field(
+        default_factory=list,
+        description="List of modifications. Only include events that should change. Events not listed are kept as-is."
+    )
+    message: Optional[str] = Field(
+        default=None,
+        description="Short natural-language response to show the user (e.g. 'Moved your Thursday meeting to 3pm')."
+    )

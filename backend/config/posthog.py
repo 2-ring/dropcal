@@ -4,6 +4,7 @@ LLM observability, cost tracking, and product analytics.
 """
 
 import os
+import atexit
 import logging
 import threading
 
@@ -27,6 +28,7 @@ def init_posthog():
 
         host = os.getenv('POSTHOG_HOST', 'https://us.i.posthog.com')
         _posthog_client = Posthog(api_key, host=host)
+        atexit.register(_posthog_client.shutdown)
         logger.info(f"PostHog: Initialized (host={host})")
     except ImportError:
         logger.warning("PostHog: posthog package not installed, analytics disabled")
@@ -88,6 +90,15 @@ def get_invoke_config(agent_name=None, properties=None):
     except Exception as e:
         logger.debug(f"PostHog: Failed to create callback: {e}")
         return {}
+
+
+def flush_posthog():
+    """Flush buffered PostHog events. Call after a pipeline run completes."""
+    if _posthog_client:
+        try:
+            _posthog_client.flush()
+        except Exception as e:
+            logger.debug(f"PostHog: Flush failed: {e}")
 
 
 def get_posthog_client():

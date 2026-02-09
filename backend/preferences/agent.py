@@ -93,10 +93,11 @@ You must personalize this event to match the user's style:
 4. PRESERVE ALL FIELDS: Keep start, end, location, description, recurrence, attendees, meeting_url intact
 
 CALENDAR SELECTION:
-- Review calendar patterns above - which calendar fits this event type?
+- Use the Calendar ID from the category patterns above, NOT the category name
+- Review calendar patterns - which calendar fits this event type?
 - Check which calendars similar examples belong to
-- If a pattern clearly matches, assign that calendar
-- If no pattern matches or confidence is low, leave calendar as null (primary)
+- ALWAYS assign a calendar ID - never leave calendar as null
+- If no pattern matches or confidence is low, use the PRIMARY calendar's ID
 
 Think step-by-step, then output the complete personalized event.
 """
@@ -172,9 +173,10 @@ Note: Colors are handled automatically based on category assignment.
             examples = pattern.get('examples', [])
             never_contains = pattern.get('never_contains', [])
 
-            primary_str = " ⭐ PRIMARY" if is_primary else ""
+            primary_str = " [PRIMARY]" if is_primary else ""
 
             lines.append(f"\nCategory: {name}{primary_str}")
+            lines.append(f"  Calendar ID: {cat_id}")
             lines.append(f"  Description: {desc}")
 
             if event_types:

@@ -472,15 +472,15 @@ def process_input():
 def edit_event():
     """
     Agent 4: Event Modification
-    Takes an existing calendar event and a natural language edit instruction.
-    Applies ONLY the requested changes, preserves everything else.
+    Takes a list of calendar events and a natural language edit instruction.
+    Returns only the actions needed (edits and deletes).
     """
     data = request.get_json()
-    original_event = data.get('event')
+    events = data.get('events')
     edit_instruction = data.get('instruction')
 
-    if not original_event:
-        return jsonify({'error': 'No event provided'}), 400
+    if not events or not isinstance(events, list):
+        return jsonify({'error': 'No events list provided'}), 400
 
     if not edit_instruction:
         return jsonify({'error': 'No edit instruction provided'}), 400
@@ -490,12 +490,12 @@ def edit_event():
         set_tracking_context(distinct_id='anonymous', trace_id=f"edit-{uuid.uuid4().hex[:8]}")
 
         # Use the Event Modification Agent
-        result = agent_4_modification.execute(original_event, edit_instruction)
+        result = agent_4_modification.execute(events, edit_instruction)
 
-        # Convert Pydantic model to dict for JSON response
         return jsonify({
             'success': True,
-            'modified_event': result.model_dump()
+            'actions': [a.model_dump() for a in result.actions],
+            'message': result.message
         })
 
     except Exception as e:

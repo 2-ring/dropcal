@@ -281,49 +281,62 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
       setIsProcessingEdit(true)
 
       try {
-        // Send instruction to each event and let AI figure out which ones to modify
-        const modifiedEvents = await Promise.all(
-          editedEvents.map(async (event, index) => {
-            if (!event) return null
+        const validEvents = editedEvents.filter((e): e is CalendarEvent => e !== null)
 
-            try {
-              const response = await fetch(`${API_URL}/api/edit-event`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  event: event,
-                  instruction: instruction
-                }),
-              })
+        const response = await fetch(`${API_URL}/api/edit-event`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ events: validEvents, instruction }),
+        })
 
-              if (!response.ok) {
-                console.error(`Failed to edit event ${index}:`, await response.text())
-                return event // Keep original if edit fails
-              }
+        if (!response.ok) {
+          const text = await response.text()
+          throw new Error(text || 'Edit request failed')
+        }
 
-              const result = await response.json()
-              return result.modified_event
-            } catch (error) {
-              console.error(`Error editing event ${index}:`, error)
-              return event // Keep original on error
-            }
+        const result = await response.json()
+        const actions: { index: number; action: 'edit' | 'delete'; edited_event?: CalendarEvent }[] = result.actions ?? []
+
+        // Build updated events list by applying actions
+        const deleteIndices = new Set<number>()
+        const editMap = new Map<number, CalendarEvent>()
+
+        for (const a of actions) {
+          if (a.action === 'delete') {
+            deleteIndices.add(a.index)
+          } else if (a.action === 'edit' && a.edited_event) {
+            // Carry over id/version/provider_syncs from original so persistence and sync badges work
+            const original = validEvents[a.index]
+            editMap.set(a.index, {
+              ...a.edited_event,
+              id: original?.id,
+              provider_syncs: original?.provider_syncs,
+              version: (original?.version ?? 1) + 1,
+            })
+          }
+        }
+
+        const updatedEvents = validEvents
+          .map((event, i) => {
+            if (deleteIndices.has(i)) return null
+            if (editMap.has(i)) return editMap.get(i)!
+            return event
           })
-        )
+          .filter((e): e is CalendarEvent => e !== null)
 
-        // Update state with modified events
-        setEditedEvents(modifiedEvents)
+        setEditedEvents(updatedEvents)
+        onEventsChanged?.(updatedEvents)
 
-        // Persist modified events that have ids to backend
-        for (const event of modifiedEvents) {
-          if (event?.id) {
-            updateEvent(event.id, event)
+        // Persist edits
+        for (const [i, edited] of editMap) {
+          const original = validEvents[i]
+          if (original?.id) {
+            updateEvent(original.id, edited)
               .then(persisted => {
                 setEditedEvents(prev => {
                   const updated = prev.map(e => e?.id === persisted.id ? persisted : e)
-                  const validEvents = updated.filter((e): e is CalendarEvent => e !== null)
-                  onEventsChanged?.(validEvents)
+                  const valid = updated.filter((e): e is CalendarEvent => e !== null)
+                  onEventsChanged?.(valid)
                   return updated
                 })
               })
@@ -331,10 +344,18 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
           }
         }
 
-        addNotification(createSuccessNotification('Done, changes applied!'))
-        runConflictCheck()
+        // Persist deletes
+        for (const i of deleteIndices) {
+          const original = validEvents[i]
+          if (original?.id) {
+            deleteEvent(original.id)
+              .then(res => onEventDeleted?.(original.id!, res.session_id, res.remaining_event_count))
+              .catch(err => console.error('Failed to persist AI delete:', err))
+          }
+        }
 
-        // Close chat after successful edit
+        addNotification(createSuccessNotification(result.message || 'Done, changes applied!'))
+        runConflictCheck()
         setIsChatExpanded(false)
       } catch (error) {
         addNotification(createErrorNotification(getFriendlyErrorMessage(error)))
