@@ -135,16 +135,13 @@
   background-color: var(--primary-hover);
 }
 
-/* Mobile: overlay native input on top of display text */
-.date-input-mobile-native {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-  border: none;
-  padding: 0;
-  margin: 0;
+/* Mobile: larger touch targets in drawer */
+.date-calendar-grid-mobile .date-calendar-cell {
+  height: 44px;
+  font-size: 0.875rem;
+}
+
+.date-calendar-grid-mobile .date-calendar-weekday {
+  height: 36px;
+  font-size: 0.75rem;
 }

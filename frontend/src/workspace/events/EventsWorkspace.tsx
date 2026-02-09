@@ -92,12 +92,25 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
         const response = await fetch(`${API_URL}/api/calendar/list-calendars`, { headers })
         if (response.ok) {
           const data = await response.json()
-          setCalendars(data.calendars || [])
+          const fetched: GoogleCalendar[] = data.calendars || []
+
+          // Ensure primary/default calendar is always present
+          if (!fetched.some(cal => cal.primary || cal.id === 'primary')) {
+            fetched.unshift({
+              id: 'primary',
+              summary: 'Primary',
+              backgroundColor: '#1170C5',
+              primary: true,
+            })
+          }
+
+          setCalendars(fetched)
+          setIsLoadingCalendars(false)
         }
+        // Non-ok (401, etc.): keep loading state — never show empty list
       } catch (error) {
         console.error('Failed to fetch calendars:', error)
-      } finally {
-        setIsLoadingCalendars(false)
+        // Network error: keep loading state — never show empty list
       }
     }
     fetchCalendars()

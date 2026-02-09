@@ -14,5 +14,7 @@ export {
 
 export {
   TimezoneInput,
+  TimezoneInputDesktop,
+  TimezoneInputMobile,
   type TimezoneInputProps
 } from './TimezoneInput'

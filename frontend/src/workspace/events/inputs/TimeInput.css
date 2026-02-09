@@ -83,16 +83,28 @@
   background-color: var(--interactive-hover);
 }
 
-.time-input-mobile {
+/* Mobile: bottom drawer time list */
+.time-drawer-list {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.time-drawer-option {
   width: 100%;
+  padding: 14px 4px;
   border: none;
-  outline: none;
-  background: transparent;
-  padding: 0;
-  margin: 0;
+  background: none;
+  text-align: left;
+  font-size: 0.9375rem;
   font-family: inherit;
-  font-size: inherit;
-  color: inherit;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.1s;
+  border-radius: 8px;
+}
+
+.time-drawer-option:active {
+  background-color: var(--background-hover);
 }
 
 .time-dropdown::-webkit-scrollbar {

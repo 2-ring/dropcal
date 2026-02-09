@@ -98,3 +98,64 @@
 .timezone-dropdown::-webkit-scrollbar-thumb:hover {
   background: var(--border-active);
 }
+
+/* Mobile: bottom drawer styles */
+.timezone-drawer-search {
+  position: sticky;
+  top: 0;
+  background: var(--background);
+  padding: 0 0 12px;
+  z-index: 1;
+}
+
+.timezone-drawer-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: var(--background);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.timezone-drawer-input:focus {
+  border-color: var(--primary);
+}
+
+.timezone-drawer-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.timezone-drawer-list {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.timezone-drawer-option {
+  width: 100%;
+  padding: 14px 4px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.1s;
+  border-radius: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timezone-drawer-option:active {
+  background-color: var(--background-hover);
+}
+
+.timezone-drawer-option.active {
+  color: var(--primary);
+  font-weight: 500;
+}
