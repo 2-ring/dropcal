@@ -122,7 +122,8 @@ app.register_blueprint(inbound_email_bp)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 25 * 1024 * 1024  # 25MB max file size
+from config.limits import FileLimits
+app.config['MAX_CONTENT_LENGTH'] = FileLimits.MAX_UPLOAD_BYTES
 
 # ============================================================================
 # CENTRALIZED MODEL CONFIGURATION
@@ -843,8 +844,9 @@ def discover_patterns():
         # Get user_id from auth middleware (set by @require_auth)
         user_id = request.user_id
 
+        from config.limits import EventLimits
         data = request.get_json() or {}
-        max_events = data.get('max_events', 500)
+        max_events = data.get('max_events', EventLimits.MAX_EVENTS_FOR_PATTERN_DISCOVERY)
 
         # Step 1: Collect comprehensive calendar data
         print(f"\n{'='*60}")
@@ -861,10 +863,10 @@ def discover_patterns():
 
         events_count = len(comprehensive_data.get('events', []))
 
-        if events_count < 10:
+        if events_count < EventLimits.MIN_EVENTS_FOR_PATTERN_DISCOVERY:
             return jsonify({
                 'success': False,
-                'error': f'Need at least 10 events to discover patterns. Found {events_count}.'
+                'error': f'Need at least {EventLimits.MIN_EVENTS_FOR_PATTERN_DISCOVERY} events to discover patterns. Found {events_count}.'
             }), 400
 
         # Step 2: Discover patterns

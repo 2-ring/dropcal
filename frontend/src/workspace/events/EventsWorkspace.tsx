@@ -6,6 +6,7 @@ import type { LoadingStateConfig } from './types'
 import { LOADING_MESSAGES } from './types'
 import { TopBar, BottomBar } from './Bar'
 import { Event } from './Event'
+import { SwipeableEvent } from './SwipeableEvent'
 import { DateHeader, MonthHeader } from './DateHeader'
 import { EventEditView } from './EventEditView'
 import './EventsWorkspace.css'
@@ -15,7 +16,7 @@ import {
 } from './animations'
 import { useAuth } from '../../auth/AuthContext'
 import { getAccessToken } from '../../auth/supabase'
-import { updateEvent, checkEventConflicts } from '../../api/backend-client'
+import { updateEvent, deleteEvent, addSessionToCalendar, checkEventConflicts } from '../../api/backend-client'
 import type { ConflictInfo } from '../../api/backend-client'
 import {
   useNotificationQueue,
@@ -322,6 +323,44 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
     }
   }
 
+  // Swipe right: add single event to calendar
+  const handleSwipeAdd = async (event: CalendarEvent) => {
+    if (!event.id || !sessionId) return
+    try {
+      const result = await addSessionToCalendar(sessionId, undefined, [event.id])
+      if (result?.has_conflicts) {
+        addNotification(createWarningNotification(`Added "${event.summary}" with scheduling conflicts`))
+      } else {
+        addNotification(createSuccessNotification(`"${event.summary}" added to calendar`))
+      }
+    } catch (error) {
+      addNotification(createErrorNotification(
+        error instanceof Error ? error.message : 'Failed to add event'
+      ))
+    }
+  }
+
+  // Swipe left: remove event
+  const handleSwipeDelete = async (event: CalendarEvent) => {
+    // Remove from local state immediately
+    setEditedEvents(prev => prev.filter(e => e !== event))
+
+    if (event.id) {
+      try {
+        await deleteEvent(event.id)
+      } catch (error) {
+        // Re-add on failure
+        setEditedEvents(prev => [...prev, event])
+        addNotification(createErrorNotification(
+          error instanceof Error ? error.message : 'Failed to remove event'
+        ))
+        return
+      }
+    }
+
+    addNotification(createSuccessNotification(`"${event.summary}" removed`))
+  }
+
   const formatDate = (dateTime: string, endDateTime?: string): string => {
     const start = new Date(dateTime)
     const options: Intl.DateTimeFormatOptions = {
@@ -523,19 +562,25 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
 
                         {/* Right: Event card */}
                         <div className="event-date-event-single">
-                          <Event
+                          <SwipeableEvent
                             event={event}
-                            index={originalIndex}
-                            isLoadingCalendars={isLoadingCalendars}
-                            calendars={calendars}
-                            formatDate={formatDate}
-                            formatTime={formatTime}
-                            formatTimeRange={formatTimeRange}
-                            getCalendarColor={getCalendarColor}
-                            activeProvider="google"
-                            conflictInfo={eventConflicts[String(originalIndex)]}
-                            onClick={() => handleEventClick(originalIndex)}
-                          />
+                            onSwipeRight={handleSwipeAdd}
+                            onSwipeLeft={handleSwipeDelete}
+                          >
+                            <Event
+                              event={event}
+                              index={originalIndex}
+                              isLoadingCalendars={isLoadingCalendars}
+                              calendars={calendars}
+                              formatDate={formatDate}
+                              formatTime={formatTime}
+                              formatTimeRange={formatTimeRange}
+                              getCalendarColor={getCalendarColor}
+                              activeProvider="google"
+                              conflictInfo={eventConflicts[String(originalIndex)]}
+                              onClick={() => handleEventClick(originalIndex)}
+                            />
+                          </SwipeableEvent>
                         </div>
                       </motion.div>
                     )

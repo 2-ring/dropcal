@@ -55,8 +55,9 @@ class TextFileProcessor(BaseInputProcessor):
                 error=f"File not found: {file_path}"
             )
 
+        from config.limits import FileLimits
         # Check file size
-        max_size_mb = kwargs.get('max_size_mb', 10)
+        max_size_mb = kwargs.get('max_size_mb', FileLimits.MAX_TEXT_FILE_SIZE_MB)
         file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
         if file_size_mb > max_size_mb:
             return ProcessingResult(

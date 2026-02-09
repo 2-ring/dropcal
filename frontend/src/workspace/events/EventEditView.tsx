@@ -203,7 +203,11 @@ export function EventEditView({
                   </div>
                 ))
               ) : (
-                calendars.map((calendar) => (
+                [...calendars].sort((a, b) => {
+                  if (a.primary && !b.primary) return -1
+                  if (!a.primary && b.primary) return 1
+                  return a.summary.localeCompare(b.summary)
+                }).map((calendar) => (
                   <button
                     key={calendar.id}
                     className={`calendar-chip ${calendar.id === editedEvent.calendar ? 'active' : ''}`}

@@ -70,7 +70,7 @@ export async function createTextSession(text: string): Promise<Session> {
  */
 export async function uploadFile(
   file: File,
-  type: 'image' | 'audio'
+  type: 'image' | 'audio' | 'pdf'
 ): Promise<{ session: Session; file_url: string }> {
   const token = await getAccessToken();
 
@@ -362,7 +362,8 @@ export async function checkGoogleCalendarStatus(): Promise<{
  */
 export async function addSessionToCalendar(
   sessionId: string,
-  events?: any[]
+  events?: any[],
+  eventIds?: string[]
 ): Promise<{
   success: boolean;
   calendar_event_ids: string[];
@@ -373,8 +374,11 @@ export async function addSessionToCalendar(
 }> {
   const headers = await getAuthHeaders();
 
-  // Prepare request body if events are provided (for correction logging)
-  const body = events ? JSON.stringify({ events }) : undefined;
+  const bodyObj: Record<string, any> = {};
+  if (events) bodyObj.events = events;
+  if (eventIds) bodyObj.event_ids = eventIds;
+
+  const body = Object.keys(bodyObj).length > 0 ? JSON.stringify(bodyObj) : undefined;
 
   const response = await fetch(`${API_URL}/api/sessions/${sessionId}/add-to-calendar`, {
     method: 'POST',
@@ -436,6 +440,22 @@ export async function updateEvent(
 
   const data = await handleResponse<{ event: CalendarEvent }>(response);
   return data.event;
+}
+
+/**
+ * Soft-delete an event.
+ */
+export async function deleteEvent(
+  eventId: string
+): Promise<{ success: boolean; event_id: string }> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_URL}/api/events/${eventId}`, {
+    method: 'DELETE',
+    headers,
+  });
+
+  return handleResponse(response);
 }
 
 // ============================================================================
@@ -637,7 +657,7 @@ export async function createGuestTextSession(text: string): Promise<Session> {
  */
 export async function uploadGuestFile(
   file: File,
-  type: 'image' | 'audio'
+  type: 'image' | 'audio' | 'pdf'
 ): Promise<{ session: Session; file_url: string }> {
   const formData = new FormData();
   formData.append('file', file);

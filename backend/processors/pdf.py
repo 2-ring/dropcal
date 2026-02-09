@@ -19,7 +19,8 @@ class PDFProcessor(BaseInputProcessor):
     """
 
     SUPPORTED_FORMATS = {'.pdf'}
-    MIN_TEXT_LENGTH = 50  # Minimum characters to consider text extraction successful
+    from config.limits import TextLimits, PDFLimits
+    MIN_TEXT_LENGTH = TextLimits.PDF_MIN_TEXT_LENGTH
 
     def __init__(self):
         """Initialize PDF processor with required libraries"""
@@ -107,7 +108,7 @@ class PDFProcessor(BaseInputProcessor):
             # Convert PDF to images (limit to first N pages for demo)
             images = convert_from_path(
                 file_path,
-                dpi=150,  # Good quality without being too large
+                dpi=PDFLimits.RENDER_DPI,
                 fmt='jpeg',
                 first_page=1,
                 last_page=max_pages
@@ -166,18 +167,19 @@ class PDFProcessor(BaseInputProcessor):
                 error=f"File not found: {file_path}"
             )
 
+        from config.limits import FileLimits, PDFLimits
         # Check file size
         file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-        if file_size_mb > 10:
+        if file_size_mb > FileLimits.MAX_PDF_SIZE_MB:
             return ProcessingResult(
                 text="",
                 input_type=InputType.PDF,
                 success=False,
-                error=f"PDF too large: {file_size_mb:.2f}MB (max 10MB)"
+                error=f"PDF too large: {file_size_mb:.2f}MB (max {FileLimits.MAX_PDF_SIZE_MB}MB)"
             )
 
         force_vision = kwargs.get('force_vision', False)
-        max_pages = kwargs.get('max_pages', 5)
+        max_pages = kwargs.get('max_pages', PDFLimits.MAX_PAGES_TO_RENDER)
 
         # Strategy 1: Try text extraction first (unless forced to use vision)
         if not force_vision:

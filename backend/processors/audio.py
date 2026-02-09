@@ -168,14 +168,15 @@ class AudioProcessor(BaseInputProcessor):
             prompt = kwargs.get('prompt')
             temperature = kwargs.get('temperature', 0)
 
-            # Check file size (25MB limit for OpenAI/Grok)
+            from config.limits import FileLimits
+            # Check file size
             file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-            if file_size_mb > 25:
+            if file_size_mb > FileLimits.MAX_AUDIO_SIZE_MB:
                 return ProcessingResult(
                     text="",
                     input_type=InputType.AUDIO,
                     success=False,
-                    error=f"File too large: {file_size_mb:.2f}MB (max 25MB)"
+                    error=f"File too large: {file_size_mb:.2f}MB (max {FileLimits.MAX_AUDIO_SIZE_MB}MB)"
                 )
 
             # Transcribe

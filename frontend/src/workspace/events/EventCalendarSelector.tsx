@@ -6,6 +6,7 @@ interface CalendarOption {
   id: string
   summary: string
   backgroundColor: string
+  primary?: boolean
 }
 
 interface EventCalendarSelectorProps {
@@ -83,7 +84,11 @@ export function EventCalendarSelector({
 
       {isDropdownOpen && (
         <div className="calendar-selector-dropdown">
-          {calendars.map((calendar) => (
+          {[...calendars].sort((a, b) => {
+            if (a.primary && !b.primary) return -1
+            if (!a.primary && b.primary) return 1
+            return a.summary.localeCompare(b.summary)
+          }).map((calendar) => (
             <div
               key={calendar.id}
               className={`calendar-selector-option ${calendar.id === currentCalendar.id ? 'active' : ''}`}

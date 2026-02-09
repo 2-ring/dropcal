@@ -263,8 +263,12 @@ function AppContent() {
     setLoadingConfig(LOADING_MESSAGES.READING_FILE)
 
     try {
-      // Determine file type
-      const fileType = file.type.startsWith('audio/') ? 'audio' : 'image'
+      // Determine file type for backend routing
+      const fileType: 'image' | 'audio' | 'pdf' = file.type.startsWith('audio/')
+        ? 'audio'
+        : file.type === 'application/pdf'
+          ? 'pdf'
+          : 'image'
 
       // Route to guest or authenticated endpoint
       const { session } = user

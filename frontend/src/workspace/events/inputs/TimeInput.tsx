@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useViewport } from '../../input/shared/hooks/useViewport'
 import { BottomDrawer } from './BottomDrawer'
+import { ClockPicker } from './ClockPicker'
 import './TimeInput.css'
 
 export interface TimeInputProps {
@@ -200,13 +201,10 @@ export function TimeInputDesktop({ value, onChange, onFocus, onBlur, isEditing, 
 
 /* ─── Mobile: bottom drawer ─── */
 
-export function TimeInputMobile({ value, onChange, onFocus, onBlur, isEditing, className, startTime }: TimeInputProps) {
-  const listRef = useRef<HTMLDivElement>(null)
+export function TimeInputMobile({ value, onChange, onBlur, isEditing, className }: TimeInputProps) {
   const displayValue = formatTimeDisplay(value)
 
-  const timeSuggestions = generateTimeSuggestions(value, startTime)
-
-  const handleTimeSelect = (timeValue: string) => {
+  const handleChange = (timeValue: string) => {
     onChange(timeValue)
     onBlur?.()
   }
@@ -215,35 +213,15 @@ export function TimeInputMobile({ value, onChange, onFocus, onBlur, isEditing, c
     onBlur?.()
   }
 
-  // Scroll to current time when drawer opens
-  useEffect(() => {
-    if (isEditing && listRef.current) {
-      const currentDate = new Date(value)
-      const currentMinutes = currentDate.getHours() * 60 + currentDate.getMinutes()
-      const intervalIndex = Math.round(currentMinutes / 15)
-      const optionHeight = 48
-      const scrollPosition = intervalIndex * optionHeight - listRef.current.clientHeight / 2
-
-      listRef.current.scrollTop = scrollPosition
-    }
-  }, [isEditing, value])
-
   return (
     <>
       <span className={className}>{displayValue}</span>
-      <BottomDrawer isOpen={!!isEditing} onClose={handleClose} title="Select Time">
-        <div className="time-drawer-list" ref={listRef}>
-          {timeSuggestions.map((time, index) => (
-            <button
-              key={index}
-              className="time-drawer-option"
-              onClick={() => handleTimeSelect(time.value)}
-              type="button"
-            >
-              {time.label}
-            </button>
-          ))}
-        </div>
+      <BottomDrawer isOpen={!!isEditing} onClose={handleClose}>
+        <ClockPicker
+          value={value}
+          onChange={handleChange}
+          onCancel={handleClose}
+        />
       </BottomDrawer>
     </>
   )

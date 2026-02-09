@@ -4,16 +4,17 @@ Controls input size limits, event caps, parallelism, and timeouts.
 """
 
 import os
+from config.limits import TextLimits, EventLimits
 
 
 class ProcessingConfig:
     """Configuration for input processing limits and parallelism."""
 
     # Maximum characters allowed for text input
-    MAX_TEXT_INPUT_LENGTH: int = 50_000
+    MAX_TEXT_INPUT_LENGTH: int = TextLimits.MAX_TEXT_INPUT_LENGTH
 
     # Maximum events to process per request (after Agent 1 identification)
-    MAX_EVENTS_PER_REQUEST: int = 25
+    MAX_EVENTS_PER_REQUEST: int = EventLimits.MAX_EVENTS_PER_REQUEST
 
     # Max concurrent threads for Agent 2 + Agent 3 pipeline per request
     MAX_WORKERS: int = int(os.getenv('DROPCAL_MAX_WORKERS', '5'))

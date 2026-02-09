@@ -14,9 +14,13 @@ class FileStorage:
 
     BUCKET_NAME = "uploads"
     ALLOWED_TYPES = {
-        'image': ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-        'audio': ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp3'],
-        'document': ['application/pdf', 'text/plain']
+        'image': ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'],
+        'audio': [
+            'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/webm',
+            'audio/ogg', 'audio/m4a', 'audio/x-m4a', 'audio/mp4', 'audio/flac',
+        ],
+        'pdf': ['application/pdf'],
+        'document': ['application/pdf', 'text/plain'],
     }
 
     @staticmethod

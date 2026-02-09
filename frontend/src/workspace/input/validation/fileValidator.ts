@@ -14,19 +14,19 @@ const FILE_TYPES = {
   image: {
     extensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'],
     mimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'],
-    maxSize: 5 * 1024 * 1024, // 5MB
+    maxSize: 20 * 1024 * 1024, // 20MB
     label: 'Image'
   },
   audio: {
-    extensions: ['.mp3', '.wav', '.m4a', '.webm', '.ogg', '.mpeg', '.mpga'],
-    mimeTypes: ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/webm', 'audio/ogg', 'audio/m4a'],
+    extensions: ['.mp3', '.wav', '.m4a', '.webm', '.ogg', '.mpeg', '.mpga', '.flac'],
+    mimeTypes: ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/webm', 'audio/ogg', 'audio/m4a', 'audio/x-m4a', 'audio/mp4', 'audio/flac'],
     maxSize: 25 * 1024 * 1024, // 25MB
     label: 'Audio'
   },
   pdf: {
     extensions: ['.pdf'],
     mimeTypes: ['application/pdf'],
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 20 * 1024 * 1024, // 20MB
     label: 'PDF'
   },
   document: {

@@ -69,14 +69,15 @@ class ImageProcessor(BaseInputProcessor):
                 error=f"File not found: {file_path}"
             )
 
-        # Check file size (Claude has limits, ~5MB is safe)
+        from config.limits import FileLimits
+        # Check file size
         file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-        if file_size_mb > 5:
+        if file_size_mb > FileLimits.MAX_IMAGE_SIZE_MB:
             return ProcessingResult(
                 text="",
                 input_type=InputType.IMAGE,
                 success=False,
-                error=f"Image too large: {file_size_mb:.2f}MB (max 5MB)"
+                error=f"Image too large: {file_size_mb:.2f}MB (max {FileLimits.MAX_IMAGE_SIZE_MB}MB)"
             )
 
         try:

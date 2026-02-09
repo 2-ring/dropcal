@@ -212,7 +212,11 @@ export function EventEditScreen({
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.calendarChips}
               >
-                {calendars.map((calendar) => (
+                {[...calendars].sort((a, b) => {
+                  if (a.primary && !b.primary) return -1;
+                  if (!a.primary && b.primary) return 1;
+                  return a.summary.localeCompare(b.summary);
+                }).map((calendar) => (
                   <Pressable
                     key={calendar.id}
                     style={[
