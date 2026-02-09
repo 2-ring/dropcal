@@ -1036,7 +1036,7 @@
 
   .event-confirmation-list {
     gap: 0.625rem;
-    padding-left: 0;
+    padding: 0;
   }
 
   .event-confirmation-card {
