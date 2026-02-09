@@ -234,25 +234,91 @@ def update_event(
     return create_module.update_event(user_id, provider_event_id, event_data, calendar_id)
 
 
+def sync_event(
+    user_id: str,
+    event_id: str,
+    provider: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Smart sync a single event. Backend decides everything from the database:
+    provider from user table, create vs update from provider_syncs, calendar
+    from the event's calendar field.
+
+    Returns:
+        Dict with action ('created'|'updated'|'skipped'|'failed'), provider_event_id, etc.
+    """
+    if not provider:
+        provider = get_user_primary_provider(user_id)
+
+    event_row = Event.get_by_id(event_id)
+    if not event_row:
+        raise ValueError(f"Event {event_id} not found")
+    if event_row.get('deleted_at'):
+        raise ValueError(f"Event {event_id} has been deleted")
+    if event_row.get('user_id') != user_id:
+        raise PermissionError("Event does not belong to user")
+
+    _, _, create_module = get_provider_modules(provider)
+
+    cal_event = EventService.event_row_to_calendar_event(event_row)
+
+    # Use the event's assigned calendar, fall back to 'primary'
+    target_calendar_id = cal_event.get('calendar') or 'primary'
+
+    # Strip DropCal metadata — only send fields the calendar API understands
+    api_event = {k: v for k, v in cal_event.items()
+                 if k not in ('id', 'version', 'provider_syncs', 'calendar')}
+
+    current_version = event_row.get('version', 1)
+    provider_syncs = event_row.get('provider_syncs') or []
+    sync_entry = next((s for s in provider_syncs if s.get('provider') == provider), None)
+
+    print(f"[sync] event={event_id[:8]} provider={provider} calendar={target_calendar_id} "
+          f"version={current_version} sync_entry={sync_entry}")
+
+    if not sync_entry:
+        # DRAFT → CREATE
+        created_event = create_module.create_event(user_id, api_event, target_calendar_id)
+        if not created_event:
+            return {'action': 'failed', 'event_id': event_id, 'error': 'Provider create returned None'}
+
+        provider_event_id = created_event.get('id', event_id)
+        EventService.sync_to_provider(event_id, provider, provider_event_id, target_calendar_id)
+        print(f"[sync] CREATED → provider_event_id={provider_event_id}")
+        return {'action': 'created', 'event_id': event_id, 'provider_event_id': provider_event_id}
+
+    elif sync_entry.get('synced_version') == current_version:
+        # UP TO DATE → SKIP
+        print(f"[sync] SKIPPED (synced_version={sync_entry.get('synced_version')} == version={current_version})")
+        return {'action': 'skipped', 'event_id': event_id, 'provider_event_id': sync_entry.get('provider_event_id')}
+
+    else:
+        # EDITED → UPDATE
+        provider_event_id = sync_entry['provider_event_id']
+        updated_event = create_module.update_event(
+            user_id, provider_event_id, api_event, target_calendar_id
+        )
+        if not updated_event:
+            return {'action': 'failed', 'event_id': event_id, 'error': 'Provider update returned None'}
+
+        EventService.sync_to_provider(event_id, provider, provider_event_id, target_calendar_id)
+        print(f"[sync] UPDATED → provider_event_id={provider_event_id}")
+        return {'action': 'updated', 'event_id': event_id, 'provider_event_id': provider_event_id}
+
+
 def sync_events_from_session(
     user_id: str,
     session_id: str,
-    calendar_id: str = 'primary',
     provider: Optional[str] = None,
     event_ids: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """
     Smart sync: create, update, or skip events based on their sync status.
-
-    For each event in the session:
-    - No sync entry for this provider → CREATE in external calendar
-    - Sync entry exists, synced_version == current version → SKIP
-    - Sync entry exists, synced_version < current version → UPDATE
+    Delegates to sync_event() per event.
 
     Args:
         user_id: User's UUID
         session_id: Session UUID
-        calendar_id: Target calendar ID
         provider: Provider to use, or None to use primary
         event_ids: Optional subset of event IDs to sync
 
@@ -268,8 +334,6 @@ def sync_events_from_session(
         raise ValueError(f"Session {session_id} not found")
     if session.get('user_id') != user_id:
         raise PermissionError("Session does not belong to user")
-
-    _, fetch_module, create_module = get_provider_modules(provider)
 
     # Determine target event IDs
     session_event_ids = session.get('event_ids') or []
@@ -289,70 +353,24 @@ def sync_events_from_session(
     updated = []
     skipped = []
     failed = []
-    conflicts = []
 
-    for event_id in target_ids:
-        event_row = Event.get_by_id(event_id)
-        if not event_row or event_row.get('deleted_at'):
-            continue
-
-        cal_event = EventService.event_row_to_calendar_event(event_row)
-        api_event = {k: v for k, v in cal_event.items()
-                     if k not in ('id', 'version', 'provider_syncs')}
-
-        current_version = event_row.get('version', 1)
-        provider_syncs = event_row.get('provider_syncs') or []
-        sync_entry = next((s for s in provider_syncs if s.get('provider') == provider), None)
-
-        # Check conflicts
-        start_time = api_event.get('start', {}).get('dateTime')
-        end_time = api_event.get('end', {}).get('dateTime')
-        event_conflicts = []
-        if start_time and end_time:
-            try:
-                event_conflicts = fetch_module.check_conflicts(user_id, start_time, end_time, calendar_id)
-            except Exception:
-                pass
-
-        if event_conflicts:
-            conflicts.append({
-                'event_id': event_id,
-                'event_summary': api_event.get('summary'),
-                'conflicts': event_conflicts
-            })
-
+    for eid in target_ids:
         try:
-            if not sync_entry:
-                # DRAFT → CREATE
-                created_event = create_module.create_event(user_id, api_event, calendar_id)
-                if created_event:
-                    provider_event_id = created_event.get('id', event_id)
-                    EventService.sync_to_provider(event_id, provider, provider_event_id, calendar_id)
-                    created.append(event_id)
-                else:
-                    failed.append(event_id)
-
-            elif sync_entry.get('synced_version') == current_version:
-                # UP TO DATE → SKIP
-                skipped.append(event_id)
-
+            result = sync_event(user_id, eid, provider)
+            action = result['action']
+            if action == 'created':
+                created.append(eid)
+            elif action == 'updated':
+                updated.append(eid)
+            elif action == 'skipped':
+                skipped.append(eid)
             else:
-                # EDITED → UPDATE
-                provider_event_id = sync_entry['provider_event_id']
-                updated_event = create_module.update_event(
-                    user_id, provider_event_id, api_event, calendar_id
-                )
-                if updated_event:
-                    EventService.sync_to_provider(event_id, provider, provider_event_id, calendar_id)
-                    updated.append(event_id)
-                else:
-                    failed.append(event_id)
-
+                failed.append(eid)
         except Exception as e:
-            print(f"Error syncing event {event_id}: {e}")
-            failed.append(event_id)
+            print(f"[sync] ERROR event={eid}: {e}")
+            failed.append(eid)
 
-    # Mark session as added to calendar (only new creates)
+    # Mark session as added to calendar
     all_synced_ids = created + updated
     if created:
         DBSession.mark_added_to_calendar(session_id, all_synced_ids)
@@ -362,7 +380,7 @@ def sync_events_from_session(
         'updated': updated,
         'skipped': skipped,
         'failed': failed,
-        'conflicts': conflicts,
+        'conflicts': [],
         'num_created': len(created),
         'num_updated': len(updated),
         'num_skipped': len(skipped),

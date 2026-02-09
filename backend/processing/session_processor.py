@@ -351,6 +351,13 @@ class SessionProcessor:
             elif file_type == 'document':
                 text = self._convert_document(file_path)
                 metadata = {'source': 'document', 'file_path': file_path}
+            elif file_type in ('text', 'email'):
+                from storage.file_handler import FileStorage
+                file_bytes = FileStorage.download_file(file_path)
+                text = file_bytes.decode('utf-8', errors='replace')
+                if not text.strip():
+                    raise ValueError("File is empty or contains no readable text")
+                metadata = {'source': file_type, 'file_path': file_path}
             else:
                 text = file_path
                 metadata = {'source': file_type, 'file_path': file_path}

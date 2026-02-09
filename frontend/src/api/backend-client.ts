@@ -138,11 +138,20 @@ export async function pollSession(
   sessionId: string,
   onUpdate?: (session: Session) => void,
   intervalMs: number = 2000,
-  isGuest: boolean = false
+  isGuest: boolean = false,
+  maxWaitMs: number = 5 * 60 * 1000 // 5 minutes
 ): Promise<Session> {
   return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+
     const poll = async () => {
       try {
+        // Bail if we've been waiting too long
+        if (Date.now() - startTime > maxWaitMs) {
+          reject(new Error('Processing timed out. Please try again.'));
+          return;
+        }
+
         // Route to correct endpoint based on guest status
         const session = isGuest
           ? await getGuestSession(sessionId)
@@ -408,6 +417,29 @@ export async function addSessionToCalendar(
     method: 'POST',
     headers,
     body,
+  });
+
+  return handleResponse(response);
+}
+
+/**
+ * Sync a single event to the user's calendar. Backend decides everything:
+ * provider from user table, create vs update from provider_syncs, calendar from event.
+ */
+export async function syncEvent(
+  eventId: string
+): Promise<{
+  success: boolean;
+  action: 'created' | 'updated' | 'skipped' | 'failed';
+  event_id: string;
+  provider_event_id?: string;
+  event: CalendarEvent;
+}> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_URL}/api/events/${eventId}/sync`, {
+    method: 'POST',
+    headers,
   });
 
   return handleResponse(response);

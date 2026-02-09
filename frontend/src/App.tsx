@@ -365,18 +365,6 @@ function AppContent() {
       return
     }
 
-    // Text-based files (.txt, .md, .eml) → read content and use text session path
-    const isTextFile = /\.(txt|text|md|markdown|eml|email)$/i.test(file.name)
-    if (isTextFile) {
-      const text = await file.text()
-      if (!text.trim()) {
-        addNotification(createErrorNotification('File is empty.'))
-        return
-      }
-      processText(text)
-      return
-    }
-
     setIsProcessing(true)
     setAppState('loading')
     setCalendarEvents([])
@@ -464,7 +452,7 @@ function AppContent() {
     } finally {
       setIsProcessing(false)
     }
-  }, [isProcessing, navigate, user, processText])
+  }, [isProcessing, navigate, user])
 
   // Handle file upload
   const handleFileUpload = useCallback((file: File) => {

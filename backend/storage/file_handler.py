@@ -35,6 +35,8 @@ class FileStorage:
             # Rich text
             'application/rtf', 'text/rtf',
         ],
+        'text': ['text/plain', 'text/markdown'],
+        'email': ['message/rfc822'],
     }
 
     @staticmethod
@@ -148,6 +150,8 @@ class FileStorage:
             '.html': 'document', '.htm': 'document', '.csv': 'document',
             '.json': 'document', '.xml': 'document', '.epub': 'document',
             '.rtf': 'document', '.tsv': 'document', '.ipynb': 'document',
+            '.txt': 'text', '.text': 'text', '.md': 'text', '.markdown': 'text',
+            '.eml': 'email', '.email': 'email',
         }
         return EXT_MAP.get(ext)
 

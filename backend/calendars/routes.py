@@ -415,6 +415,50 @@ def add_session_to_calendar(session_id):
         return jsonify({'error': f'Failed to sync events to calendar: {str(e)}'}), 500
 
 
+@calendar_bp.route('/api/events/<event_id>/sync', methods=['POST'])
+@require_auth
+def sync_single_event(event_id):
+    """
+    Sync a single event to the user's calendar provider.
+
+    Backend decides everything from the database:
+    - Provider from user's primary_calendar_provider
+    - Create vs update vs skip from provider_syncs + version
+    - Target calendar from the event's calendar field
+
+    Returns the sync result with action taken and updated event.
+    """
+    try:
+        user_id = request.user_id
+
+        if not factory.is_authenticated(user_id):
+            return jsonify({
+                'error': 'Calendar not connected',
+                'authenticated': False
+            }), 401
+
+        result = factory.sync_event(user_id, event_id)
+
+        # Return the updated event so frontend can refresh its state
+        from events.service import EventService
+        from database.models import Event
+        updated_row = Event.get_by_id(event_id)
+        updated_event = EventService.event_row_to_calendar_event(updated_row) if updated_row else None
+
+        return jsonify({
+            'success': True,
+            **result,
+            'event': updated_event,
+        })
+
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except PermissionError as e:
+        return jsonify({'error': str(e)}), 403
+    except Exception as e:
+        return jsonify({'error': f'Failed to sync event: {str(e)}'}), 500
+
+
 @calendar_bp.route('/api/auth/google-calendar/status', methods=['GET'])
 @require_auth
 def check_google_calendar_status():

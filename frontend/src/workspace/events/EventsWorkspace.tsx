@@ -16,7 +16,7 @@ import {
 } from './animations'
 import { useAuth } from '../../auth/AuthContext'
 import { getAccessToken } from '../../auth/supabase'
-import { updateEvent, deleteEvent, addSessionToCalendar, getSessionEvents, checkEventConflicts, refreshGoogleCalendarTokens } from '../../api/backend-client'
+import { updateEvent, deleteEvent, syncEvent, addSessionToCalendar, getSessionEvents, checkEventConflicts, refreshGoogleCalendarTokens } from '../../api/backend-client'
 import type { ConflictInfo } from '../../api/backend-client'
 import {
   useNotificationQueue,
@@ -370,24 +370,24 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
 
   // Swipe right: sync single event to calendar (create or update)
   const handleSwipeAdd = async (event: CalendarEvent) => {
-    if (!event.id || !sessionId) return
+    if (!event.id) return
     try {
-      const result = await addSessionToCalendar(sessionId, undefined, [event.id])
-      if (result?.has_conflicts) {
-        addNotification(createWarningNotification(`Synced "${event.summary}" with scheduling conflicts`))
-      } else if (result?.num_events_updated > 0) {
+      const result = await syncEvent(event.id)
+      const action = result.action
+      if (action === 'updated') {
         addNotification(createSuccessNotification(`"${event.summary}" updated in calendar`))
-      } else if (result?.num_events_skipped > 0) {
+      } else if (action === 'skipped') {
         addNotification(createSuccessNotification(`"${event.summary}" already up to date`))
-      } else {
+      } else if (action === 'created') {
         addNotification(createSuccessNotification(`"${event.summary}" added to calendar`))
+      } else {
+        addNotification(createErrorNotification(`Failed to sync "${event.summary}"`))
       }
-      // Re-fetch to update sync badges
-      try {
-        const freshEvents = await getSessionEvents(sessionId)
-        setEditedEvents(freshEvents)
-      } catch {
-        // Non-critical
+      // Update local state with the fresh event from server (has updated provider_syncs)
+      if (result.event) {
+        setEditedEvents(prev => prev.map(e =>
+          e?.id === event.id ? result.event : e
+        ))
       }
     } catch (error) {
       addNotification(createErrorNotification(

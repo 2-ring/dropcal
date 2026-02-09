@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { DesktopButtonMenu } from './DesktopButtonMenu'
 import { useInputHandlers } from '../shared/hooks'
@@ -22,6 +22,39 @@ export function DesktopDropArea({
   const { handleImageClick, handleDocumentClick, handleAudioFileUpload } = useInputHandlers({
     onFileUpload
   })
+
+  // Global paste handler: Ctrl+V anywhere on the page routes content into the drop area
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      if (isProcessing) return
+
+      // Don't intercept paste inside input fields or textareas
+      const active = document.activeElement
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || (active as HTMLElement).isContentEditable)) {
+        return
+      }
+
+      const clipboardData = e.clipboardData
+      if (!clipboardData) return
+
+      // Check for pasted files (images, documents, etc.)
+      if (clipboardData.files && clipboardData.files.length > 0) {
+        e.preventDefault()
+        onFileUpload(clipboardData.files[0])
+        return
+      }
+
+      // Check for pasted text
+      const text = clipboardData.getData('text/plain')
+      if (text && text.trim()) {
+        e.preventDefault()
+        onTextSubmit(text.trim())
+      }
+    }
+
+    document.addEventListener('paste', handlePaste)
+    return () => document.removeEventListener('paste', handlePaste)
+  }, [isProcessing, onFileUpload, onTextSubmit])
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault()

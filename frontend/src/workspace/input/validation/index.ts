@@ -1,2 +1,2 @@
-export { validateFile, validateFiles, getSupportedExtensions } from './fileValidator'
+export { validateFile } from './fileValidator'
 export type { ValidationResult } from './fileValidator'
