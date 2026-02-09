@@ -416,13 +416,13 @@
 }
 
 .event-status-bar.status-created {
-  background-color: #dcfce7;
-  color: #15803d;
+  background-color: var(--success-background);
+  color: var(--success);
 }
 
 .event-status-bar.status-apply-edits {
-  background-color: #fef3c7;
-  color: #b45309;
+  background-color: var(--warning-background);
+  color: var(--warning);
 }
 
 /* Skeleton card styling */

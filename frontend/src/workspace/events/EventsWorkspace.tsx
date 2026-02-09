@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import 'react-loading-skeleton/dist/skeleton.css'
-import { toast } from 'sonner'
 import type { CalendarEvent } from './types'
 import type { LoadingStateConfig } from './types'
 import { LOADING_MESSAGES } from './types'
@@ -16,6 +15,12 @@ import {
 } from './animations'
 import { getAccessToken } from '../../auth/supabase'
 import { updateEvent } from '../../api/backend-client'
+import {
+  useNotificationQueue,
+  createSuccessNotification,
+  createWarningNotification,
+  createErrorNotification,
+} from '../input/notifications'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
@@ -29,7 +34,8 @@ interface GoogleCalendar {
 
 interface EventsWorkspaceProps {
   events: (CalendarEvent | null)[]
-  onConfirm?: (editedEvents?: CalendarEvent[]) => Promise<void> | void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onConfirm?: (editedEvents?: CalendarEvent[]) => Promise<any> | any
   isLoading?: boolean
   loadingConfig?: LoadingStateConfig[]
   expectedEventCount?: number
@@ -50,6 +56,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
   const [isScrollable, setIsScrollable] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const pendingEditRef = useRef<CalendarEvent | null>(null)
+  const { currentNotification, addNotification, dismissNotification } = useNotificationQueue()
 
   // Fetch calendar list on mount
   useEffect(() => {
@@ -131,10 +138,7 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
       return updated
     })
 
-    toast.success('Event updated', {
-      description: 'Your changes have been saved',
-      duration: 2000
-    })
+    addNotification(createSuccessNotification('Your changes have been saved'))
 
     // Persist to backend if event has an id (exists in events table)
     if (updatedEvent.id) {
@@ -176,11 +180,6 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
       const instruction = changeRequest.trim()
       setChangeRequest('')
       setIsProcessingEdit(true)
-
-      // Show loading toast
-      const loadingToast = toast.loading('Processing changes...', {
-        description: 'AI is analyzing your request'
-      })
 
       try {
         // Send instruction to each event and let AI figure out which ones to modify
@@ -230,22 +229,14 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
           }
         }
 
-        // Dismiss loading and show success
-        toast.dismiss(loadingToast)
-        toast.success('Changes applied!', {
-          description: 'Events updated based on your request',
-          duration: 3000
-        })
+        addNotification(createSuccessNotification('Changes applied!'))
 
         // Close chat after successful edit
         setIsChatExpanded(false)
       } catch (error) {
-        // Dismiss loading and show error
-        toast.dismiss(loadingToast)
-        toast.error('Failed to apply changes', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-          duration: 5000
-        })
+        addNotification(createErrorNotification(
+          error instanceof Error ? error.message : 'Failed to apply changes'
+        ))
       } finally {
         setIsProcessingEdit(false)
       }
@@ -265,7 +256,21 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
       const validEditedEvents = editedEvents.filter((e): e is CalendarEvent => e !== null)
       setIsAddingToCalendar(true)
       try {
-        await onConfirm(validEditedEvents)
+        const result = await onConfirm(validEditedEvents)
+        // Show success/warning based on result from parent
+        if (result?.has_conflicts) {
+          addNotification(createWarningNotification(
+            `Added ${result.num_events_created} event(s), but found ${result.conflicts.length} scheduling conflict(s).`
+          ))
+        } else if (result?.num_events_created != null) {
+          addNotification(createSuccessNotification(
+            `Successfully added ${result.num_events_created} event(s) to calendar!`
+          ))
+        }
+      } catch (error) {
+        addNotification(createErrorNotification(
+          error instanceof Error ? error.message : 'Failed to add to calendar'
+        ))
       } finally {
         setIsAddingToCalendar(false)
       }
@@ -503,6 +508,8 @@ export function EventsWorkspace({ events, onConfirm, isLoading = false, loadingC
       <BottomBar
         isLoading={isLoading || isAddingToCalendar}
         loadingConfig={isAddingToCalendar ? [LOADING_MESSAGES.ADDING_TO_CALENDAR] : loadingConfig}
+        notification={currentNotification}
+        onDismissNotification={dismissNotification}
         isEditingEvent={editingEventIndex !== null}
         isChatExpanded={isChatExpanded}
         changeRequest={changeRequest}

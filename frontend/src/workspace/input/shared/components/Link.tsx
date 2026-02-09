@@ -4,8 +4,8 @@ import {
   FirstAid as FirstAidIcon,
   ArrowFatUp as ArrowFatUpIcon
 } from '@phosphor-icons/react'
-import { toast } from 'sonner'
 import isURL from 'validator/lib/isURL'
+import { useNotifications, createErrorNotification } from '../../notifications'
 
 interface LinkProps {
   onClose: () => void
@@ -16,6 +16,7 @@ interface LinkProps {
 export function Link({ onClose, onSubmit, submitRef }: LinkProps) {
   const [url, setUrl] = useState('')
   const [isValid, setIsValid] = useState(false)
+  const { addNotification } = useNotifications()
 
   const validateUrl = (input: string) => {
     const trimmed = input.trim()
@@ -74,10 +75,9 @@ export function Link({ onClose, onSubmit, submitRef }: LinkProps) {
       setIsValid(false)
     } catch (err) {
       console.error('Failed to fetch URL:', err)
-      toast.error('Failed to Fetch', {
-        description: err instanceof Error ? err.message : 'Could not retrieve content from the URL. Please try again.',
-        duration: 3000,
-      })
+      addNotification(createErrorNotification(
+        err instanceof Error ? err.message : 'Could not retrieve content from the URL. Please try again.'
+      ))
     }
   }
 

@@ -134,6 +134,8 @@ interface BottomBarProps {
   onConfirm?: () => void
   onSave?: () => void
   isScrollable?: boolean
+  notification?: Notification | null
+  onDismissNotification?: (id: string) => void
 }
 
 export function BottomBar({
@@ -150,7 +152,9 @@ export function BottomBar({
   onKeyDown,
   onConfirm,
   onSave,
-  isScrollable = true
+  isScrollable = true,
+  notification,
+  onDismissNotification
 }: BottomBarProps) {
 
   // Determine the current view state
@@ -166,6 +170,15 @@ export function BottomBar({
 
   return (
     <div className={`event-confirmation-footer-overlay ${!isScrollable ? 'no-scroll' : ''}`}>
+      <AnimatePresence mode="wait">
+        {notification && onDismissNotification && (
+          <NotificationBar
+            key={notification.id}
+            notification={notification}
+            onDismiss={onDismissNotification}
+          />
+        )}
+      </AnimatePresence>
       <div className="event-confirmation-footer">
         {viewState === 'loading' ? (
           /* Loading Progress */

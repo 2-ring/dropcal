@@ -32,7 +32,8 @@ interface WorkspaceProps {
   onAudioSubmit: (audioBlob: Blob) => void
   onTextSubmit: (text: string) => void
   onClearFile: () => void
-  onConfirm?: (editedEvents?: CalendarEvent[]) => Promise<void> | void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onConfirm?: (editedEvents?: CalendarEvent[]) => Promise<any> | any
   onMenuToggle?: () => void
   onNewSession?: () => void
 }
@@ -125,7 +126,7 @@ export function Workspace({
           inputType={inputType}
           inputContent={inputContent}
           onConfirm={onConfirm}
-          onBack={onNewSession}
+          onBack={onMenuToggle}
         />
       )}
     </>

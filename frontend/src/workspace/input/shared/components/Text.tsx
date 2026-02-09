@@ -5,8 +5,8 @@ import {
   ArrowFatUp as ArrowFatUpIcon,
   ClipboardText as ClipboardIcon
 } from '@phosphor-icons/react'
-import { toast } from 'sonner'
 import { IconButton } from './IconButton'
+import { useNotifications, createErrorNotification } from '../../notifications'
 
 interface TextProps {
   onClose: () => void
@@ -16,6 +16,7 @@ interface TextProps {
 
 export function Text({ onClose, onSubmit, submitRef }: TextProps) {
   const [text, setText] = useState('')
+  const { addNotification } = useNotifications()
 
   const handleSubmit = () => {
     if (text.trim()) {
@@ -42,10 +43,7 @@ export function Text({ onClose, onSubmit, submitRef }: TextProps) {
         setText(clipboardText)
       }
     } catch (err) {
-      toast.error('Paste Failed', {
-        description: 'Could not access clipboard. Please paste manually.',
-        duration: 3000,
-      })
+      addNotification(createErrorNotification('Could not access clipboard. Please paste manually.'))
     }
   }
 

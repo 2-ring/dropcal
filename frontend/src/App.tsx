@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Routes, Route, useParams, useNavigate } from 'react-router-dom'
-import { Toaster, toast } from 'sonner'
 import { validateFile } from './workspace/input/validation'
 import { Workspace } from './workspace/Workspace'
 import { Menu } from './menu/Menu'
@@ -17,6 +16,7 @@ import {
   useNotifications,
   createValidationErrorNotification,
   createSuccessNotification,
+  createWarningNotification,
   createErrorNotification
 } from './workspace/input/notifications'
 import type { CalendarEvent, LoadingStateConfig } from './workspace/events/types'
@@ -172,10 +172,7 @@ function AppContent() {
           if (errorMessage.includes('authentication') || errorMessage.includes('requires authentication')) {
             setAuthModalHeading('Sign in to continue.')
           } else {
-            toast.error('Failed to Load Session', {
-              description: 'The session could not be found.',
-              duration: 5000,
-            })
+            addNotification(createErrorNotification('The session could not be found.'))
           }
           navigate('/')
           setAppState('input')
@@ -243,10 +240,7 @@ function AppContent() {
   // Process file upload
   const processFile = useCallback(async (file: File) => {
     if (isProcessing) {
-      toast.warning('Already Processing', {
-        description: 'Please wait for the current file to finish processing.',
-        duration: 3000,
-      })
+      addNotification(createWarningNotification('Please wait for the current file to finish processing.'))
       return
     }
 
@@ -357,10 +351,7 @@ function AppContent() {
   // Process text input
   const processText = useCallback(async (text: string) => {
     if (isProcessing) {
-      toast.warning('Already Processing', {
-        description: 'Please wait for the current input to finish processing.',
-        duration: 3000,
-      })
+      addNotification(createWarningNotification('Please wait for the current input to finish processing.'))
       return
     }
 
@@ -467,10 +458,7 @@ function AppContent() {
     const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' })
 
     if (audioBlob.size < 1000) {
-      toast.error('Recording Too Short', {
-        description: 'Please record for at least a few seconds.',
-        duration: 4000,
-      })
+      addNotification(createErrorNotification('Please record for at least a few seconds.'))
       return
     }
 
@@ -507,6 +495,7 @@ function AppContent() {
   }, [navigate])
 
   // Handle adding events to Google Calendar
+  // Returns result for EventsWorkspace to show notifications; throws on error
   const handleAddToCalendar = useCallback(async (editedEvents?: CalendarEvent[]) => {
     // Require auth for calendar operations
     if (!user) {
@@ -515,49 +504,25 @@ function AppContent() {
     }
 
     if (!currentSession) {
-      toast.error('No Session', {
-        description: 'No session available to add to calendar.',
-        duration: 3000,
-      })
-      return
+      throw new Error('No session available to add to calendar.')
     }
 
     try {
       // Pass edited events for correction logging
       const result = await addSessionToCalendar(currentSession.id, editedEvents)
 
-      // Show success message
-      if (result.has_conflicts) {
-        toast.warning('Events Added with Conflicts', {
-          description: `Created ${result.num_events_created} event(s), but found ${result.conflicts.length} scheduling conflict(s).`,
-          duration: 5000,
-        })
-      } else {
-        toast.success('Added to Calendar!', {
-          description: `Successfully created ${result.num_events_created} event(s) in Google Calendar.`,
-          duration: 4000,
-        })
-      }
-
       // Reload the session to get updated calendar_event_ids
       const updatedSession = await getSession(currentSession.id)
       setCurrentSession(updatedSession)
 
+      return result
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
 
-      // Check if it's an auth error
       if (errorMessage.includes('not connected') || errorMessage.includes('not authenticated')) {
-        toast.error('Google Calendar Not Connected', {
-          description: 'Please sign in with Google to use calendar integration.',
-          duration: 5000,
-        })
-      } else {
-        toast.error('Failed to Add to Calendar', {
-          description: errorMessage,
-          duration: 5000,
-        })
+        throw new Error('Google Calendar not connected. Please sign in with Google to use calendar integration.')
       }
+      throw error
     }
   }, [user, currentSession])
 
@@ -588,16 +553,6 @@ function AppContent() {
         onSessionClick={handleSessionClick}
         onNewSession={handleNewSession}
         isLoadingSessions={isLoadingSessions}
-      />
-      <Toaster
-        position="bottom-center"
-        richColors
-        closeButton
-        toastOptions={{
-          style: {
-            fontFamily: 'Inter, system-ui, sans-serif',
-          },
-        }}
       />
       <div className={`content ${sidebarOpen ? 'with-sidebar' : ''} ${appState === 'loading' || appState === 'review' ? 'events-view' : ''}`}>
         <Workspace
