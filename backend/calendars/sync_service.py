@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Set
 from datetime import datetime, timedelta
 from database.models import Event, User, Calendar
 from events.service import EventService
-from config.calendar import SyncConfig, RefreshConfig
+from config.calendar import SyncConfig
 from config.limits import EventLimits
 
 logger = logging.getLogger(__name__)
@@ -493,89 +493,36 @@ class SmartSyncService:
     ) -> None:
         """
         Background thread: run LLM analysis on calendars missing descriptions.
-        Reuses PatternDiscoveryService._analyze_category_with_llm().
+        Delegates to PatternRefreshService._analyze_and_save() — the single
+        canonical path for fetch → filter → sample → LLM → upsert.
         """
         try:
             from config.posthog import set_tracking_context, flush_posthog
-            from config.similarity import PatternDiscoveryConfig
-            import calendars.factory as calendar_factory
 
             set_tracking_context(
                 distinct_id=user_id,
                 trace_id=f"enrich-{user_id[:8]}",
                 pipeline="Sync enrichment",
+                input_type='sync_enrichment',
+                is_guest=False,
             )
 
-            # Lazy import — the LLM and service are initialized in app.py
-            from app import pattern_discovery_service
+            # Lazy import — initialized in app.py
+            from app import pattern_refresh_service
 
             for cal in calendars_to_enrich:
-                cal_id = cal['id']
-                cal_name = cal.get('summary', 'Unnamed')
-                is_primary = cal.get('primary', False)
-
                 try:
-                    time_min = (
-                        datetime.utcnow() - timedelta(days=RefreshConfig.EVENT_LOOKBACK_DAYS)
-                    ).isoformat() + 'Z'
-
-                    events = calendar_factory.list_events(
-                        user_id=user_id,
-                        max_results=RefreshConfig.MAX_EVENTS_PER_CALENDAR,
-                        time_min=time_min,
-                        calendar_id=cal_id
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to fetch events for calendar {cal_name}: {e}")
-                    continue
-
-                # Filter noise
-                events = [e for e in events if e.get('summary') and e.get('status') != 'cancelled']
-
-                if not events:
-                    Calendar.upsert(
+                    # stored_event_count=0 (default) → skips growth check,
+                    # runs the full fetch → filter → sample → LLM → upsert path
+                    pattern_refresh_service._analyze_and_save(
                         user_id=user_id,
                         provider=provider,
-                        provider_cal_id=cal_id,
-                        name=cal_name,
-                        description='This category has no events in the analyzed period',
-                        event_types=[],
-                        examples=[],
-                        never_contains=[],
-                        events_analyzed=0,
+                        cal_id=cal['id'],
+                        calendar=cal,
                     )
-                    continue
-
-                # Sample and analyze with LLM
-                sampled = pattern_discovery_service._smart_sample_weighted(
-                    events,
-                    target=PatternDiscoveryConfig.TARGET_SAMPLE_SIZE,
-                    recency_bias=PatternDiscoveryConfig.RECENCY_BIAS_DEFAULT
-                )
-
-                summary = pattern_discovery_service._analyze_category_with_llm(
-                    category_name=cal_name,
-                    is_primary=is_primary,
-                    events=sampled,
-                    total_count=len(events)
-                )
-
-                Calendar.upsert(
-                    user_id=user_id,
-                    provider=provider,
-                    provider_cal_id=cal_id,
-                    name=cal_name,
-                    color=cal.get('backgroundColor'),
-                    foreground_color=cal.get('foregroundColor'),
-                    is_primary=is_primary,
-                    description=summary.get('description'),
-                    event_types=summary.get('event_types', []),
-                    examples=summary.get('examples', []),
-                    never_contains=summary.get('never_contains', []),
-                    events_analyzed=len(events),
-                )
-
-                logger.info(f"Enriched calendar: {cal_name}")
+                    logger.info(f"Enriched calendar: {cal.get('summary', 'Unnamed')}")
+                except Exception as e:
+                    logger.warning(f"Failed to enrich calendar {cal.get('summary')}: {e}")
 
             logger.info(f"Background enrichment complete for user {user_id[:8]}")
             flush_posthog()

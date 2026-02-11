@@ -15,11 +15,15 @@ interface AudioProps {
 
 export function Audio({ onClose, onSubmit, onUploadFile, submitRef }: AudioProps) {
   const recorderControls = useVoiceVisualizer()
-  const { recordedBlob, stopRecording } = recorderControls
+  const { recordedBlob, stopRecording, clearCanvas } = recorderControls
 
   // Auto-start recording when component mounts
   useEffect(() => {
     recorderControls.startRecording()
+    // Stop all media tracks on unmount to release the microphone
+    return () => {
+      clearCanvas()
+    }
   }, [])
 
   // Handle recorded blob
@@ -39,7 +43,7 @@ export function Audio({ onClose, onSubmit, onUploadFile, submitRef }: AudioProps
   })
 
   const handleClose = () => {
-    stopRecording()
+    clearCanvas()
     onClose()
   }
 

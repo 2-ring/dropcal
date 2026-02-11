@@ -271,12 +271,23 @@ function AppContent() {
           .then(setSessionHistory)
           .catch(console.error)
       } else {
-        loadGuestSessionHistory()
+        // Refresh processing guest sessions individually
+        const processingSessions = sessionHistory.filter(
+          s => s.status === 'pending' || s.status === 'processing'
+        )
+        Promise.all(
+          processingSessions.map(s => getGuestSession(s.id).catch(() => s))
+        ).then(updated => {
+          setSessionHistory(prev => prev.map(s => {
+            const refreshed = updated.find(u => u.id === s.id)
+            return refreshed || s
+          }))
+        })
       }
     }, 3000)
 
     return () => clearInterval(interval)
-  }, [sessionHistory, user, loadGuestSessionHistory])
+  }, [sessionHistory, user])
 
   const handleSidebarToggle = useCallback(() => {
     setSidebarOpen(prev => !prev)
@@ -319,7 +330,8 @@ function AppContent() {
       if (user) {
         getUserSessions().then(setSessionHistory).catch(console.error)
       } else {
-        loadGuestSessionHistory()
+        // Directly add to session history — no extra fetch needed
+        setSessionHistory(prev => [session, ...prev.filter(s => s.id !== session.id)])
       }
 
       // Poll for completion (use guest endpoint if not authenticated)
@@ -333,6 +345,10 @@ function AppContent() {
               setLoadingConfig(LOADING_MESSAGES.EXTRACTING_EVENTS)
             }
           }
+          // Keep sidebar in sync for guests
+          if (!user) {
+            setSessionHistory(prev => prev.map(s => s.id === updatedSession.id ? updatedSession : s))
+          }
         },
         2000,
         !user // isGuest parameter
@@ -342,7 +358,7 @@ function AppContent() {
       if (user) {
         getUserSessions().then(setSessionHistory).catch(console.error)
       } else {
-        loadGuestSessionHistory()
+        setSessionHistory(prev => prev.map(s => s.id === completedSession.id ? completedSession : s))
       }
 
       // If user navigated away, don't touch UI state
@@ -377,13 +393,11 @@ function AppContent() {
       setAppState('input')
       if (user) {
         getUserSessions().then(setSessionHistory).catch(console.error)
-      } else {
-        loadGuestSessionHistory()
       }
     } finally {
       setIsProcessing(false)
     }
-  }, [isProcessing, navigate, user, loadGuestSessionHistory])
+  }, [isProcessing, navigate, user])
 
   // Process file upload
   const processFile = useCallback(async (file: File) => {
@@ -428,7 +442,7 @@ function AppContent() {
       if (user) {
         getUserSessions().then(setSessionHistory).catch(console.error)
       } else {
-        loadGuestSessionHistory()
+        setSessionHistory(prev => [session, ...prev.filter(s => s.id !== session.id)])
       }
 
       setLoadingConfig(LOADING_MESSAGES.PROCESSING_FILE)
@@ -444,6 +458,10 @@ function AppContent() {
               setLoadingConfig(LOADING_MESSAGES.EXTRACTING_EVENTS)
             }
           }
+          // Keep sidebar in sync for guests
+          if (!user) {
+            setSessionHistory(prev => prev.map(s => s.id === updatedSession.id ? updatedSession : s))
+          }
         },
         2000,
         !user // isGuest parameter
@@ -453,7 +471,7 @@ function AppContent() {
       if (user) {
         getUserSessions().then(setSessionHistory).catch(console.error)
       } else {
-        loadGuestSessionHistory()
+        setSessionHistory(prev => prev.map(s => s.id === completedSession.id ? completedSession : s))
       }
 
       // If user navigated away, don't touch UI state
@@ -488,13 +506,11 @@ function AppContent() {
       setAppState('input')
       if (user) {
         getUserSessions().then(setSessionHistory).catch(console.error)
-      } else {
-        loadGuestSessionHistory()
       }
     } finally {
       setIsProcessing(false)
     }
-  }, [isProcessing, navigate, user, loadGuestSessionHistory])
+  }, [isProcessing, navigate, user])
 
   // Handle file upload
   const handleFileUpload = useCallback((file: File) => {

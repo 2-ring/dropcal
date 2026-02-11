@@ -160,6 +160,18 @@ _AGENT_LABELS = {
     'pattern_analysis': 'Pattern Analysis',
 }
 
+# Maps agent_name → config component, so get_invoke_config() can resolve
+# the actual provider (grok/claude/openai) instead of the LangChain class name.
+_AGENT_TO_COMPONENT = {
+    'identification': 'agent_1_identification',
+    'extraction': 'agent_2_extraction',
+    'personalization': 'agent_3_preferences',
+    'formatting': 'agent_3_preferences',
+    'modification': 'agent_4_modification',
+    'pattern_discovery': 'pattern_discovery',
+    'pattern_analysis': 'pattern_discovery',
+}
+
 
 def get_invoke_config(agent_name=None, properties=None):
     """
@@ -194,6 +206,18 @@ def get_invoke_config(agent_name=None, properties=None):
             merged_properties["agent_name"] = agent_name
         if pipeline:
             merged_properties["pipeline"] = pipeline
+
+        # Resolve actual provider (grok/claude/openai) from agent → component mapping
+        # so PostHog shows the real provider instead of the LangChain class name
+        component = _AGENT_TO_COMPONENT.get(agent_name)
+        if component:
+            try:
+                from config.text import get_text_provider, get_model_specs
+                provider = get_text_provider(component)
+                merged_properties['provider'] = provider
+                merged_properties['model'] = get_model_specs(provider)['model_name']
+            except Exception:
+                pass
 
         # Auto-include all extended context attributes
         for attr in _AUTO_INCLUDE_ATTRS:

@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
-from config.posthog import get_invoke_config
+from config.posthog import get_invoke_config, set_tracking_context
 from preferences.models import (
     UserPreferences,
     TitleFormattingPatterns,
@@ -297,6 +297,7 @@ Analyze and return the patterns:"""
 
         # Call LLM with structured output
         try:
+            set_tracking_context(calendar_name=cal_name)
             analysis_llm = self.llm.with_structured_output(CalendarAnalysisOutput)
             result = analysis_llm.invoke(prompt, config=get_invoke_config("pattern_analysis"))
 

@@ -66,6 +66,38 @@ class SessionProcessor:
         # Initialize title generator
         self.title_generator = get_title_generator()
 
+    def _transcribe_audio(self, file_path: str) -> str:
+        """
+        Download an audio file from Supabase storage and transcribe using
+        the configured audio processor (Deepgram/OpenAI/Grok).
+        Returns the transcribed text.
+        """
+        import tempfile
+        from storage.file_handler import FileStorage
+
+        # Download file bytes from Supabase
+        file_bytes = FileStorage.download_file(file_path)
+
+        # Write to temp file (audio processor needs a local file path)
+        ext = os.path.splitext(file_path)[1] or '.webm'
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+            tmp.write(file_bytes)
+            tmp_path = tmp.name
+
+        try:
+            result = self.input_processor_factory.process_file(tmp_path, InputType.AUDIO)
+
+            if not result.success:
+                raise ValueError(f"Audio transcription failed: {result.error}")
+
+            if not result.text or not result.text.strip():
+                raise ValueError("Audio transcription returned empty text")
+
+            logger.info(f"Audio transcribed: {file_path} → {len(result.text)} chars")
+            return result.text
+        finally:
+            os.unlink(tmp_path)
+
     def _convert_document(self, file_path: str) -> str:
         """
         Download a document from Supabase storage and convert to text
@@ -499,7 +531,7 @@ class SessionProcessor:
             requires_vision = file_type == 'image'
 
             if file_type == 'audio':
-                text = f"[Audio file content from {file_path}]"
+                text = self._transcribe_audio(file_path)
                 metadata = {'source': 'audio', 'file_path': file_path}
             elif file_type == 'image':
                 text = f"[Image file at {file_path}]"
