@@ -311,32 +311,7 @@ print_failure_analysis(failures, max_cases=5)
 
 ## Integration Points
 
-### 1. Pattern Analysis
-
-Use similarity to cluster events before discovering patterns:
-
-```python
-from preferences.similarity_service import ProductionSimilaritySearch
-from preferences.analysis import PatternAnalysisService
-
-# In PatternAnalysisService
-def analyze_with_similarity(self, events):
-    search = ProductionSimilaritySearch()
-    search.build_index(events)
-
-    # Group similar events
-    clusters = self._cluster_by_similarity(events, search)
-
-    # Analyze patterns within each cluster
-    patterns = []
-    for cluster in clusters:
-        cluster_pattern = self._analyze_cluster(cluster)
-        patterns.append(cluster_pattern)
-
-    return patterns
-```
-
-### 2. Few-Shot Example Selection (Agent 3)
+### 1. Few-Shot Example Selection (Agent 3)
 
 Use similarity to find examples for LLM style transfer:
 
@@ -605,8 +580,7 @@ scipy==1.11.4                  # Optimization
 
 ### Integration (Phase 3 Remaining)
 
-5. ⏳ Integrate with `PatternAnalysisService` for similarity-based clustering
-6. ⏳ Integrate with `PreferenceApplicationAgent` (Agent 3) for few-shot examples
+5. ⏳ Integrate with `PreferenceApplicationAgent` (Agent 3) for few-shot examples
 7. ⏳ Create API endpoint `/api/similarity/search`
 8. ⏳ Test end-to-end with real user data
 

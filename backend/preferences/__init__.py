@@ -1,9 +1,7 @@
 """
-Preferences domain - User preference management and pattern analysis
+Preferences domain - User preference management and pattern discovery
 """
 
-from .models import UserPreferences
 from .service import PersonalizationService
-from .analysis import PatternAnalysisService
 
-__all__ = ['UserPreferences', 'PersonalizationService', 'PatternAnalysisService']
+__all__ = ['PersonalizationService']

@@ -1,15 +1,7 @@
 import type { Session } from './types'
-import {
-  createSessionOnBackend,
-  updateSessionOnBackend,
-  deleteSessionFromBackend,
-} from './backend'
 
 // LocalStorage key for session persistence
 const STORAGE_KEY = 'dropcal_sessions'
-
-// Track which sessions exist on backend to avoid duplicate creates
-const BACKEND_SESSION_IDS_KEY = 'dropcal_backend_session_ids'
 
 // Serialize session for storage (handles Date objects)
 function serializeSession(session: Session): any {
@@ -60,25 +52,9 @@ export class SessionCache {
   private sessions: Map<string, Session> = new Map()
   private maxSessions = 50 // Keep last 50 sessions
   private listeners: Set<SessionCacheListener> = new Set()
-  private backendSessionIds: Set<string> = new Set() // Track sessions that exist on backend
 
   constructor() {
-    // Only load from localStorage on construction (synchronous, no auth needed).
-    // The backend fetch with temp-user-id is legacy dead code — the real session
-    // list is fetched via getUserSessions() in App.tsx.
     this.loadFromStorage()
-
-    // Load backend session IDs from localStorage
-    try {
-      const stored = localStorage.getItem(BACKEND_SESSION_IDS_KEY)
-      if (stored) {
-        const ids = JSON.parse(stored)
-        this.backendSessionIds = new Set(ids)
-      }
-    } catch {
-      // Ignore corrupted data
-    }
-
   }
 
   // Load sessions from localStorage
@@ -122,16 +98,6 @@ export class SessionCache {
     }
   }
 
-  // Save backend session IDs to localStorage
-  private saveBackendSessionIds(): void {
-    try {
-      const ids = Array.from(this.backendSessionIds)
-      localStorage.setItem(BACKEND_SESSION_IDS_KEY, JSON.stringify(ids))
-    } catch (error) {
-      console.error('Failed to save backend session IDs:', error)
-    }
-  }
-
   // Subscribe to cache changes
   subscribe(listener: SessionCacheListener): () => void {
     this.listeners.add(listener)
@@ -156,30 +122,6 @@ export class SessionCache {
 
     // 3. Notify subscribers of change (UI updates immediately)
     this.notify()
-
-    // 4. Sync with backend asynchronously (don't block UI)
-    this.syncSessionToBackend(session)
-  }
-
-  // Sync a session to the backend (non-blocking)
-  private async syncSessionToBackend(session: Session): Promise<void> {
-    try {
-      // Check if session already exists on backend
-      const existsOnBackend = this.backendSessionIds.has(session.id)
-
-      if (existsOnBackend) {
-        // Update existing session
-        await updateSessionOnBackend(session)
-      } else {
-        // Create new session
-        await createSessionOnBackend(session)
-        this.backendSessionIds.add(session.id)
-        this.saveBackendSessionIds()
-      }
-    } catch (error) {
-      console.error('Failed to sync session to backend:', error)
-      // Don't throw - gracefully degrade to localStorage-only mode
-    }
   }
 
   get(id: string): Session | undefined {
@@ -201,23 +143,6 @@ export class SessionCache {
 
     // 3. Notify subscribers of change (UI updates immediately)
     this.notify()
-
-    // 4. Delete from backend asynchronously (don't block UI)
-    this.deleteSessionFromBackend(id)
-  }
-
-  // Delete a session from the backend (non-blocking)
-  private async deleteSessionFromBackend(sessionId: string): Promise<void> {
-    try {
-      if (this.backendSessionIds.has(sessionId)) {
-        await deleteSessionFromBackend(sessionId)
-        this.backendSessionIds.delete(sessionId)
-        this.saveBackendSessionIds()
-      }
-    } catch (error) {
-      console.error('Failed to delete session from backend:', error)
-      // Don't throw - gracefully degrade
-    }
   }
 
   private pruneOldSessions(aggressive = false): void {
@@ -231,38 +156,13 @@ export class SessionCache {
   }
 
   clear(): void {
-    // Get session IDs before clearing
-    const sessionIds = Array.from(this.sessions.keys())
-
-    // 1. Clear in-memory cache immediately
     this.sessions.clear()
 
     // 2. Clear localStorage
     localStorage.removeItem(STORAGE_KEY)
-    localStorage.removeItem(BACKEND_SESSION_IDS_KEY)
 
     // 3. Notify subscribers of change (UI updates immediately)
     this.notify()
-
-    // 4. Delete all sessions from backend asynchronously
-    this.clearBackendSessions(sessionIds)
-  }
-
-  // Clear all sessions from backend (non-blocking)
-  private async clearBackendSessions(sessionIds: string[]): Promise<void> {
-    try {
-      // Delete all sessions that exist on backend
-      const deletePromises = sessionIds
-        .filter(id => this.backendSessionIds.has(id))
-        .map(id => deleteSessionFromBackend(id))
-
-      await Promise.all(deletePromises)
-
-      this.backendSessionIds.clear()
-    } catch (error) {
-      console.error('Failed to clear sessions from backend:', error)
-      // Don't throw - gracefully degrade
-    }
   }
 }
 

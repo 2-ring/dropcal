@@ -8,9 +8,6 @@ export * from './manager'
 export { sessionCache } from './cache'
 export type { SessionCache } from './cache'
 
-// Backend API
-export * from './backend'
-
 // React hooks
 export * from './hooks'
 export * from './useSessionTitleStream'

@@ -23,6 +23,9 @@ _posthog_initialized = False
 _init_lock = threading.Lock()
 _local = threading.local()
 
+# Detected once at import time — included on every PostHog event for filtering.
+_ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+
 
 def _ensure_client():
     """
@@ -201,7 +204,7 @@ def get_invoke_config(agent_name=None, properties=None):
         pipeline = getattr(_local, 'pipeline', None)
 
         # Build properties from thread-local context
-        merged_properties = {}
+        merged_properties = {'environment': _ENVIRONMENT}
         if agent_name:
             merged_properties["agent_name"] = agent_name
         if pipeline:
@@ -301,6 +304,7 @@ def capture_pipeline_trace(
             '$ai_span_name': f"Pipeline: {input_type}{guest_suffix}",
             '$ai_latency': duration_ms / 1000,
             '$ai_framework': 'dropcal',
+            'environment': _ENVIRONMENT,
             'pipeline': f"Session: {input_type}{guest_suffix}",
             'input_type': input_type,
             'is_guest': is_guest,
@@ -354,6 +358,7 @@ def capture_phase_span(
             '$ai_span_name': _PHASE_LABELS.get(phase_name, phase_name),
             '$ai_latency': duration_ms / 1000,
             '$ai_framework': 'dropcal',
+            'environment': _ENVIRONMENT,
             'phase': phase_name,
             'outcome': outcome,
         }
@@ -413,6 +418,7 @@ def capture_agent_error(agent_name: str, error: Exception, extra: dict = None):
 
         event_properties = {
             '$ai_trace_id': trace_id,
+            'environment': _ENVIRONMENT,
             'agent_name': agent_name,
             'error_type': type(error).__name__,
             'error_message': str(error),

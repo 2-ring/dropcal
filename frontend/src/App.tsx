@@ -82,7 +82,7 @@ function AppContent() {
   const [isGuestMode, setIsGuestMode] = useState(false)
   const [authModalHeading, setAuthModalHeading] = useState<string | null>(null)
 
-  // Load guest sessions from localStorage into sessionHistory
+  // Load guest sessions from localStorage into sessionHistory (used on page load/refresh)
   const loadGuestSessionHistory = useCallback(async () => {
     const guestSessions = GuestSessionManager.getGuestSessions().sessions
     if (guestSessions.length === 0) {
@@ -695,8 +695,7 @@ function App() {
   return (
     <NotificationProvider>
       <Routes>
-        <Route path="/" element={<AppContent />} />
-        <Route path="/s/:sessionId" element={<AppContent />} />
+        <Route path="/s/:sessionId?" element={<AppContent />} />
         <Route path="/plans" element={<Plans />} />
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/privacy" element={<Privacy />} />

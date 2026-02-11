@@ -13,7 +13,6 @@ from typing import List, Dict, Optional
 
 from core.base_agent import BaseAgent
 from extraction.models import CalendarEvent
-from preferences.models import UserPreferences
 from preferences.similarity import ProductionSimilaritySearch
 from config.posthog import get_invoke_config
 
@@ -36,7 +35,6 @@ class PersonalizationAgent(BaseAgent):
         self,
         event: CalendarEvent,
         discovered_patterns: Optional[Dict] = None,
-        user_preferences: Optional[UserPreferences] = None,
         historical_events: Optional[List[Dict]] = None,
         user_id: Optional[str] = None
     ) -> CalendarEvent:
@@ -45,8 +43,7 @@ class PersonalizationAgent(BaseAgent):
 
         Args:
             event: CalendarEvent from Agent 2
-            discovered_patterns: Patterns from PatternDiscoveryService (preferred)
-            user_preferences: Legacy UserPreferences (fallback)
+            discovered_patterns: Patterns from PatternDiscoveryService
             historical_events: User's historical events for similarity search
             user_id: User UUID (for querying corrections)
 
@@ -56,17 +53,11 @@ class PersonalizationAgent(BaseAgent):
         if not event:
             raise ValueError("No event provided for personalization")
 
-        if not discovered_patterns and not user_preferences:
-            self.log_info("No patterns or preferences available, returning event unchanged")
+        if not discovered_patterns:
             return event
 
         # Build preference context for LLM
-        if discovered_patterns:
-            preferences_context = self._build_patterns_context(discovered_patterns)
-            self.log_info("Using discovered patterns for personalization")
-        else:
-            preferences_context = self._build_preferences_context(user_preferences)
-            self.log_info("Using legacy preferences for personalization")
+        preferences_context = self._build_patterns_context(discovered_patterns)
 
         # Build few-shot examples from similar historical events
         few_shot_examples = self._build_few_shot_examples_from_history(
@@ -118,7 +109,7 @@ Return the complete CalendarEvent with all fields preserved.""")
         return result
 
     # =========================================================================
-    # NEW: Build context from discovered patterns
+    # Build context from discovered patterns
     # =========================================================================
 
     def _build_patterns_context(self, patterns: Dict) -> str:
@@ -224,83 +215,6 @@ Note: Colors are handled automatically based on category assignment.
         return "\n".join(lines)
 
     # =========================================================================
-    # LEGACY: Build context from UserPreferences (backward compatibility)
-    # =========================================================================
-
-    def _build_preferences_context(self, preferences: UserPreferences) -> str:
-        """Build preference context string for LLM (legacy format)"""
-
-        def format_patterns(pattern_list):
-            """Format a list of DiscoveredPattern objects for LLM"""
-            if not pattern_list:
-                return "  (No patterns discovered yet)"
-            formatted = []
-            for i, p in enumerate(pattern_list, 1):
-                freq_str = f" [{p.frequency}]" if p.frequency else ""
-                formatted.append(f"  {i}. {p.pattern}{freq_str}")
-                if p.examples:
-                    formatted.append(f"     Examples: {', '.join(p.examples[:2])}")
-            return "\n".join(formatted)
-
-        context = f"""
-USER PREFERENCES (Learned from {preferences.total_events_analyzed} historical events)
-
-TITLE FORMATTING PATTERNS:
-{format_patterns(preferences.title_formatting.patterns)}
-
-DESCRIPTION FORMATTING PATTERNS:
-{format_patterns(preferences.description_formatting.patterns)}
-
-COLOR USAGE PATTERNS:
-{format_patterns(preferences.color_usage.patterns)}
-
-LOCATION FORMATTING PATTERNS:
-{format_patterns(preferences.location_formatting.patterns)}
-
-DURATION PATTERNS:
-{format_patterns(preferences.duration_patterns.patterns)}
-
-TIMING PATTERNS:
-{format_patterns(preferences.timing_patterns.patterns)}
-
-CALENDAR USAGE PATTERNS:"""
-
-        # Add calendar usage info
-        if preferences.calendar_usage.calendars:
-            for cal in preferences.calendar_usage.calendars:
-                primary_str = " (PRIMARY)" if cal.is_primary else ""
-                context += f"\n\n  Calendar: {cal.calendar_name}{primary_str}"
-                context += f"\n  Event types: {', '.join(cal.event_types) if cal.event_types else 'Various'}"
-                if cal.usage_patterns:
-                    context += "\n  Usage patterns:"
-                    for pattern in cal.usage_patterns:
-                        freq_str = f" [{pattern.frequency}]" if pattern.frequency else ""
-                        context += f"\n    - {pattern.pattern}{freq_str}"
-        else:
-            context += "\n  (No calendar usage patterns discovered yet)"
-
-        context += f"""
-
-CONTEXTUAL PATTERNS (When X, do Y):
-{format_patterns(preferences.contextual_patterns.patterns)}
-
-GENERAL OBSERVATIONS:
-"""
-        if preferences.general_observations:
-            for obs in preferences.general_observations:
-                context += f"\n  - {obs}"
-        else:
-            context += "\n  (None yet)"
-
-        context += f"""
-
-USER SETTINGS:
-- Timezone: {preferences.timezone}
-- Default event length: {preferences.default_event_length} minutes
-"""
-        return context
-
-    # =========================================================================
     # Few-shot examples from historical events
     # =========================================================================
 
@@ -324,7 +238,6 @@ USER SETTINGS:
 
         # Build similarity index if not already built
         if self.similarity_search is None:
-            self.log_info("Building similarity index...")
             self.similarity_search = ProductionSimilaritySearch()
             self.similarity_search.build_index(historical_events)
 
@@ -342,8 +255,7 @@ USER SETTINGS:
                 k=7,  # Get 7 diverse examples
                 diversity_threshold=0.85
             )
-        except Exception as e:
-            self.log_warning(f"Similarity search failed: {e}, using static examples")
+        except Exception:
             return self._build_few_shot_examples()
 
         if not similar_events:
@@ -466,12 +378,9 @@ Avoid repeating these mistakes:
             context += "\n" + "="*60 + "\n"
             context += "Apply these learnings to avoid similar mistakes.\n"
 
-            self.log_info(f"Found {len(corrections)} relevant corrections for learning")
             return context
 
-        except Exception as e:
-            # Don't fail - just log and continue without correction learning
-            self.log_error(f"Failed to query corrections: {e}")
+        except Exception:
             return ""
 
     def _format_facts_summary(self, facts: Dict) -> str:
