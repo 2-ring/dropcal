@@ -25,6 +25,7 @@ import { motion } from 'framer-motion'
 import Skeleton from 'react-loading-skeleton'
 import { Clock as ClockIcon, MapPin as LocationIcon, TextAlignLeft as DescriptionIcon, Globe as GlobeIcon, ArrowsClockwise as RepeatIcon } from '@phosphor-icons/react'
 import type { CalendarEvent } from './types'
+import { getEffectiveDateTime, isAllDay as checkIsAllDay } from './types'
 import { editViewVariants, editSectionVariants } from './animations'
 import { TimeInput, DateInput, TimezoneInput } from './inputs'
 import {
@@ -64,7 +65,7 @@ export function EventEditView({
   getCalendarColor: _getCalendarColor,
 }: EventEditViewProps) {
   const [editedEvent, setEditedEvent] = useState<CalendarEvent>(event)
-  const [isAllDay, setIsAllDay] = useState(false)
+  const [isAllDay, setIsAllDay] = useState(() => checkIsAllDay(event.start))
   const [editingField, setEditingField] = useState<EditableField | null>(null)
   const [showRecurrenceEditor, setShowRecurrenceEditor] = useState(false)
   const [recurrenceConfig, setRecurrenceConfig] = useState<RecurrenceConfig | null>(() => {
@@ -126,7 +127,7 @@ export function EventEditView({
       handleChange('recurrence', null)
       return
     }
-    const config = getDefaultConfig(freq, editedEvent.start.dateTime)
+    const config = getDefaultConfig(freq, getEffectiveDateTime(editedEvent.start))
     setRecurrenceConfig(config)
     setShowRecurrenceEditor(true)
     handleChange('recurrence', buildRRule(config))
@@ -250,7 +251,7 @@ export function EventEditView({
                   <div className="row-main">
                     <div className="editable-content-wrapper" onClick={(e) => handleEditClick('startDate', e)}>
                       <DateInput
-                        value={editedEvent.start.dateTime}
+                        value={getEffectiveDateTime(editedEvent.start)}
                         onChange={(newDate) => {
                           setEditedEvent(prev => {
                             const updated = { ...prev, start: { ...prev.start, dateTime: newDate } }
@@ -267,7 +268,7 @@ export function EventEditView({
                     {!isAllDay && (
                       <div className="editable-content-wrapper" onClick={(e) => handleEditClick('startTime', e)}>
                         <TimeInput
-                          value={editedEvent.start.dateTime}
+                          value={getEffectiveDateTime(editedEvent.start)}
                           onChange={(newTime) => {
                             setEditedEvent(prev => {
                               const updated = { ...prev, start: { ...prev.start, dateTime: newTime } }
@@ -286,7 +287,7 @@ export function EventEditView({
                   <div className="row-main">
                     <div className="editable-content-wrapper" onClick={(e) => handleEditClick('endDate', e)}>
                       <DateInput
-                        value={editedEvent.end.dateTime}
+                        value={getEffectiveDateTime(editedEvent.end)}
                         onChange={(newDate) => {
                           setEditedEvent(prev => {
                             const updated = { ...prev, end: { ...prev.end, dateTime: newDate } }
@@ -303,7 +304,7 @@ export function EventEditView({
                     {!isAllDay && (
                       <div className="editable-content-wrapper" onClick={(e) => handleEditClick('endTime', e)}>
                         <TimeInput
-                          value={editedEvent.end.dateTime}
+                          value={getEffectiveDateTime(editedEvent.end)}
                           onChange={(newTime) => {
                             setEditedEvent(prev => {
                               const updated = { ...prev, end: { ...prev.end, dateTime: newTime } }
@@ -314,7 +315,7 @@ export function EventEditView({
                           onFocus={() => setEditingField('endTime')}
                           onBlur={handleEditBlur}
                           isEditing={editingField === 'endTime'}
-                          startTime={editedEvent.start.dateTime}
+                          startTime={getEffectiveDateTime(editedEvent.start)}
                           className="date-text"
                         />
                       </div>

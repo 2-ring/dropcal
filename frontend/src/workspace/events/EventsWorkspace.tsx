@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import 'react-loading-skeleton/dist/skeleton.css'
 import type { CalendarEvent } from './types'
 import type { LoadingStateConfig } from './types'
-import { LOADING_MESSAGES } from './types'
+import { LOADING_MESSAGES, getEffectiveDateTime } from './types'
 import { TopBar, BottomBar } from './Bar'
 import { Event } from './Event'
 import { SwipeableEvent } from './SwipeableEvent'
@@ -552,7 +552,8 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
     const grouped = new Map<string, CalendarEvent[]>()
 
     events.forEach(event => {
-      const date = new Date(event.start.dateTime)
+      const dateStr = getEffectiveDateTime(event.start)
+      const date = new Date(dateStr)
       // Use date string as key (YYYY-MM-DD)
       const dateKey = date.toISOString().split('T')[0]
 
@@ -564,7 +565,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
 
     // Sort events within each date by start time
     grouped.forEach((events) => {
-      events.sort((a, b) => new Date(a.start.dateTime).getTime() - new Date(b.start.dateTime).getTime())
+      events.sort((a, b) => new Date(getEffectiveDateTime(a.start)).getTime() - new Date(getEffectiveDateTime(b.start)).getTime())
     })
 
     return grouped

@@ -1,7 +1,7 @@
 import { Equals as EqualsIcon, MapPin as LocationIcon, ArrowsClockwise as RepeatIcon, CheckCircle, ArrowsClockwise, Warning } from '@phosphor-icons/react'
 import Skeleton from 'react-loading-skeleton'
 import type { CalendarEvent } from './types'
-import { getEventSyncStatus } from './types'
+import { getEventSyncStatus, isAllDay } from './types'
 import { formatRecurrence } from './recurrence'
 import type { ConflictInfo } from '../../api/backend-client'
 
@@ -74,7 +74,7 @@ export function Event({
         <div className="event-confirmation-card-title">
           {event.summary}{' '}
           <span className="event-confirmation-card-time-inline">
-            ({formatTimeRange(event.start.dateTime, event.end.dateTime)})
+            ({isAllDay(event.start) ? 'All day' : formatTimeRange(event.start.dateTime!, event.end.dateTime!)})
           </span>
           {event.recurrence && event.recurrence.length > 0 && (
             <span className="event-recurrence-after-time">

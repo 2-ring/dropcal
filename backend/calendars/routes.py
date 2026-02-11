@@ -186,7 +186,7 @@ def create_calendar_event():
                     'htmlLink': created_event.get('htmlLink'),
                     'location': created_event.get('location'),
                     'description': created_event.get('description'),
-                    'calendar': calendar_name or 'Primary'
+                    'calendar': calendar_id or 'primary'
                 }
             })
         else:

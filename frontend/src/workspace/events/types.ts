@@ -15,8 +15,21 @@ import {
 // Calendar event types
 
 export interface CalendarDateTime {
-  dateTime: string
+  dateTime?: string
+  date?: string
   timeZone: string
+}
+
+/** Get the effective datetime string from a CalendarDateTime, preferring dateTime over date */
+export function getEffectiveDateTime(dt: CalendarDateTime): string {
+  if (dt.dateTime) return dt.dateTime
+  if (dt.date) return dt.date + 'T00:00:00'
+  return ''
+}
+
+/** Check if a CalendarDateTime represents an all-day event */
+export function isAllDay(dt: CalendarDateTime): boolean {
+  return !dt.dateTime && !!dt.date
 }
 
 export interface ProviderSync {
