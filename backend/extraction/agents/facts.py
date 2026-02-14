@@ -58,7 +58,6 @@ class EventExtractionAgent(BaseAgent):
         self,
         raw_text_list: List[str],
         description: str,
-        timezone: str = 'America/New_York',
         document_context: Optional[str] = None,
         surrounding_context: Optional[str] = None,
         input_type: Optional[str] = None,
@@ -70,7 +69,6 @@ class EventExtractionAgent(BaseAgent):
         Args:
             raw_text_list: Text chunks for the event (from Agent 1)
             description: Identifying description of the event (from Agent 1)
-            timezone: User's IANA timezone (passed to prompt for context)
             document_context: First ~500 chars of source document (headers, course codes, timezone declarations)
             surrounding_context: Text around the extraction span (section headers, adjacent details)
             input_type: Source type ('text', 'pdf', 'audio', 'email', 'document')
@@ -83,7 +81,7 @@ class EventExtractionAgent(BaseAgent):
 
         combined_text = ' '.join(raw_text_list)
 
-        system_prompt = load_prompt(self._prompt_path, timezone=timezone)
+        system_prompt = load_prompt(self._prompt_path)
 
         user_message = self._build_user_message(
             event_text=combined_text,

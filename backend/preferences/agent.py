@@ -1,15 +1,20 @@
 """
-Agent 3: Personalization
+Agent 3: Personalization & Inference
 
 Applies user's learned preferences to a CalendarEvent using:
-- Discovered patterns (calendar summaries, color patterns, style stats)
-- Few-shot learning from similar historical events
+- Discovered patterns (calendar summaries, style stats)
+- Few-shot learning from similar historical events (with temporal data)
 - Correction learning from past user edits
+- Surrounding events for temporal constraint awareness
+- Location history for location resolution
 """
 
+import statistics
+import logging
 from langchain_anthropic import ChatAnthropic
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import SystemMessage, HumanMessage
 from typing import List, Dict, Optional
+from datetime import datetime
 
 from core.base_agent import BaseAgent
 from core.prompt_loader import load_prompt
@@ -17,19 +22,24 @@ from extraction.models import CalendarEvent
 from preferences.similarity import ProductionSimilaritySearch
 from config.posthog import get_invoke_config
 
+logger = logging.getLogger(__name__)
+
 
 class PersonalizationAgent(BaseAgent):
     """
     Personalizes a CalendarEvent to match the user's style.
-    Handles calendar selection, color selection, and title formatting.
 
-    Uses discovered patterns + few-shot examples for personalization.
+    Section-based decision-making agent that handles:
+    - Title formatting (match user's naming conventions)
+    - Description enhancement
+    - Calendar selection (by Calendar ID)
+    - End time inference (when missing)
+    - Location resolution (against user's history)
     """
 
     def __init__(self, llm: ChatAnthropic):
         super().__init__("Agent3_Personalization")
         self.llm = llm.with_structured_output(CalendarEvent)
-        self.system_prompt = load_prompt("preferences/prompts/preferences.txt")
         self.similarity_search = None
 
     def execute(
@@ -43,13 +53,13 @@ class PersonalizationAgent(BaseAgent):
         Apply user preferences to personalize a calendar event.
 
         Args:
-            event: CalendarEvent from Agent 2
+            event: CalendarEvent from temporal resolver
             discovered_patterns: Patterns from PatternDiscoveryService
             historical_events: User's historical events for similarity search
-            user_id: User UUID (for querying corrections)
+            user_id: User UUID (for querying corrections and location history)
 
         Returns:
-            Personalized CalendarEvent with calendar, colorId, and styled title
+            Personalized CalendarEvent
         """
         if not event:
             raise ValueError("No event provided for personalization")
@@ -57,288 +67,265 @@ class PersonalizationAgent(BaseAgent):
         if not discovered_patterns:
             return event
 
-        # Build preference context for LLM
-        preferences_context = self._build_patterns_context(discovered_patterns)
+        # 1. Find similar events with temporal data
+        similar_events = self._find_similar_events(event, historical_events)
 
-        # Build few-shot examples from similar historical events
-        few_shot_examples = self._build_few_shot_examples_from_history(
-            event, historical_events
+        # 2. Compute duration stats from similar events
+        duration_stats = self._compute_duration_stats(similar_events)
+
+        # 3. Fetch surrounding events (for temporal inference constraints)
+        surrounding_events = self._fetch_surrounding_events(event, user_id)
+
+        # 4. Fetch location history matches
+        location_matches = self._fetch_location_history(event, user_id)
+
+        # 5. Query corrections — general context + location-specific
+        corrections = self._query_corrections(event, user_id)
+        correction_context = self._format_correction_context(corrections)
+        location_corrections = self._extract_location_corrections(corrections)
+
+        # 6. Compute calendar distribution from similar events
+        calendar_distribution = self._compute_calendar_distribution(similar_events)
+
+        # 7. Extract pattern data
+        category_patterns = discovered_patterns.get('category_patterns', {})
+        style_stats = discovered_patterns.get('style_stats', {})
+        total_events = discovered_patterns.get('total_events_analyzed', 0)
+
+        # 8. Auto-assign calendar when only one exists (skip LLM decision)
+        if len(category_patterns) == 1:
+            only_cal_id = next(iter(category_patterns))
+            event.calendar = only_cal_id
+
+        # 9. Determine conditional flags for prompt sections
+        is_all_day = event.start.date is not None
+        has_end_time = event.end is not None
+        has_location = bool(event.location and event.location.strip())
+
+        # 10. Render prompt via Jinja2 template
+        system_prompt = load_prompt(
+            "preferences/prompts/preferences.txt",
+            event_json=event.model_dump_json(indent=2),
+            similar_events=similar_events,
+            correction_context=correction_context,
+            category_patterns=category_patterns,
+            style_stats=style_stats,
+            total_events=total_events,
+            is_all_day=is_all_day,
+            has_end_time=has_end_time,
+            has_location=has_location,
+            duration_stats=duration_stats,
+            surrounding_events=surrounding_events,
+            location_matches=location_matches,
+            location_corrections=location_corrections,
+            raw_location=event.location or '',
+            calendar_distribution=calendar_distribution,
         )
 
-        # Build correction learning context (learn from past mistakes)
-        correction_context = self._build_correction_learning_context(event, user_id)
+        # 11. Invoke LLM (use messages directly to avoid {}-escaping issues with JSON)
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content="Apply personalization to this event. Return the complete CalendarEvent."),
+        ]
+        result = self.llm.invoke(messages, config=get_invoke_config("personalization"))
 
-        # Combine into full prompt
-        full_system_prompt = f"""{self.system_prompt}
-
-{preferences_context}
-
-{few_shot_examples}
-
-{correction_context}
-
-IMPORTANT - TASK OVERVIEW:
-You must personalize this event to match the user's style:
-1. SELECT CALENDAR: Based on calendar patterns and similar examples
-2. SELECT COLOR: Based on color patterns and similar examples
-3. FORMAT TITLE: Match capitalization, length, and structure from similar examples
-4. PRESERVE ALL FIELDS: Keep start, end, location, description, recurrence, attendees, meeting_url intact
-
-CALENDAR SELECTION:
-- Use the Calendar ID from the category patterns above, NOT the category name
-- Review calendar patterns - which calendar fits this event type?
-- Check which calendars similar examples belong to
-- ALWAYS assign a calendar ID - never leave calendar as null
-- If no pattern matches or confidence is low, use the PRIMARY calendar's ID
-
-Think step-by-step, then output the complete personalized event.
-"""
-
-        preference_prompt = ChatPromptTemplate.from_messages([
-            ("system", full_system_prompt),
-            ("human", f"""EVENT TO PERSONALIZE:
-
-{event.model_dump_json(indent=2)}
-
-Apply the user's patterns and style. Set calendar, colorId, and format the title.
-Return the complete CalendarEvent with all fields preserved.""")
-        ])
-
-        chain = preference_prompt | self.llm
-        result = chain.invoke({}, config=get_invoke_config("personalization"))
+        # 12. Enforce single-calendar assignment (safety net)
+        if len(category_patterns) == 1:
+            result.calendar = next(iter(category_patterns))
 
         return result
 
     # =========================================================================
-    # Build context from discovered patterns
+    # Similar events with temporal data
     # =========================================================================
 
-    def _build_patterns_context(self, patterns: Dict) -> str:
-        """
-        Build preference context from discovered patterns.
-
-        Args:
-            patterns: Output from PatternDiscoveryService
-
-        Returns:
-            Formatted context string for LLM
-        """
-
-        category_patterns = patterns.get('category_patterns', {})
-        style_stats = patterns.get('style_stats', {})
-        total_events = patterns.get('total_events_analyzed', 0)
-
-        # Format category summaries
-        category_text = self._format_category_summaries(category_patterns)
-
-        # Format style stats
-        style_text = self._format_style_stats(style_stats)
-
-        context = f"""
-USER'S PREFERENCES (Learned from {total_events} historical events)
-
-{'='*60}
-CATEGORY USAGE PATTERNS:
-{'='*60}
-{category_text}
-
-{'='*60}
-STYLE PREFERENCES:
-{'='*60}
-{style_text}
-
-Note: Colors are handled automatically based on category assignment.
-"""
-        return context
-
-    def _format_category_summaries(self, category_patterns: Dict) -> str:
-        """Format category patterns for prompt"""
-        if not category_patterns:
-            return "  (No category patterns discovered)"
-
-        lines = []
-        for cat_id, pattern in category_patterns.items():
-            name = pattern.get('name', cat_id)
-            is_primary = pattern.get('is_primary', False)
-            desc = pattern.get('description', '')
-            event_types = pattern.get('event_types', [])
-            examples = pattern.get('examples', [])
-            never_contains = pattern.get('never_contains', [])
-
-            primary_str = " [PRIMARY]" if is_primary else ""
-
-            lines.append(f"\nCategory: {name}{primary_str}")
-            lines.append(f"  Calendar ID: {cat_id}")
-            lines.append(f"  Description: {desc}")
-
-            if event_types:
-                lines.append(f"  Event types: {', '.join(event_types)}")
-
-            if examples:
-                lines.append(f"  Example titles:")
-                for ex in examples[:5]:
-                    lines.append(f"    - \"{ex}\"")
-
-            if never_contains:
-                lines.append(f"  Never contains: {', '.join(never_contains)}")
-
-        return "\n".join(lines)
-
-    def _format_style_stats(self, style_stats: Dict) -> str:
-        """Format style statistics for prompt"""
-        if not style_stats:
-            return "  (No style statistics available)"
-
-        cap = style_stats.get('capitalization', {})
-        length = style_stats.get('length', {})
-        special = style_stats.get('special_chars', {})
-
-        lines = [
-            f"  Capitalization: {cap.get('pattern', 'Unknown')} ({cap.get('consistency', 'unknown')} consistent)",
-            f"  Typical length: {length.get('average_words', '?')} words",
-        ]
-
-        if special.get('uses_brackets'):
-            lines.append(f"  Uses brackets in titles: Yes ({special.get('brackets_frequency', '?')} of events)")
-
-        if special.get('uses_parentheses'):
-            lines.append(f"  Uses parentheses in titles: Yes ({special.get('parentheses_frequency', '?')} of events)")
-
-        if special.get('uses_emojis'):
-            lines.append(f"  Uses emojis in titles: Yes")
-
-        if special.get('uses_dashes'):
-            lines.append(f"  Uses dashes in titles: Yes")
-
-        if special.get('uses_colons'):
-            lines.append(f"  Uses colons in titles: Yes")
-
-        return "\n".join(lines)
-
-    # =========================================================================
-    # Few-shot examples from historical events
-    # =========================================================================
-
-    def _build_few_shot_examples_from_history(
+    def _find_similar_events(
         self,
         event: CalendarEvent,
         historical_events: Optional[List[Dict]] = None
-    ) -> str:
+    ) -> List[Dict]:
         """
-        Build few-shot examples from similar historical events using semantic similarity.
+        Find similar historical events and include temporal data for duration inference.
 
-        Args:
-            event: The CalendarEvent we're trying to personalize
-            historical_events: User's historical calendar events
-
-        Returns:
-            Formatted few-shot examples string
+        Returns list of dicts for the Jinja2 template (not a formatted string).
         """
         if not historical_events or len(historical_events) < 3:
-            return self._build_few_shot_examples()
+            return []
 
-        # Build similarity index if not already built
+        # Build similarity index if not already built (reused across events in session)
         if self.similarity_search is None:
             self.similarity_search = ProductionSimilaritySearch()
             self.similarity_search.build_index(historical_events)
 
-        # Create query event from CalendarEvent
         query_event = {
             'title': event.summary or '',
             'all_day': event.start.date is not None,
             'calendar_name': event.calendar or 'Default'
         }
 
-        # Find similar events with diversity
         try:
-            similar_events = self.similarity_search.find_similar_with_diversity(
+            similar = self.similarity_search.find_similar_with_diversity(
                 query_event,
-                k=7,  # Get 7 diverse examples
+                k=7,
                 diversity_threshold=0.85
             )
         except Exception:
-            return self._build_few_shot_examples()
+            return []
 
+        if not similar:
+            return []
+
+        results = []
+        for evt, score, breakdown in similar:
+            entry = {
+                'title': evt.get('summary', evt.get('title', 'Untitled')),
+                'calendar': evt.get('_source_calendar_name', evt.get('calendar_name', '')),
+                'location': evt.get('location', ''),
+                'start_time': evt.get('start_time', ''),
+                'end_time': evt.get('end_time', ''),
+                'is_all_day': evt.get('is_all_day', False),
+                'similarity': round(score, 2),
+                'duration_minutes': None,
+            }
+
+            # Compute duration if both start and end are present
+            if entry['start_time'] and entry['end_time']:
+                try:
+                    start = datetime.fromisoformat(entry['start_time'])
+                    end = datetime.fromisoformat(entry['end_time'])
+                    entry['duration_minutes'] = int((end - start).total_seconds() / 60)
+                except (ValueError, TypeError):
+                    pass
+
+            results.append(entry)
+
+        return results
+
+    def _compute_duration_stats(self, similar_events: List[Dict]) -> Dict:
+        """Compute aggregate duration statistics from similar events."""
+        durations = [
+            e['duration_minutes'] for e in similar_events
+            if e.get('duration_minutes') and e['duration_minutes'] > 0
+        ]
+
+        if not durations:
+            return {}
+
+        return {
+            'median_minutes': int(statistics.median(durations)),
+            'min_minutes': min(durations),
+            'max_minutes': max(durations),
+            'count': len(durations),
+            'values': durations,
+        }
+
+    def _compute_calendar_distribution(self, similar_events: List[Dict]) -> List[Dict]:
+        """Compute which calendars similar events belong to, with counts and percentages."""
         if not similar_events:
-            return self._build_few_shot_examples()
+            return []
 
-        # Format as few-shot examples
-        examples_text = f"""
-{'='*60}
-SIMILAR EVENTS FROM YOUR HISTORY (Learn from these):
-{'='*60}
+        counts: Dict[str, int] = {}
+        for evt in similar_events:
+            cal = evt.get('calendar', '')
+            if cal:
+                counts[cal] = counts.get(cal, 0) + 1
 
-These are real events you've created that are similar to the new event.
-Use them to understand your formatting style.
-"""
+        total = sum(counts.values())
+        if total == 0:
+            return []
 
-        for i, (event, score, breakdown) in enumerate(similar_events, 1):
-            # Extract relevant fields
-            title = event.get('summary', event.get('title', 'Untitled'))
-            calendar = event.get('_source_calendar_name', event.get('calendar_name', 'Unknown'))
-            color_id = event.get('colorId', '')
-            location = event.get('location', '')
+        distribution = [
+            {
+                'calendar': cal,
+                'count': count,
+                'percentage': round(100 * count / total),
+            }
+            for cal, count in counts.items()
+        ]
+        distribution.sort(key=lambda x: x['count'], reverse=True)
+        return distribution
 
-            examples_text += f"""
-Example {i} (Similarity: {score:.2f}):
-  Title: "{title}"
-  Calendar: {calendar}"""
+    # =========================================================================
+    # Surrounding events (temporal constraints)
+    # =========================================================================
 
-            if color_id:
-                examples_text += f"\n  Color ID: {color_id}"
-            if location:
-                examples_text += f"\n  Location: {location}"
-
-        examples_text += f"\n\n{'='*60}\n"
-
-        return examples_text
-
-    def _build_few_shot_examples(self) -> str:
-        """Build static few-shot examples as fallback when no history available"""
-        return """
-EXAMPLE PATTERN APPLICATION (Generic examples - adapt to user's style):
-
-These are examples of how to apply patterns. The actual formatting should
-match the user's discovered patterns and similar events.
-"""
-
-    def _build_correction_learning_context(
+    def _fetch_surrounding_events(
         self,
         event: CalendarEvent,
         user_id: Optional[str]
-    ) -> str:
-        """
-        Build correction learning context from past user corrections.
+    ) -> List[Dict]:
+        """Fetch temporally closest events for scheduling constraint awareness."""
+        if not user_id or event.start.date is not None:
+            # Skip for all-day events or missing user
+            return []
 
-        Args:
-            event: Current CalendarEvent being personalized
-            user_id: User UUID for querying their corrections
+        target_time = event.start.dateTime
+        if not target_time:
+            return []
 
-        Returns:
-            Formatted correction learning context for prompt
-        """
+        try:
+            from events.service import EventService
+            return EventService.get_surrounding_events(
+                user_id=user_id,
+                target_time=target_time,
+            )
+        except Exception as e:
+            logger.debug(f"Could not fetch surrounding events: {e}")
+            return []
+
+    # =========================================================================
+    # Location history (fuzzy matching)
+    # =========================================================================
+
+    def _fetch_location_history(
+        self,
+        event: CalendarEvent,
+        user_id: Optional[str]
+    ) -> List[Dict]:
+        """Fetch similar locations from user's event history."""
+        if not user_id or not event.location or not event.location.strip():
+            return []
+
+        try:
+            from events.service import EventService
+            return EventService.search_location_history(
+                user_id=user_id,
+                query_location=event.location,
+            )
+        except Exception as e:
+            logger.debug(f"Could not fetch location history: {e}")
+            return []
+
+    # =========================================================================
+    # Corrections
+    # =========================================================================
+
+    def _query_corrections(
+        self,
+        event: CalendarEvent,
+        user_id: Optional[str]
+    ) -> List[Dict]:
+        """Query past user corrections similar to this event."""
         if not user_id:
-            return ""
+            return []
 
         try:
             from feedback.correction_query_service import CorrectionQueryService
-
-            # Convert event to dict for querying
-            facts_dict = event.model_dump()
-
-            # Query corrections (Agent 3 use case)
             query_service = CorrectionQueryService()
-            corrections = query_service.query_for_preference_application(
+            return query_service.query_for_preference_application(
                 user_id=user_id,
-                facts=facts_dict,
-                k=5  # Top 5 most similar corrections
-            )
+                facts=event.model_dump(),
+                k=5
+            ) or []
+        except Exception:
+            return []
 
-            if not corrections:
-                return ""
+    def _format_correction_context(self, corrections: List[Dict]) -> str:
+        """Format corrections as a learning context string for the prompt."""
+        if not corrections:
+            return ""
 
-            # Format corrections as learning examples
-            context = f"""
+        context = f"""
 {'='*60}
 CORRECTION LEARNING (Learn from past mistakes):
 {'='*60}
@@ -347,45 +334,54 @@ Avoid repeating these mistakes:
 
 """
 
-            for i, correction in enumerate(corrections, 1):
-                extracted_facts = correction.get('extracted_facts', {})
-                system_suggestion = correction.get('system_suggestion', {})
-                user_final = correction.get('user_final', {})
-                fields_changed = correction.get('fields_changed', [])
+        for i, correction in enumerate(corrections, 1):
+            extracted_facts = correction.get('extracted_facts', {})
+            system_suggestion = correction.get('system_suggestion', {})
+            user_final = correction.get('user_final', {})
+            fields_changed = correction.get('fields_changed', [])
 
-                context += f"\nCorrection {i}:\n"
-                context += f"  Facts you saw: {self._format_facts_summary(extracted_facts)}\n"
-                context += f"  You formatted as: {self._format_event_summary(system_suggestion)}\n"
-                context += f"  User changed it to: {self._format_event_summary(user_final)}\n"
-                context += f"  What changed: {', '.join(fields_changed)}\n"
+            context += f"\nCorrection {i}:\n"
+            context += f"  Facts you saw: {self._format_facts_summary(extracted_facts)}\n"
+            context += f"  You formatted as: {self._format_event_summary(system_suggestion)}\n"
+            context += f"  User changed it to: {self._format_event_summary(user_final)}\n"
+            context += f"  What changed: {', '.join(fields_changed)}\n"
 
-                # Add specific change details
-                if 'title_change' in correction and correction['title_change']:
-                    tc = correction['title_change']
-                    context += f"    → Title: '{tc.get('from')}' → '{tc.get('to')}' ({tc.get('change_type')})\n"
+            if 'title_change' in correction and correction['title_change']:
+                tc = correction['title_change']
+                context += f"    → Title: '{tc.get('from')}' → '{tc.get('to')}' ({tc.get('change_type')})\n"
 
-                if 'calendar_change' in correction and correction['calendar_change']:
-                    cc = correction['calendar_change']
-                    context += f"    → Calendar: '{cc.get('from')}' → '{cc.get('to')}'\n"
+            if 'calendar_change' in correction and correction['calendar_change']:
+                cc = correction['calendar_change']
+                context += f"    → Calendar: '{cc.get('from')}' → '{cc.get('to')}'\n"
 
-                if 'color_change' in correction and correction['color_change']:
-                    colc = correction['color_change']
-                    context += f"    → Color: {colc.get('from')} → {colc.get('to')}\n"
+            if 'time_change' in correction and correction['time_change']:
+                tc = correction['time_change']
+                context += f"    → Time: {tc.get('from')} → {tc.get('to')} ({tc.get('change_type')})\n"
 
-                if 'time_change' in correction and correction['time_change']:
-                    tc = correction['time_change']
-                    context += f"    → Time: {tc.get('from')} → {tc.get('to')} ({tc.get('change_type')})\n"
+        context += "\n" + "="*60 + "\n"
+        context += "Apply these learnings to avoid similar mistakes.\n"
 
-            context += "\n" + "="*60 + "\n"
-            context += "Apply these learnings to avoid similar mistakes.\n"
+        return context
 
-            return context
-
-        except Exception:
-            return ""
+    def _extract_location_corrections(self, corrections: List[Dict]) -> List[Dict]:
+        """Extract location-specific corrections from the correction list."""
+        location_corrections = []
+        for correction in corrections:
+            if 'location' not in correction.get('fields_changed', []):
+                continue
+            system = correction.get('system_suggestion', {})
+            user = correction.get('user_final', {})
+            from_loc = system.get('location', '')
+            to_loc = user.get('location', '')
+            if from_loc and to_loc and from_loc != to_loc:
+                location_corrections.append({
+                    'from': from_loc,
+                    'to': to_loc,
+                })
+        return location_corrections
 
     def _format_facts_summary(self, facts: Dict) -> str:
-        """Format facts dict as a brief summary"""
+        """Format facts dict as a brief summary."""
         parts = []
         if facts.get('title'):
             parts.append(f"title:'{facts['title']}'")
@@ -398,14 +394,12 @@ Avoid repeating these mistakes:
         return ', '.join(parts) if parts else '(empty)'
 
     def _format_event_summary(self, event: Dict) -> str:
-        """Format event dict as a brief summary"""
+        """Format event dict as a brief summary."""
         parts = []
         if event.get('summary'):
             parts.append(f"title:'{event['summary']}'")
         if event.get('calendar'):
             parts.append(f"calendar:{event['calendar']}")
-        if event.get('colorId'):
-            parts.append(f"color:{event['colorId']}")
         if event.get('start'):
             start = event['start']
             if 'dateTime' in start:

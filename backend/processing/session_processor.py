@@ -290,7 +290,6 @@ class SessionProcessor:
                 extracted_event = agent_2.execute(
                     event.raw_text,
                     event.description,
-                    timezone=timezone,
                     document_context=event.document_context,
                     surrounding_context=event.surrounding_context,
                     input_type=event.input_type,

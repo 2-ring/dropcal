@@ -257,6 +257,15 @@
   background-color: var(--error-background);
 }
 
+.settings-popup-footer-nav {
+  color: var(--text-secondary);
+}
+
+.settings-popup-footer-nav:hover {
+  background: transparent !important;
+  color: var(--text-primary);
+}
+
 /* Apple icon styling */
 .apple-icon {
   font-size: 18px;

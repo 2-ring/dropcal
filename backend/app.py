@@ -457,7 +457,6 @@ def process_input():
                     extracted_event = active_agent_2.execute(
                         event.raw_text,
                         event.description,
-                        timezone=timezone
                     )
 
                     # Deterministic temporal resolution: NL → ISO 8601 via Duckling

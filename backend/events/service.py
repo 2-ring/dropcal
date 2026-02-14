@@ -249,6 +249,148 @@ class EventService:
         return response.data
 
     @staticmethod
+    def get_surrounding_events(
+        user_id: str,
+        target_time: str,
+        k: int = QueryLimits.SURROUNDING_EVENTS_LIMIT
+    ) -> List[Dict[str, Any]]:
+        """
+        Get K events closest in time to target_time (before and after).
+
+        Used by Agent 3 to understand scheduling constraints when inferring
+        end times for events that have no explicit duration.
+
+        Args:
+            user_id: User's UUID
+            target_time: ISO 8601 datetime (e.g., '2026-02-05T14:00:00-05:00')
+            k: Total number of surrounding events to return
+
+        Returns:
+            List of event dicts sorted by temporal proximity to target_time.
+            Each dict contains: summary, start_time, end_time, start_date,
+            end_date, is_all_day, location, calendar_name.
+        """
+        from database.supabase_client import get_supabase
+        supabase = get_supabase()
+
+        fields = "summary, start_time, end_time, start_date, end_date, is_all_day, location, calendar_name"
+        half_k = max(k, 2)  # fetch more than needed, trim later
+
+        # Events before target_time
+        before = supabase.table("events").select(fields)\
+            .eq("user_id", user_id)\
+            .neq("provider", "dropcal")\
+            .is_("deleted_at", None)\
+            .not_.is_("start_time", None)\
+            .lt("start_time", target_time)\
+            .order("start_time", desc=True)\
+            .limit(half_k).execute()
+
+        # Events after target_time
+        after = supabase.table("events").select(fields)\
+            .eq("user_id", user_id)\
+            .neq("provider", "dropcal")\
+            .is_("deleted_at", None)\
+            .not_.is_("start_time", None)\
+            .gte("start_time", target_time)\
+            .order("start_time", desc=False)\
+            .limit(half_k).execute()
+
+        # Merge and sort by absolute distance from target_time
+        all_events = (before.data or []) + (after.data or [])
+
+        try:
+            target_dt = datetime.fromisoformat(target_time)
+            all_events.sort(
+                key=lambda e: abs(
+                    (datetime.fromisoformat(e['start_time']) - target_dt).total_seconds()
+                )
+            )
+        except (ValueError, TypeError):
+            pass
+
+        return all_events[:k]
+
+    @staticmethod
+    def search_location_history(
+        user_id: str,
+        query_location: str,
+        limit: int = QueryLimits.LOCATION_SEARCH_RESULTS_LIMIT
+    ) -> List[Dict[str, Any]]:
+        """
+        Find locations from the user's event history similar to query_location.
+
+        Uses fuzzy string matching (difflib.SequenceMatcher) against distinct
+        locations from the user's calendar history. Returns matches with
+        frequency counts and context.
+
+        Args:
+            user_id: User's UUID
+            query_location: Location string to match against
+            limit: Max number of results to return
+
+        Returns:
+            List of dicts sorted by match score:
+            [{'location': str, 'match_score': float, 'count': int,
+              'last_used_with': str, 'calendar': str}]
+        """
+        from database.supabase_client import get_supabase
+        from difflib import SequenceMatcher
+        from collections import defaultdict
+
+        supabase = get_supabase()
+
+        # Fetch events with non-null locations
+        response = supabase.table("events")\
+            .select("location, summary, calendar_name, start_time")\
+            .eq("user_id", user_id)\
+            .neq("provider", "dropcal")\
+            .is_("deleted_at", None)\
+            .not_.is_("location", None)\
+            .order("start_time", desc=True)\
+            .limit(QueryLimits.LOCATION_HISTORY_FETCH_LIMIT).execute()
+
+        if not response.data:
+            return []
+
+        # Group by location (case-insensitive), track count and most recent usage
+        location_data = defaultdict(lambda: {
+            'count': 0,
+            'canonical': '',
+            'last_used_with': '',
+            'calendar': ''
+        })
+
+        for event in response.data:
+            loc = event['location']
+            key = loc.lower().strip()
+            data = location_data[key]
+            data['count'] += 1
+            # Keep the most recent occurrence's details (results are ordered desc)
+            if not data['canonical']:
+                data['canonical'] = loc
+                data['last_used_with'] = event.get('summary', '')
+                data['calendar'] = event.get('calendar_name', '')
+
+        # Score each unique location against query
+        query_lower = query_location.lower().strip()
+        results = []
+        for key, data in location_data.items():
+            score = SequenceMatcher(None, query_lower, key).ratio()
+            if score >= 0.3:
+                results.append({
+                    'location': data['canonical'],
+                    'match_score': round(score, 2),
+                    'count': data['count'],
+                    'last_used_with': data['last_used_with'],
+                    'calendar': data['calendar'],
+                })
+
+        # Sort by score descending, then by count descending
+        results.sort(key=lambda r: (-r['match_score'], -r['count']))
+        return results[:limit]
+
+    @staticmethod
     def find_similar_events(
         user_id: str,
         query_text: str,

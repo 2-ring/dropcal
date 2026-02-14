@@ -17,6 +17,8 @@ import {
   AppleLogo,
   Star,
   Clock,
+  Plugs,
+  UserCircleGear,
 } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -25,7 +27,7 @@ import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import './SettingsPopup.css';
 import { useState, useEffect, useRef } from 'react';
-import { getCalendarProviders, setPrimaryCalendarProvider, getUserPreferences, sendAppleCredentials, updateUserPreferences } from '../api/backend-client';
+import { getCalendarProviders, setPrimaryCalendarProvider, getUserPreferences, sendAppleCredentials, updateUserPreferences, disconnectCalendarProvider } from '../api/backend-client';
 import { useTheme } from '../theme';
 
 interface SettingsPopupProps {
@@ -46,7 +48,7 @@ interface CalendarIntegration {
   isConnected: boolean;
 }
 
-type ViewMode = 'main' | 'integrations' | 'apple-connect';
+type ViewMode = 'main' | 'integrations' | 'apple-connect' | 'account';
 
 export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoading = false, triggerRef }: SettingsPopupProps) {
   const navigate = useNavigate();
@@ -68,6 +70,7 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
 
   // Calendar integrations data from backend
   const [calendars, setCalendars] = useState<CalendarIntegration[]>([]);
+  const [disconnectMode, setDisconnectMode] = useState(false);
 
   // Apple connect form state
   const [appleId, setAppleId] = useState('');
@@ -142,7 +145,23 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
   };
 
   const handleBackToMain = () => {
+    setDisconnectMode(false);
     setViewMode('main');
+  };
+
+  const handleDisconnectProvider = async (provider: 'google' | 'microsoft' | 'apple') => {
+    if (provider === 'google') {
+      // Google is the auth provider — disconnecting = signing out
+      await handleLogout();
+      return;
+    }
+    try {
+      await disconnectCalendarProvider(provider);
+      setDisconnectMode(false);
+      await fetchCalendarProviders();
+    } catch (error) {
+      console.error(`Failed to disconnect ${provider}:`, error);
+    }
   };
 
   const handleSetDefault = async (provider: string) => {
@@ -256,7 +275,7 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
             </>
           ) : (
             <div className="settings-popup-header-content">
-              {viewMode === 'integrations' && (
+              {(viewMode === 'integrations' || viewMode === 'account') && (
                 <button className="settings-popup-back-button" onClick={handleBackToMain}>
                   <CaretLeft size={12} weight="bold" />
                 </button>
@@ -280,6 +299,11 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                 </div>
               </div>
               <div className="settings-popup-email">{userEmail}</div>
+              {viewMode === 'main' && (
+                <button className="settings-popup-back-button" onClick={() => setViewMode('account')} style={{ marginRight: 0, marginLeft: 4 }}>
+                  <UserCircleGear size={16} weight="duotone" />
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -335,6 +359,10 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
               >
                 {appleConnecting ? 'Connecting...' : 'Connect'}
               </button>
+            </div>
+          ) : viewMode === 'account' ? (
+            <div style={{ padding: '16px 12px', color: 'var(--text-secondary)', fontSize: '13px', textAlign: 'center' }}>
+              Account settings coming soon
             </div>
           ) : viewMode === 'main' ? (
             <>
@@ -433,40 +461,56 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                 const isDefault = calendar?.isDefault;
 
                 if (!isConnected) {
-                  // Not connected: whole row is clickable
+                  // Not connected: same layout in both modes
                   return (
                     <button
                       key={provider}
                       className="settings-popup-item settings-integration-row"
-                      onClick={() => handleConnectNew(provider as 'google' | 'microsoft' | 'apple')}
+                      onClick={disconnectMode ? undefined : () => handleConnectNew(provider as 'google' | 'microsoft' | 'apple')}
+                      style={disconnectMode ? { cursor: 'default', opacity: 0.4 } : undefined}
+                      disabled={disconnectMode}
                     >
                       {provider === 'google' && <GoogleLogo size={20} weight="duotone" />}
                       {provider === 'microsoft' && <MicrosoftOutlookLogo size={20} weight="duotone" />}
                       {provider === 'apple' && <AppleLogo size={20} weight="duotone" />}
                       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '1px' }}>
                         <span style={{ lineHeight: '1.2' }}>{getProviderName(provider)}</span>
-                        <span style={{ fontSize: '11px', color: '#999', lineHeight: '1.2' }}>Connect</span>
+                        <span style={{ fontSize: '11px', color: '#999', lineHeight: '1.2' }}>
+                          {disconnectMode ? 'Not connected' : 'Connect'}
+                        </span>
                       </div>
                     </button>
                   );
                 }
 
-                // Connected: click row to set as primary (or show as active)
+                // Connected provider row
                 return (
                   <button
                     key={provider}
-                    className={`settings-popup-item settings-integration-row ${isDefault ? 'settings-integration-active' : ''}`}
-                    onClick={() => handleSetDefault(provider)}
+                    className={`settings-popup-item settings-integration-row ${!disconnectMode && isDefault ? 'settings-integration-active' : ''}`}
+                    onClick={disconnectMode
+                      ? () => handleDisconnectProvider(provider as 'google' | 'microsoft' | 'apple')
+                      : () => handleSetDefault(provider)
+                    }
                   >
                     {provider === 'google' && <GoogleLogo size={20} weight="duotone" />}
                     {provider === 'microsoft' && <MicrosoftOutlookLogo size={20} weight="duotone" />}
                     {provider === 'apple' && <AppleLogo size={20} weight="duotone" />}
                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '1px' }}>
                       <span style={{ lineHeight: '1.2' }}>{getProviderName(provider)}</span>
-                      <span style={{ fontSize: '11px', color: '#999', lineHeight: '1.2' }}>{calendar?.email || userEmail}</span>
+                      <span style={{ fontSize: '11px', color: disconnectMode ? 'var(--error)' : '#999', lineHeight: '1.2' }}>
+                        {disconnectMode
+                          ? (isGoogleAuth ? 'Sign out' : 'Disconnect')
+                          : (calendar?.email || userEmail)
+                        }
+                      </span>
                     </div>
                     <div className="settings-integration-actions">
-                      <Star size={16} weight={isDefault ? 'duotone' : 'regular'} style={{ color: isDefault ? 'var(--text-primary)' : 'var(--text-disabled)', transition: 'all 0.15s ease' }} />
+                      {disconnectMode ? (
+                        <SignOut size={16} style={{ color: 'var(--error)', transition: 'all 0.15s ease' }} />
+                      ) : (
+                        <Star size={16} weight={isDefault ? 'duotone' : 'regular'} style={{ color: isDefault ? 'var(--text-primary)' : 'var(--text-disabled)', transition: 'all 0.15s ease' }} />
+                      )}
                     </div>
                   </button>
                 );
@@ -475,13 +519,41 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
           )}
         </div>
 
-        {/* Logout */}
+        {/* Footer */}
         <div className="settings-popup-footer">
           {isLoading ? (
             <div className="settings-popup-item" style={{ padding: '12px 16px' }}>
               <Skeleton width={20} height={20} style={{ marginRight: 12 }} />
               <Skeleton width={60} height={16} />
             </div>
+          ) : viewMode === 'account' ? (
+            <button
+              className="settings-popup-item settings-popup-logout"
+              onClick={handleLogout}
+              onMouseEnter={() => setLogoutHovered(true)}
+              onMouseLeave={() => setLogoutHovered(false)}
+            >
+              <SignOut size={20} weight={logoutHovered ? "bold" : "regular"} />
+              <span style={{ fontWeight: logoutHovered ? 600 : 400 }}>Log out</span>
+            </button>
+          ) : viewMode === 'integrations' && disconnectMode ? (
+            <button
+              className="settings-popup-item settings-popup-footer-nav"
+              onClick={() => setDisconnectMode(false)}
+            >
+              <CaretLeft size={16} weight="bold" />
+              <span>Manage integrations</span>
+            </button>
+          ) : viewMode === 'integrations' ? (
+            <button
+              className="settings-popup-item settings-popup-logout"
+              onClick={() => setDisconnectMode(true)}
+              onMouseEnter={() => setLogoutHovered(true)}
+              onMouseLeave={() => setLogoutHovered(false)}
+            >
+              <Plugs size={20} weight={logoutHovered ? "bold" : "regular"} />
+              <span style={{ fontWeight: logoutHovered ? 600 : 400 }}>Disconnect providers</span>
+            </button>
           ) : (
             <button
               className="settings-popup-item settings-popup-logout"
