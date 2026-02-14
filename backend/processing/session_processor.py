@@ -19,7 +19,7 @@ from preferences.service import PersonalizationService
 from processing.parallel import process_events_parallel, EventProcessingResult
 from processing.chunked_identification import identify_events_chunked
 from extraction.langextract_identifier import identify_events_langextract
-from config.langextract import PASSES_SIMPLE, PASSES_COMPLEX, is_langextract_supported
+from config.langextract import PASSES_SIMPLE, PASSES_COMPLEX
 from config.posthog import (
     set_tracking_context, flush_posthog, capture_agent_error,
     capture_pipeline_trace, capture_phase_span, get_tracking_property,
@@ -290,9 +290,9 @@ class SessionProcessor:
                     event.raw_text,
                     event.description,
                     timezone=timezone,
-                    document_context=getattr(event, 'document_context', None),
-                    surrounding_context=getattr(event, 'surrounding_context', None),
-                    input_type=getattr(event, 'input_type', None),
+                    document_context=event.document_context,
+                    surrounding_context=event.surrounding_context,
+                    input_type=event.input_type,
                 )
 
                 # Agent 3: Personalize (if patterns available)
@@ -398,42 +398,25 @@ class SessionProcessor:
             )
             title_thread.start()
 
-            # Phase 1: Event Identification
+            # Phase 1: Event Identification (LangExtract)
             phase1_start = _time.time()
 
-            if is_langextract_supported():
-                # LangExtract for text inputs (grok, openai)
-                from config.complexity import InputComplexityAnalyzer, ComplexityLevel
-                complexity_for_passes = InputComplexityAnalyzer.analyze(text, input_type='text')
-                passes = PASSES_COMPLEX if complexity_for_passes.level == ComplexityLevel.COMPLEX else PASSES_SIMPLE
+            from config.complexity import InputComplexityAnalyzer, ComplexityLevel
+            complexity_for_passes = InputComplexityAnalyzer.analyze(text, input_type='text')
+            passes = PASSES_COMPLEX if complexity_for_passes.level == ComplexityLevel.COMPLEX else PASSES_SIMPLE
 
-                identification_result = identify_events_langextract(
-                    text=text,
-                    extraction_passes=passes,
-                    tracking_context={
-                        'distinct_id': user_id,
-                        'trace_id': session_id,
-                        'pipeline': pipeline_label,
-                        'input_type': input_type,
-                        'is_guest': is_guest,
-                    },
-                    input_type=input_type,
-                )
-            else:
-                # Fallback to chunked identification (e.g. when using Claude)
-                identification_result = identify_events_chunked(
-                    agent=agent_1,
-                    raw_input=text,
-                    metadata={},
-                    requires_vision=False,
-                    tracking_context={
-                        'distinct_id': user_id,
-                        'trace_id': session_id,
-                        'pipeline': pipeline_label,
-                        'input_type': input_type,
-                        'is_guest': is_guest,
-                    },
-                )
+            identification_result = identify_events_langextract(
+                text=text,
+                extraction_passes=passes,
+                tracking_context={
+                    'distinct_id': user_id,
+                    'trace_id': session_id,
+                    'pipeline': pipeline_label,
+                    'input_type': input_type,
+                    'is_guest': is_guest,
+                },
+                input_type=input_type,
+            )
 
             phase1_ms = (_time.time() - phase1_start) * 1000
 
@@ -601,7 +584,7 @@ class SessionProcessor:
             phase1_start = _time.time()
 
             if requires_vision:
-                # Image inputs: use old Agent 1 with vision (LangExtract is text-only)
+                # Image inputs: use Agent 1 with vision (LangExtract is text-only)
                 identification_result = identify_events_chunked(
                     agent=agent_1,
                     raw_input=text,
@@ -615,8 +598,8 @@ class SessionProcessor:
                         'is_guest': is_guest,
                     },
                 )
-            elif is_langextract_supported():
-                # Text-based inputs with LangExtract (grok, openai)
+            else:
+                # Text-based inputs (PDFs, audio transcripts, emails, documents)
                 from config.complexity import InputComplexityAnalyzer, ComplexityLevel
                 complexity_for_passes = InputComplexityAnalyzer.analyze(text, input_type=file_type)
                 passes = PASSES_COMPLEX if complexity_for_passes.level == ComplexityLevel.COMPLEX else PASSES_SIMPLE
@@ -632,21 +615,6 @@ class SessionProcessor:
                         'is_guest': is_guest,
                     },
                     input_type=input_type,
-                )
-            else:
-                # Fallback to chunked identification (e.g. when using Claude)
-                identification_result = identify_events_chunked(
-                    agent=agent_1,
-                    raw_input=text,
-                    metadata=metadata,
-                    requires_vision=False,
-                    tracking_context={
-                        'distinct_id': user_id,
-                        'trace_id': session_id,
-                        'pipeline': pipeline_label,
-                        'input_type': input_type,
-                        'is_guest': is_guest,
-                    },
                 )
 
             phase1_ms = (_time.time() - phase1_start) * 1000

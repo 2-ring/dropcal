@@ -307,6 +307,7 @@ class PatternRefreshService:
                     color=calendar.get('backgroundColor'),
                     foreground_color=calendar.get('foregroundColor'),
                     is_primary=is_primary,
+                    last_refreshed=datetime.utcnow().isoformat() + 'Z',
                 )
                 return
 
@@ -325,6 +326,7 @@ class PatternRefreshService:
                 examples=[],
                 never_contains=[],
                 events_analyzed=0,
+                last_refreshed=datetime.utcnow().isoformat() + 'Z',
             )
             return
 
@@ -358,4 +360,5 @@ class PatternRefreshService:
             examples=summary.get('examples', []),
             never_contains=summary.get('never_contains', []),
             events_analyzed=current_count,
+            last_refreshed=datetime.utcnow().isoformat() + 'Z',
         )

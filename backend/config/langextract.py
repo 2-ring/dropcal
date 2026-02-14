@@ -68,11 +68,6 @@ def get_langextract_config():
     return config, specs['model_name'], provider
 
 
-def is_langextract_supported() -> bool:
-    """Check if the current agent_1_identification provider supports LangExtract."""
-    from config.text import get_text_provider
-    return get_text_provider('agent_1_identification') in _LANGEXTRACT_SUPPORTED_PROVIDERS
-
 
 # ============================================================================
 # Extraction parameters

@@ -62,7 +62,7 @@ from config.processing import ProcessingConfig
 from processing.parallel import process_events_parallel, EventProcessingResult
 from processing.chunked_identification import identify_events_chunked
 from extraction.langextract_identifier import identify_events_langextract
-from config.langextract import PASSES_SIMPLE, PASSES_COMPLEX, is_langextract_supported
+from config.langextract import PASSES_SIMPLE, PASSES_COMPLEX
 from config.posthog import init_posthog, set_tracking_context, flush_posthog, capture_agent_error
 
 # Import rate limit configuration
@@ -408,7 +408,7 @@ def process_input():
         # Agent 1: Event Identification
         try:
             if requires_vision:
-                # Image inputs: use old Agent 1 with vision (LangExtract is text-only)
+                # Image inputs: use Agent 1 with vision (LangExtract is text-only)
                 identification_result = identify_events_chunked(
                     agent=active_agent_1,
                     raw_input=raw_input,
@@ -419,24 +419,12 @@ def process_input():
                         'trace_id': f"process-{uuid.uuid4().hex[:8]}",
                     },
                 )
-            elif is_langextract_supported():
-                # Text inputs: use LangExtract (grok, openai)
+            else:
+                # Text inputs: LangExtract identification
                 passes = PASSES_COMPLEX if complexity.level == ComplexityLevel.COMPLEX else PASSES_SIMPLE
                 identification_result = identify_events_langextract(
                     text=raw_input,
                     extraction_passes=passes,
-                    tracking_context={
-                        'distinct_id': locals().get('user_id', 'guest'),
-                        'trace_id': f"process-{uuid.uuid4().hex[:8]}",
-                    },
-                )
-            else:
-                # Fallback to chunked identification (e.g. when using Claude)
-                identification_result = identify_events_chunked(
-                    agent=active_agent_1,
-                    raw_input=raw_input,
-                    metadata=metadata,
-                    requires_vision=False,
                     tracking_context={
                         'distinct_id': locals().get('user_id', 'guest'),
                         'trace_id': f"process-{uuid.uuid4().hex[:8]}",

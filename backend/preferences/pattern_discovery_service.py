@@ -354,25 +354,29 @@ class PatternDiscoveryService:
                 'location': e.get('location', '')[:PatternDiscoveryConfig.LOCATION_DISPLAY_MAX_LENGTH] if e.get('location') else None
             })
 
-        prompt = f"""Analyze this category to understand when/why the user uses it.
+        prompt = f"""Analyze this calendar category to understand when/why the user uses it.
 
-CATEGORY: {category_name} {"(PRIMARY)" if is_primary else "(Secondary)"}
-TOTAL EVENTS: {total_count}
+CONTEXT: You are writing this description for another AI agent that will use it to decide which calendar to assign newly created events to. Tailor your description and content to help that agent make accurate calendar selection decisions.
 
-SAMPLE EVENTS (first 50):
+CATEGORY: {category_name} {"(PRIMARY — default/catch-all calendar)" if is_primary else "(Secondary — specialized calendar)"}
+TOTAL EVENTS IN THIS CALENDAR: {total_count}
+
+IMPORTANT: The events below are a SAMPLE, not the complete set. They were selected using recency-weighted sampling from {total_count} total events. Use the calendar name "{category_name}" to logically infer the full scope of this calendar — do not overfit your description to only the specific events shown. For example, if a calendar named "Office Hours" only shows math course events in the sample, the calendar likely contains office hours for ALL courses, not just math.
+
+SAMPLE EVENTS ({len(event_summaries)} of {total_count}):
 {json.dumps(event_summaries, indent=2)}
 
 YOUR TASK:
-Write a concise description of this category's usage pattern.
+Write a concise description of this category's usage pattern that will help another agent correctly assign new events to it.
 
 Focus on:
-1. What types of events go here?
-2. What NEVER goes here? (if specialized)
+1. What types of events belong here? (generalize from the calendar name + sample)
+2. What NEVER goes here? (if this is a specialized calendar)
 3. Is this category specialized or general-purpose?
 
 Provide:
-- description: 1-2 sentence summary of what this category is for
-- event_types: List of event types (e.g., ["Classes", "Homework", "Office Hours"])
+- description: 1-2 sentence summary of what this calendar is for (written to help an agent decide whether a new event belongs here)
+- event_types: List of event types this calendar covers (e.g., ["Classes", "Homework", "Office Hours"])
 - examples: 5-7 representative example titles from the data
 - never_contains: What doesn't belong here (e.g., ["personal events", "work meetings"])
 

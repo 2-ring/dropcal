@@ -16,7 +16,7 @@ from langextract.providers import load_builtins_once
 
 from extraction.models import IdentifiedEvent, IdentificationResult
 from config.langextract import (
-    get_langextract_config, is_langextract_supported,
+    get_langextract_config,
     EXAMPLES, PROMPT_DESCRIPTION, MAX_CHAR_BUFFER, MAX_WORKERS,
     PASSES_SIMPLE, DOCUMENT_CONTEXT_CHARS, SURROUNDING_CONTEXT_CHARS,
 )
