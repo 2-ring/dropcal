@@ -103,9 +103,12 @@ class PersonalizationAgent(BaseAgent):
         show_calendar_section = len(category_patterns) > 1
         show_temporal_section = not is_all_day and not has_end_time
 
-        # Auto-assign calendar when only one exists
+        # Auto-assign calendar when only one exists (skip if it's primary — null = primary)
         if not show_calendar_section and len(category_patterns) == 1:
-            event.calendar = next(iter(category_patterns))
+            cal_id = next(iter(category_patterns))
+            pattern = category_patterns[cal_id]
+            if not pattern.get('is_primary'):
+                event.calendar = cal_id
 
         # --- Pre-format all display data ---
 
@@ -183,11 +186,12 @@ class PersonalizationAgent(BaseAgent):
     @staticmethod
     def _resolve_calendar_id(
         calendar_name: Optional[str], category_patterns: Dict
-    ) -> str:
+    ) -> Optional[str]:
         """
         Map the LLM's calendar name output back to a calendar ID.
 
-        Falls back to the primary calendar if the name is null or unrecognized.
+        Returns None for the primary calendar (null = primary everywhere),
+        or a specific provider calendar ID for non-primary calendars.
         """
         # Build name → ID lookup (case-insensitive)
         name_to_id = {
@@ -196,16 +200,26 @@ class PersonalizationAgent(BaseAgent):
         }
 
         # Try exact match
+        resolved_id = None
         if calendar_name and calendar_name.lower() in name_to_id:
-            return name_to_id[calendar_name.lower()]
+            resolved_id = name_to_id[calendar_name.lower()]
+        else:
+            # Fallback to primary calendar
+            for cal_id, pattern in category_patterns.items():
+                if pattern.get('is_primary'):
+                    resolved_id = cal_id
+                    break
+            else:
+                # Last resort: first calendar
+                resolved_id = next(iter(category_patterns))
 
-        # Fallback to primary calendar
-        for cal_id, pattern in category_patterns.items():
+        # Primary calendar → None (null = primary everywhere)
+        if resolved_id:
+            pattern = category_patterns.get(resolved_id, {})
             if pattern.get('is_primary'):
-                return cal_id
+                return None
 
-        # Last resort: first calendar
-        return next(iter(category_patterns))
+        return resolved_id
 
     # =========================================================================
     # Display builders — all Jinja conditional/formatting logic lives here

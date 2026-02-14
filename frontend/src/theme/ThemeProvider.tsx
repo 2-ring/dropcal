@@ -37,6 +37,9 @@ interface ThemeProviderProps {
   children: React.ReactNode;
 }
 
+const getSystemTheme = (): ThemeMode =>
+  window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const { session, preferences, setPreferences } = useAuth();
   const syncedFromBackend = useRef(false);
@@ -44,8 +47,23 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
     // Initialize from localStorage for instant load (no flash)
     const saved = localStorage.getItem('theme-mode');
-    return (saved === 'dark' || saved === 'light') ? saved : 'light';
+    if (saved === 'dark' || saved === 'light') return saved;
+    // Fall back to system/browser preference
+    return getSystemTheme();
   });
+
+  // Listen for system theme changes (applies when user hasn't manually chosen)
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => {
+      // Only follow system changes if user hasn't explicitly set a preference
+      if (!localStorage.getItem('theme-mode')) {
+        setThemeModeState(e.matches ? 'dark' : 'light');
+      }
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   // Sync theme from backend preferences when they load
   useEffect(() => {
