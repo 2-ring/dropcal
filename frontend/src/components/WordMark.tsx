@@ -16,10 +16,10 @@ interface WordMarkProps {
  * Replaces all instances where Logo and word image are used together.
  */
 export function WordMark({ size = 32, className = '' }: WordMarkProps) {
-  const { themeMode } = useTheme()
+  const { resolvedTheme } = useTheme()
 
   // Select word image based on theme
-  const wordImage = themeMode === 'dark' ? wordImageDark : wordImageLight
+  const wordImage = resolvedTheme === 'dark' ? wordImageDark : wordImageLight
 
   // Calculate proportional word height based on mark size
   // Default ratio: 32px mark → 32px word, 48px mark → 38px word

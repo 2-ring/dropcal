@@ -354,6 +354,65 @@
   cursor: not-allowed;
 }
 
+/* Timezone picker sub-view */
+.settings-timezone-picker {
+  padding: 4px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-timezone-search {
+  width: 100%;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text-primary);
+  outline: none;
+  caret-color: var(--interactive);
+}
+
+.settings-timezone-search::placeholder {
+  color: var(--text-tertiary);
+}
+
+.settings-timezone-list {
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0 -8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hover) transparent;
+}
+
+.settings-timezone-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.settings-timezone-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.settings-timezone-list::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 2px;
+}
+
+.settings-timezone-list::-webkit-scrollbar-thumb:hover {
+  background: var(--border-active);
+}
+
+.settings-timezone-option {
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.settings-timezone-active {
+  color: var(--interactive);
+  font-weight: 500;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .settings-popup {

@@ -8,6 +8,7 @@ import { updateUserPreferences } from '../api/backend-client';
 interface ThemeContextType {
   theme: Theme;
   themeMode: ThemeMode;
+  resolvedTheme: 'light' | 'dark';
   setThemeMode: (mode: ThemeMode) => void;
   toggleTheme: () => void;
 }
@@ -97,7 +98,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   }, [theme, resolvedTheme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, themeMode, setThemeMode, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, themeMode, resolvedTheme, setThemeMode, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

@@ -32,11 +32,11 @@ export function Menu({
   onNewSession,
   isLoadingSessions = false,
 }: MenuProps) {
-  const { themeMode } = useTheme()
+  const { resolvedTheme } = useTheme()
   const { user, primaryCalendarProvider } = useAuth()
 
   // Select brand images based on theme
-  const wordImage = themeMode === 'dark' ? wordImageDark : wordImageLight
+  const wordImage = resolvedTheme === 'dark' ? wordImageDark : wordImageLight
 
   // Derive effective provider: prefer explicit primary, fall back to auth provider
   const rawAuthProvider = user?.app_metadata?.provider

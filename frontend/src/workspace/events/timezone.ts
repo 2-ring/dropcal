@@ -173,6 +173,11 @@ export function getTimezoneList(): TimezoneOption[] {
   return options
 }
 
+export function formatTimezoneCompact(iana: string): string {
+  if (!iana) return ''
+  return getCityName(iana)
+}
+
 export function formatTimezoneDisplay(iana: string): string {
   if (!iana) return ''
   const offsetMinutes = getOffsetMinutes(iana, new Date())

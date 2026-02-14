@@ -152,6 +152,25 @@
 .tz-drawer-list {
   max-height: 60vh;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hover) transparent;
+}
+
+.tz-drawer-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.tz-drawer-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tz-drawer-list::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 2px;
+}
+
+.tz-drawer-list::-webkit-scrollbar-thumb:hover {
+  background: var(--border-active);
 }
 
 .tz-drawer-item {

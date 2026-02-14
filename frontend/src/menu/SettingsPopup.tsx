@@ -32,6 +32,9 @@ import '../auth/AuthModal.css';
 import { useState, useEffect, useRef } from 'react';
 import { getCalendarProviders, setPrimaryCalendarProvider, getUserPreferences, sendAppleCredentials, updateUserPreferences, disconnectCalendarProvider, deleteAccount } from '../api/backend-client';
 import { useTheme } from '../theme';
+import { TimezoneInput } from '../workspace/events/inputs/TimezoneInput';
+import { getTimezoneList, filterTimezones, formatTimezoneCompact } from '../workspace/events/timezone';
+import { useViewport } from '../workspace/input/shared/hooks/useViewport';
 
 interface SettingsPopupProps {
   onClose: () => void;
@@ -51,7 +54,7 @@ interface CalendarIntegration {
   isConnected: boolean;
 }
 
-type ViewMode = 'main' | 'integrations' | 'apple-connect' | 'account';
+type ViewMode = 'main' | 'integrations' | 'apple-connect' | 'account' | 'timezone';
 
 export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoading = false, triggerRef }: SettingsPopupProps) {
   const navigate = useNavigate();
@@ -73,7 +76,10 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
   const [userTimezone, setUserTimezone] = useState<string>(
     preferences.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
   );
+  const [editingTimezone, setEditingTimezone] = useState(false);
+  const [timezoneSearch, setTimezoneSearch] = useState('');
   const [logoutHovered, setLogoutHovered] = useState(false);
+  const { isMobile } = useViewport();
 
   // Calendar integrations data from backend
   const [calendars, setCalendars] = useState<CalendarIntegration[]>([]);
@@ -256,14 +262,17 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
     }
   };
 
-  // Close popup when clicking outside
+  // Close popup when clicking outside (but not on portaled child modals)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
+      const target = event.target as HTMLElement;
       const isOutsidePopup = popupRef.current && !popupRef.current.contains(target);
       const isOutsideTrigger = triggerRef?.current && !triggerRef.current.contains(target);
 
-      if (isOutsidePopup && isOutsideTrigger) {
+      // Don't close if click is on a portaled child (bottom drawer, delete modal)
+      const isOnPortaledChild = target.closest('.drawer-backdrop, .auth-modal-backdrop');
+
+      if (isOutsidePopup && isOutsideTrigger && !isOnPortaledChild) {
         onClose();
       }
     };
@@ -304,6 +313,11 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
               )}
               {viewMode === 'apple-connect' && (
                 <button className="settings-popup-back-button" onClick={() => setViewMode('integrations')}>
+                  <CaretLeft size={12} weight="bold" />
+                </button>
+              )}
+              {viewMode === 'timezone' && (
+                <button className="settings-popup-back-button" onClick={() => { setTimezoneSearch(''); setViewMode('account'); }}>
                   <CaretLeft size={12} weight="bold" />
                 </button>
               )}
@@ -384,14 +398,72 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
             </div>
           ) : viewMode === 'account' ? (
             <>
-              <div className="settings-popup-item" style={{ cursor: 'default', opacity: 0.8 }}>
-                <Clock size={20} weight="duotone" />
-                <span>Timezone</span>
-                <div className="settings-popup-value">
-                  {userTimezone}
-                </div>
-              </div>
+              {isMobile ? (
+                <button
+                  className="settings-popup-item"
+                  onClick={() => setEditingTimezone(true)}
+                >
+                  <Clock size={20} weight="duotone" />
+                  <span>Timezone</span>
+                  <div className="settings-popup-value">
+                    <TimezoneInput
+                      value={userTimezone}
+                      onChange={(tz) => {
+                        setUserTimezone(tz);
+                        setEditingTimezone(false);
+                        updateUserPreferences({ timezone: tz }).catch((err) => {
+                          console.error('Failed to save timezone:', err);
+                        });
+                      }}
+                      onFocus={() => setEditingTimezone(true)}
+                      onBlur={() => setEditingTimezone(false)}
+                      isEditing={editingTimezone}
+                    />
+                  </div>
+                </button>
+              ) : (
+                <button
+                  className="settings-popup-item"
+                  onClick={() => { setTimezoneSearch(''); setViewMode('timezone'); }}
+                >
+                  <Clock size={20} weight="duotone" />
+                  <span>Timezone</span>
+                  <div className="settings-popup-value">
+                    <span>{formatTimezoneCompact(userTimezone)}</span>
+                  </div>
+                </button>
+              )}
             </>
+          ) : viewMode === 'timezone' ? (
+            <div className="settings-timezone-picker">
+              <input
+                type="text"
+                className="settings-timezone-search"
+                placeholder="Search timezones..."
+                value={timezoneSearch}
+                onChange={(e) => setTimezoneSearch(e.target.value)}
+                autoFocus
+              />
+              <div className="settings-timezone-list">
+                {filterTimezones(getTimezoneList(), timezoneSearch).map((tz) => (
+                  <button
+                    key={tz.iana}
+                    className={`settings-popup-item settings-timezone-option ${tz.iana === userTimezone ? 'settings-timezone-active' : ''}`}
+                    onClick={() => {
+                      setUserTimezone(tz.iana);
+                      setTimezoneSearch('');
+                      setViewMode('account');
+                      updateUserPreferences({ timezone: tz.iana }).catch((err) => {
+                        console.error('Failed to save timezone:', err);
+                      });
+                    }}
+                  >
+                    <span style={{ flex: 1 }}>{tz.city}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{tz.shortOffset}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : viewMode === 'main' ? (
             <>
               <button className="settings-popup-item" onClick={handleUpgradePlan}>
