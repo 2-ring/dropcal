@@ -451,7 +451,7 @@ export function EventEditView({
 
                           {recurrenceConfig.endType === 'until' && (
                             <div className="recurrence-end-value">
-                              <div className="editable-content-wrapper" onClick={(e) => handleEditClick('recurrenceEndDate', e)}>
+                              <div className="recurrence-date-wrapper" onClick={(e) => handleEditClick('recurrenceEndDate', e)}>
                                 <DateInput
                                   value={recurrenceConfig.endDate ? new Date(recurrenceConfig.endDate + 'T00:00:00').toISOString() : new Date().toISOString()}
                                   onChange={(isoString) => {

@@ -2,52 +2,28 @@
 LangExtract-based event identification.
 Replaces chunked_identification.py for text inputs.
 Handles chunking, multi-pass extraction, and source grounding internally.
+
+Model/provider is read from config/text.py via config/langextract.py,
+so switching presets also switches what LangExtract uses.
 """
 
-import os
 import time as _time
 import logging
 from typing import Optional
 
 import langextract as lx
-from langextract.factory import ModelConfig
 from langextract.providers import load_builtins_once
 
 from extraction.models import IdentifiedEvent, IdentificationResult
 from config.langextract import (
-    LANGEXTRACT_MODEL, LANGEXTRACT_API_KEY_ENV, LANGEXTRACT_BASE_URL,
+    get_langextract_config, is_langextract_supported,
     EXAMPLES, PROMPT_DESCRIPTION, MAX_CHAR_BUFFER, MAX_WORKERS,
-    PASSES_SIMPLE, PASSES_COMPLEX,
+    PASSES_SIMPLE,
 )
 from config.posthog import capture_llm_generation, capture_agent_error
 from config.processing import ProcessingConfig
 
 logger = logging.getLogger(__name__)
-
-
-def _build_config() -> ModelConfig:
-    """
-    Build LangExtract ModelConfig for the OpenAI-compatible Grok provider.
-
-    Since "grok-3" doesn't match LangExtract's built-in OpenAI patterns
-    (gpt-4/gpt-5 only), we must explicitly route to the OpenAI provider
-    via ModelConfig with provider='openai'.
-    """
-    api_key = os.environ.get(LANGEXTRACT_API_KEY_ENV)
-    if not api_key:
-        raise RuntimeError(
-            f"LangExtract: {LANGEXTRACT_API_KEY_ENV} environment variable not set. "
-            f"Cannot initialize OpenAI-compatible provider for model '{LANGEXTRACT_MODEL}'."
-        )
-
-    return ModelConfig(
-        model_id=LANGEXTRACT_MODEL,
-        provider='openai',
-        provider_kwargs={
-            'api_key': api_key,
-            'base_url': LANGEXTRACT_BASE_URL,
-        },
-    )
 
 
 def identify_events_langextract(
@@ -69,6 +45,10 @@ def identify_events_langextract(
 
     Returns:
         IdentificationResult with identified events.
+
+    Raises:
+        ValueError: If the configured provider is not supported by LangExtract.
+            The caller should catch this and fall back to chunked_identification.
     """
     if not text or not text.strip():
         return IdentificationResult(events=[], num_events=0, has_events=False)
@@ -77,7 +57,9 @@ def identify_events_langextract(
     start = _time.time()
 
     try:
-        config = _build_config()
+        # Build config from centralized text.py settings.
+        # Raises ValueError if provider is unsupported (e.g. 'claude').
+        config, model_name, provider_name = get_langextract_config()
 
         # Ensure builtin providers (OpenAI, Gemini, Ollama) are registered.
         # Required before lx.extract() when fence_output is set, as the
@@ -119,14 +101,15 @@ def identify_events_langextract(
             f"{duration_ms:.0f}ms"
         )
 
-        # PostHog tracking
+        # PostHog tracking (uses actual model/provider from centralized config)
         capture_llm_generation(
-            "identification", LANGEXTRACT_MODEL, "langextract",
+            "identification", model_name, provider_name,
             duration_ms,
             properties={
                 'extraction_passes': passes,
                 'num_events_found': len(events),
                 'input_length': len(text),
+                'engine': 'langextract',
             }
         )
 

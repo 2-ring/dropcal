@@ -1,17 +1,82 @@
 """
 LangExtract configuration for event identification.
-Controls model, chunking, multi-pass, and few-shot examples.
+Controls model routing (via config/text.py), chunking, multi-pass, and few-shot examples.
+
+Model/provider is read from config/text.py's agent_1_identification setting,
+so switching presets (all_grok, all_openai, hybrid_optimized) also switches
+what LangExtract uses. LangExtract only supports OpenAI-compatible providers
+(grok, openai); if agent_1 is set to 'claude', text identification falls back
+to the old LangChain chunked pipeline automatically.
 """
 
 import os
 import langextract as lx
+from langextract.factory import ModelConfig
 
-# Model: Use Grok via OpenAI-compatible API (matching current pipeline default)
-# LangExtract's auto-router only recognizes gpt-4/gpt-5 prefixes, so we must
-# use explicit provider routing via factory.ModelConfig with provider='openai'.
-LANGEXTRACT_MODEL = os.getenv('LANGEXTRACT_MODEL', 'grok-3')
-LANGEXTRACT_API_KEY_ENV = 'XAI_API_KEY'
-LANGEXTRACT_BASE_URL = 'https://api.x.ai/v1'
+
+# ============================================================================
+# Model routing (reads from centralized config/text.py)
+# ============================================================================
+
+# LangExtract only supports providers with an OpenAI-compatible API.
+# 'claude' is NOT supported — the caller should fall back to chunked_identification.
+_LANGEXTRACT_SUPPORTED_PROVIDERS = ('grok', 'openai')
+
+
+def get_langextract_config():
+    """
+    Build LangExtract ModelConfig from centralized text config.
+
+    Reads agent_1_identification from config/text.py and maps it to
+    LangExtract's OpenAI provider with the correct model, API key, and base_url.
+
+    Returns:
+        (ModelConfig, model_name, provider_name) tuple.
+
+    Raises:
+        ValueError: If the configured provider is not supported by LangExtract
+            (e.g. 'claude'). The caller should fall back to chunked_identification.
+    """
+    from config.text import get_text_provider, get_model_specs
+
+    provider = get_text_provider('agent_1_identification')
+    if provider not in _LANGEXTRACT_SUPPORTED_PROVIDERS:
+        raise ValueError(
+            f"LangExtract does not support provider '{provider}'. "
+            f"Supported: {_LANGEXTRACT_SUPPORTED_PROVIDERS}. "
+            f"Text identification will fall back to chunked pipeline."
+        )
+
+    specs = get_model_specs(provider)
+    api_key = os.environ.get(specs['api_key_env'])
+    if not api_key:
+        raise RuntimeError(
+            f"LangExtract: {specs['api_key_env']} not set. "
+            f"Required for provider '{provider}'."
+        )
+
+    provider_kwargs = {'api_key': api_key}
+    if specs.get('base_url'):
+        provider_kwargs['base_url'] = specs['base_url']
+
+    config = ModelConfig(
+        model_id=specs['model_name'],
+        provider='openai',
+        provider_kwargs=provider_kwargs,
+    )
+
+    return config, specs['model_name'], provider
+
+
+def is_langextract_supported() -> bool:
+    """Check if the current agent_1_identification provider supports LangExtract."""
+    from config.text import get_text_provider
+    return get_text_provider('agent_1_identification') in _LANGEXTRACT_SUPPORTED_PROVIDERS
+
+
+# ============================================================================
+# Extraction parameters
+# ============================================================================
 
 # Extraction passes: complexity router controls this
 PASSES_SIMPLE = 1   # Simple inputs: 1 pass (same speed as before)
@@ -21,7 +86,11 @@ PASSES_COMPLEX = 2  # Complex inputs: 2 passes (~93% recall vs ~85%)
 MAX_CHAR_BUFFER = 1500  # Characters per chunk (LangExtract default sweet spot)
 MAX_WORKERS = 10        # Parallel chunk processing
 
-# Few-shot examples that teach LangExtract what calendar events look like.
+
+# ============================================================================
+# Few-shot examples
+# ============================================================================
+
 # These are CRITICAL for extraction quality — each example teaches both
 # what to extract AND what the extraction_text span should look like.
 EXAMPLES = [

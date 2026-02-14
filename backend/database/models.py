@@ -1404,7 +1404,7 @@ class Event:
             .eq("provider_event_id", provider_event_id)\
             .is_("deleted_at", None)\
             .maybe_single().execute()
-        return response.data
+        return response.data if response else None
 
     @staticmethod
     def get_user_event_stats(
