@@ -49,9 +49,7 @@ Rewrite the event title to match the user's established naming conventions.
 
 Look at the similar events above. They are your primary reference for how this user names things. Consider what patterns you see — do they use brackets for course codes? Abbreviations? A specific casing style? Your title should look like it belongs in the same calendar.
 
-Think about whether the extracted title is just a rough version of something the user would write more precisely. "math hw" from a user who writes "[MATH 0180] Problem Set" should become "[MATH 0180] Problem Set". "cs 1680 lecture" from a user who writes "CS1680 Lecture" should match that format.
-
-Be careful not to add information that wasn't in the original event — you're reformatting, not inventing.
+Think about whether the extracted title is a rough version of something the user would write more precisely. "cs 1680 lecture" from a user who writes "CS1680 Lecture" should match that format. If the similar events make it clear what the full, correct title should be, use it — but don't invent details that aren't supported by the data.
 
 ------------------------------------------------------------
 ## 2. DESCRIPTION
@@ -61,7 +59,7 @@ Add or refine the event description to match the user's description style.
 
 **How to approach this:**
 
-Look at the similar events — most calendar users write minimal or no descriptions. If the user's similar events don't have descriptions, don't add one. Match their level of detail.
+Look at the similar events above — do they have descriptions? If not, don't add one. Match their level of detail.
 
 If the user does write descriptions, consider their voice: are they formal, casual, using bullet points? Only add context that genuinely helps beyond what the title already says. If there's nothing meaningful to add, leave description as-is or null.
 
