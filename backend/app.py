@@ -1165,8 +1165,9 @@ def get_session_events(session_id):
         if session.get('user_id') != user_id:
             return jsonify({'error': 'Unauthorized'}), 403
 
-        # Try events table first (new path)
-        events = EventService.get_events_by_session(session_id)
+        # Try events table first (pass event_ids to skip redundant session lookup)
+        event_ids = session.get('event_ids') or []
+        events = EventService.get_events_by_session(session_id, event_ids=event_ids)
 
         # Backward compat: fall back to processed_events blob for old sessions
         if not events:
@@ -1418,8 +1419,9 @@ def get_guest_session_events(session_id):
         if not session:
             return jsonify({'error': 'Invalid session or access token'}), 403
 
-        # Try events table first
-        events = EventService.get_events_by_session(session_id)
+        # Try events table first (pass event_ids to skip redundant session lookup)
+        event_ids = session.get('event_ids') or []
+        events = EventService.get_events_by_session(session_id, event_ids=event_ids)
 
         # Backward compat: fall back to processed_events blob
         if not events:

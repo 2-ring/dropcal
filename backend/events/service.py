@@ -483,29 +483,28 @@ class EventService:
         return result
 
     @staticmethod
-    def get_events_by_session(session_id: str) -> List[Dict[str, Any]]:
+    def get_events_by_session(session_id: str, event_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """
         Get all events for a session from the events table, formatted as CalendarEvents.
 
         Args:
             session_id: Session UUID
+            event_ids: Pre-fetched event IDs (avoids redundant session lookup)
 
         Returns:
             List of CalendarEvent dicts sorted by start time
         """
-        session = Session.get_by_id(session_id)
-        if not session:
-            return []
+        if event_ids is None:
+            session = Session.get_by_id(session_id)
+            if not session:
+                return []
+            event_ids = session.get('event_ids') or []
 
-        event_ids = session.get('event_ids') or []
         if not event_ids:
             return []
 
-        events = []
-        for event_id in event_ids:
-            event_row = Event.get_by_id(event_id)
-            if event_row and not event_row.get('deleted_at'):
-                events.append(EventService.event_row_to_calendar_event(event_row))
+        event_rows = Event.get_by_ids(event_ids)
+        events = [EventService.event_row_to_calendar_event(row) for row in event_rows]
 
         # Sort by start dateTime or date
         def sort_key(e):

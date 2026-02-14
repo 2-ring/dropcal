@@ -38,8 +38,8 @@ def stream_session_updates(session_id: str):
     """
     def generate():
         """Generator function for SSE stream"""
-        # Get initial session state
-        session = DBSession.get_by_id(session_id)
+        # Get initial session state (lite: skip processed_events/input_content blobs)
+        session = DBSession.get_by_id_lite(session_id)
         if not session:
             yield f"event: error\ndata: {json.dumps({'error': 'Session not found'})}\n\n"
             return
@@ -63,8 +63,8 @@ def stream_session_updates(session_id: str):
             time.sleep(StreamConfig.POLL_INTERVAL_SECONDS)
             polls += 1
 
-            # Check for updates
-            session = DBSession.get_by_id(session_id)
+            # Check for updates (lite: skip blobs)
+            session = DBSession.get_by_id_lite(session_id)
             if not session:
                 break
 
@@ -87,7 +87,7 @@ def stream_session_updates(session_id: str):
                 if current_status in ['processed', 'error']:
                     data = json.dumps({
                         'status': current_status,
-                        'has_events': len(session.get('event_ids') or session.get('processed_events') or []) > 0
+                        'has_events': len(session.get('event_ids') or []) > 0
                     })
                     yield f"event: complete\ndata: {data}\n\n"
                     break

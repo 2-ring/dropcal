@@ -734,6 +734,17 @@ class Session:
         return response.data[0] if response.data else None
 
     @staticmethod
+    def get_by_id_lite(session_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get session by ID with only lightweight columns.
+        Skips processed_events and input_content blobs for faster reads.
+        """
+        supabase = get_supabase()
+        lite_columns = "id,user_id,title,input_type,status,event_ids,created_at,added_to_calendar,guest_mode,error_message"
+        response = supabase.table("sessions").select(lite_columns).eq("id", session_id).execute()
+        return response.data[0] if response.data else None
+
+    @staticmethod
     def get_by_user(user_id: str, limit: int = QueryLimits.DEFAULT_SESSION_LIMIT) -> List[Dict[str, Any]]:
         """
         Get all sessions for a user.
@@ -1162,6 +1173,18 @@ class Event:
         supabase = get_supabase()
         response = supabase.table("events").select("*").eq("id", event_id).execute()
         return response.data[0] if response.data else None
+
+    @staticmethod
+    def get_by_ids(event_ids: List[str]) -> List[Dict[str, Any]]:
+        """Get multiple events by IDs in a single query (batch alternative to N×get_by_id)."""
+        if not event_ids:
+            return []
+        supabase = get_supabase()
+        response = supabase.table("events").select("*")\
+            .in_("id", event_ids)\
+            .is_("deleted_at", None)\
+            .execute()
+        return response.data
 
     @staticmethod
     def get_by_user(

@@ -346,14 +346,11 @@ function AppContent() {
         GuestSessionManager.addGuestSession(session.id, session.access_token)
       }
 
-      // Silently refresh session list so the new session appears as a skeleton
-      if (user) {
-        getUserSessions().then(setSessionHistory).catch(console.error)
-      } else {
-        // Directly add to session history — no extra fetch needed
+      // Optimistically add session to sidebar (no network round-trip needed)
+      if (!user) {
         debugLog('guestSessions', 'adding session to history:', session.id, session.status)
-        setSessionHistory(prev => [session, ...prev.filter(s => s.id !== session.id)])
       }
+      setSessionHistory(prev => [session, ...prev.filter(s => s.id !== session.id)])
 
       // Poll for completion (use guest endpoint if not authenticated)
       const completedSession = await pollSession(
@@ -366,22 +363,18 @@ function AppContent() {
               setLoadingConfig(LOADING_MESSAGES.EXTRACTING_EVENTS)
             }
           }
-          // Keep sidebar in sync for guests
-          if (!user) {
-            setSessionHistory(prev => prev.map(s => s.id === updatedSession.id ? updatedSession : s))
-          }
+          // Keep sidebar in sync during processing
+          setSessionHistory(prev => prev.map(s => s.id === updatedSession.id ? updatedSession : s))
         },
         2000,
         !user // isGuest parameter
       )
 
-      // Always refresh session list so sidebar updates
-      if (user) {
-        getUserSessions().then(setSessionHistory).catch(console.error)
-      } else {
+      // Optimistically update sidebar with completed session
+      if (!user) {
         debugLog('guestSessions', 'completed session:', completedSession.id, completedSession.status, 'event_ids:', completedSession.event_ids?.length)
-        setSessionHistory(prev => prev.map(s => s.id === completedSession.id ? completedSession : s))
       }
+      setSessionHistory(prev => prev.map(s => s.id === completedSession.id ? completedSession : s))
 
       // If user navigated away, don't touch UI state
       if (activeViewSessionRef.current !== session.id) {
@@ -413,9 +406,6 @@ function AppContent() {
       console.error('Text processing failed:', error)
       addNotification(createErrorNotification(getFriendlyErrorMessage(error)))
       setAppState('input')
-      if (user) {
-        getUserSessions().then(setSessionHistory).catch(console.error)
-      }
     } finally {
       setIsProcessing(false)
     }
@@ -460,13 +450,11 @@ function AppContent() {
         GuestSessionManager.addGuestSession(session.id, session.access_token)
       }
 
-      // Silently refresh session list so the new session appears as a skeleton
-      if (user) {
-        getUserSessions().then(setSessionHistory).catch(console.error)
-      } else {
+      // Optimistically add session to sidebar (no network round-trip needed)
+      if (!user) {
         debugLog('guestSessions', 'adding file session to history:', session.id, session.status)
-        setSessionHistory(prev => [session, ...prev.filter(s => s.id !== session.id)])
       }
+      setSessionHistory(prev => [session, ...prev.filter(s => s.id !== session.id)])
 
       setLoadingConfig(LOADING_MESSAGES.PROCESSING_FILE)
 
@@ -481,22 +469,18 @@ function AppContent() {
               setLoadingConfig(LOADING_MESSAGES.EXTRACTING_EVENTS)
             }
           }
-          // Keep sidebar in sync for guests
-          if (!user) {
-            setSessionHistory(prev => prev.map(s => s.id === updatedSession.id ? updatedSession : s))
-          }
+          // Keep sidebar in sync during processing
+          setSessionHistory(prev => prev.map(s => s.id === updatedSession.id ? updatedSession : s))
         },
         2000,
         !user // isGuest parameter
       )
 
-      // Always refresh session list so sidebar updates
-      if (user) {
-        getUserSessions().then(setSessionHistory).catch(console.error)
-      } else {
+      // Optimistically update sidebar with completed session
+      if (!user) {
         debugLog('guestSessions', 'completed file session:', completedSession.id, completedSession.status, 'event_ids:', completedSession.event_ids?.length)
-        setSessionHistory(prev => prev.map(s => s.id === completedSession.id ? completedSession : s))
       }
+      setSessionHistory(prev => prev.map(s => s.id === completedSession.id ? completedSession : s))
 
       // If user navigated away, don't touch UI state
       if (activeViewSessionRef.current !== session.id) {
@@ -528,9 +512,6 @@ function AppContent() {
       console.error('File processing failed:', error)
       addNotification(createErrorNotification(getFriendlyErrorMessage(error)))
       setAppState('input')
-      if (user) {
-        getUserSessions().then(setSessionHistory).catch(console.error)
-      }
     } finally {
       setIsProcessing(false)
     }

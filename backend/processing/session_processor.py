@@ -106,6 +106,41 @@ class SessionProcessor:
         finally:
             os.unlink(tmp_path)
 
+    def _prepare_image(self, file_path: str) -> tuple:
+        """
+        Download an image from Supabase storage, base64-encode it, and
+        return (placeholder_text, metadata) ready for the vision pipeline.
+        """
+        import base64
+        from pathlib import Path
+        from storage.file_handler import FileStorage
+
+        file_bytes = FileStorage.download_file(file_path)
+
+        image_data = base64.b64encode(file_bytes).decode('utf-8')
+
+        # Determine media type from file extension
+        ext = Path(file_path).suffix.lower()
+        media_types = {
+            '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+            '.png': 'image/png', '.gif': 'image/gif',
+            '.webp': 'image/webp', '.bmp': 'image/bmp',
+        }
+        media_type = media_types.get(ext, 'image/jpeg')
+
+        text = f"[Image: {Path(file_path).name}]"
+        metadata = {
+            'source': 'image',
+            'file_path': file_path,
+            'requires_vision': True,
+            'image_data': image_data,
+            'media_type': media_type,
+            'file_name': Path(file_path).name,
+        }
+
+        logger.info(f"Image prepared: {file_path} → {len(image_data)} base64 chars")
+        return text, metadata
+
     def _convert_document(self, file_path: str) -> str:
         """
         Download a document from Supabase storage and convert to structured
@@ -556,8 +591,7 @@ class SessionProcessor:
                 text = self._transcribe_audio(file_path)
                 metadata = {'source': 'audio', 'file_path': file_path}
             elif file_type == 'image':
-                text = f"[Image file at {file_path}]"
-                metadata = {'source': 'image', 'file_path': file_path, 'requires_vision': True}
+                text, metadata = self._prepare_image(file_path)
             elif file_type == 'pdf':
                 text = self._convert_document(file_path)
                 metadata = {'source': 'pdf', 'file_path': file_path}
