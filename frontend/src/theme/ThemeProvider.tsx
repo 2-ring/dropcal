@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { Theme, ThemeMode } from './types';
 import { lightTheme } from './lightTheme';
 import { darkTheme } from './darkTheme';
@@ -37,51 +37,38 @@ interface ThemeProviderProps {
   children: React.ReactNode;
 }
 
-const getSystemTheme = (): ThemeMode =>
+const getSystemTheme = (): 'light' | 'dark' =>
   window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  const { session, preferences, setPreferences } = useAuth();
-  const syncedFromBackend = useRef(false);
+  const { session, setPreferences } = useAuth();
 
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
     // Initialize from localStorage for instant load (no flash)
     const saved = localStorage.getItem('theme-mode');
-    if (saved === 'dark' || saved === 'light') return saved;
-    // Fall back to system/browser preference
-    return getSystemTheme();
+    if (saved === 'dark' || saved === 'light' || saved === 'auto') return saved;
+    // Default to auto
+    return 'auto';
   });
 
-  // Listen for system theme changes (applies when user hasn't manually chosen)
+  // Track the system preference for auto mode
+  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(getSystemTheme);
+
+  // Listen for system theme changes
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const handler = (e: MediaQueryListEvent) => {
-      // Only follow system changes if user hasn't explicitly set a preference
-      if (!localStorage.getItem('theme-mode')) {
-        setThemeModeState(e.matches ? 'dark' : 'light');
-      }
+      setSystemTheme(e.matches ? 'dark' : 'light');
     };
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  // Sync theme from backend preferences when they load
-  useEffect(() => {
-    if (session && preferences.theme_mode && !syncedFromBackend.current) {
-      syncedFromBackend.current = true;
-      setThemeModeState(preferences.theme_mode);
-      localStorage.setItem('theme-mode', preferences.theme_mode);
-    }
-  }, [session, preferences.theme_mode]);
+  // Theme is purely local — only changes when user clicks the toggle
 
-  // Reset sync flag on logout
-  useEffect(() => {
-    if (!session) {
-      syncedFromBackend.current = false;
-    }
-  }, [session]);
-
-  const theme = themeMode === 'light' ? lightTheme : darkTheme;
+  // Resolve auto to the actual system theme
+  const resolvedTheme = themeMode === 'auto' ? systemTheme : themeMode;
+  const theme = resolvedTheme === 'light' ? lightTheme : darkTheme;
 
   const setThemeMode = (mode: ThemeMode) => {
     setThemeModeState(mode);
@@ -97,7 +84,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   };
 
   const toggleTheme = () => {
-    setThemeMode(themeMode === 'light' ? 'dark' : 'light');
+    const next: Record<ThemeMode, ThemeMode> = { auto: 'light', light: 'dark', dark: 'auto' };
+    setThemeMode(next[themeMode]);
   };
 
   useEffect(() => {
@@ -105,8 +93,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     applyCSSVariables(theme);
 
     // Add data attribute to body for theme-specific styling
-    document.body.setAttribute('data-theme', themeMode);
-  }, [theme, themeMode]);
+    document.body.setAttribute('data-theme', resolvedTheme);
+  }, [theme, resolvedTheme]);
 
   return (
     <ThemeContext.Provider value={{ theme, themeMode, setThemeMode, toggleTheme }}>

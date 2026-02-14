@@ -24,7 +24,7 @@ import { sessionCache } from '../sessions/cache';
 import { GuestSessionManager } from './GuestSessionManager';
 
 export interface UserPreferences {
-  theme_mode?: 'light' | 'dark';
+  theme_mode?: 'light' | 'dark' | 'auto';
   date_format?: 'MM/DD/YYYY' | 'DD/MM/YYYY';
   timezone?: string;
   autoAddEvents?: boolean;

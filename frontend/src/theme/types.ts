@@ -73,4 +73,4 @@ export type Theme = {
   displayFont: string;
 }
 
-export type ThemeMode = 'light' | 'dark';
+export type ThemeMode = 'light' | 'dark' | 'auto';

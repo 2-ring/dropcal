@@ -306,7 +306,7 @@ export async function updateUserProfile(updates: {
  * Merges provided keys into existing preferences.
  */
 export async function updateUserPreferences(prefs: {
-  theme_mode?: 'light' | 'dark';
+  theme_mode?: 'light' | 'dark' | 'auto';
   date_format?: 'MM/DD/YYYY' | 'DD/MM/YYYY';
   timezone?: string;
   autoAddEvents?: boolean;

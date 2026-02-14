@@ -9,6 +9,7 @@ import {
   SignOut,
   MoonStars,
   SunHorizon,
+  FlashlightIcon,
   GlobeSimple,
   FootballHelmet,
   CaretLeft,
@@ -454,12 +455,14 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                     transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                     style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
                   >
-                    {themeMode === 'dark' ? (
+                    {themeMode === 'auto' ? (
+                      <FlashlightIcon size={20} weight="duotone" />
+                    ) : themeMode === 'dark' ? (
                       <MoonStars size={20} weight="duotone" />
                     ) : (
                       <SunHorizon size={20} weight="duotone" />
                     )}
-                    <span>{themeMode === 'dark' ? 'Dark mode' : 'Light mode'}</span>
+                    <span>{themeMode === 'auto' ? 'Auto theme' : themeMode === 'dark' ? 'Dark mode' : 'Light mode'}</span>
                   </motion.div>
                 </AnimatePresence>
               </button>
