@@ -80,6 +80,10 @@ def sync_user_profile():
         # Google and Microsoft sign-in include calendar scopes, Apple does not
         usage = ["auth", "calendar"] if provider in ('google', 'microsoft') else ["auth"]
 
+        # Browser-detected timezone from frontend
+        request_data = request.get_json(silent=True) or {}
+        browser_timezone = request_data.get('timezone')
+
         # Check if user exists
         existing_user = User.get_by_id(user_id)
         is_new_user = existing_user is None
@@ -103,6 +107,9 @@ def sync_user_profile():
                     "linked_at": "now"
                 }]
             }
+            # Set timezone from browser on first sign-up
+            if browser_timezone:
+                user_data["timezone"] = browser_timezone
             response = supabase.table("users").upsert(user_data).execute()
             user = response.data[0]
         else:
@@ -116,10 +123,13 @@ def sync_user_profile():
                 display_name=profile['display_name'],
                 photo_url=profile['photo_url']
             )
+            # Backfill timezone from browser if not yet set
+            if browser_timezone and not existing_user.get('timezone'):
+                supabase = get_supabase()
+                supabase.table("users").update({"timezone": browser_timezone}).eq("id", user_id).execute()
             user = User.get_by_id(user_id)
 
         # Migrate guest sessions to authenticated user account
-        request_data = request.get_json(silent=True) or {}
         guest_session_ids = request_data.get('guest_session_ids', [])
         migrated_sessions = []
 

@@ -6,6 +6,7 @@ Handles OAuth token loading, refresh, and validation for Microsoft Graph API.
 from typing import Optional, Dict, Any
 from datetime import datetime
 import os
+import threading
 import requests
 
 from database.models import User
@@ -221,3 +222,16 @@ def store_microsoft_tokens(user_id: str, token_data: dict) -> None:
     # Set as primary calendar provider if none is set
     if not user.get('primary_calendar_provider'):
         User.set_primary_calendar(user_id, 'microsoft')
+
+    # Fetch and store timezone from Microsoft mailbox settings (non-blocking)
+    def _fetch_timezone():
+        try:
+            from . import fetch
+            tz = fetch.get_mailbox_timezone(user_id)
+            if tz:
+                from preferences.service import PersonalizationService
+                PersonalizationService.save_timezone(user_id, tz)
+        except Exception as e:
+            print(f"Warning: Could not fetch/store timezone for user {user_id}: {e}")
+
+    threading.Thread(target=_fetch_timezone, daemon=True).start()

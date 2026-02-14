@@ -230,7 +230,9 @@ export async function syncUserProfile(): Promise<{
   const response = await fetch(`${API_URL}/auth/sync-profile`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({}),
+    body: JSON.stringify({
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }),
   });
 
   return handleResponse(response);

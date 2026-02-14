@@ -70,8 +70,8 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
   const [useInternationalDate, setUseInternationalDate] = useState(
     preferences.date_format === 'DD/MM/YYYY'
   );
-  const [userTimezone, setUserTimezone] = useState<string | null>(
-    preferences.timezone || null
+  const [userTimezone, setUserTimezone] = useState<string>(
+    preferences.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
   );
   const [logoutHovered, setLogoutHovered] = useState(false);
 
@@ -107,7 +107,7 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
     try {
       const response = await getUserPreferences();
       if (response.exists && response.preferences) {
-        setUserTimezone(response.preferences.timezone);
+        setUserTimezone(response.preferences.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
       }
     } catch (error) {
       console.error('Failed to fetch user preferences:', error);
@@ -388,7 +388,7 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                 <Clock size={20} weight="duotone" />
                 <span>Timezone</span>
                 <div className="settings-popup-value">
-                  {userTimezone || 'Not set'}
+                  {userTimezone}
                 </div>
               </div>
             </>

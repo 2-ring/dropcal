@@ -10,6 +10,39 @@ import requests
 from . import auth, transform
 
 
+def get_mailbox_timezone(user_id: str) -> Optional[str]:
+    """
+    Fetch user's timezone from Microsoft mailbox settings.
+
+    Args:
+        user_id: User's UUID
+
+    Returns:
+        IANA timezone string (e.g. "America/New_York") or None if error
+    """
+    credentials = auth.load_credentials(user_id)
+    if not credentials:
+        return None
+
+    if not auth.refresh_if_needed(user_id, credentials):
+        return None
+
+    credentials = auth.load_credentials(user_id)
+    access_token = credentials['access_token']
+
+    try:
+        response = requests.get(
+            'https://graph.microsoft.com/v1.0/me/mailboxSettings',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data.get('timeZone')
+    except Exception as e:
+        print(f"Warning: Could not fetch Microsoft mailbox timezone: {e}")
+        return None
+
+
 def list_events(
     user_id: str,
     max_results: int = 100,
