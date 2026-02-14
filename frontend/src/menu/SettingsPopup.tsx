@@ -18,7 +18,8 @@ import {
   Star,
   Clock,
   Plugs,
-  UserCircleGear,
+  DotsThreeOutlineVertical,
+  MaskSad,
 } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -26,8 +27,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import './SettingsPopup.css';
+import '../auth/AuthModal.css';
 import { useState, useEffect, useRef } from 'react';
-import { getCalendarProviders, setPrimaryCalendarProvider, getUserPreferences, sendAppleCredentials, updateUserPreferences, disconnectCalendarProvider } from '../api/backend-client';
+import { getCalendarProviders, setPrimaryCalendarProvider, getUserPreferences, sendAppleCredentials, updateUserPreferences, disconnectCalendarProvider, deleteAccount } from '../api/backend-client';
 import { useTheme } from '../theme';
 
 interface SettingsPopupProps {
@@ -71,6 +73,10 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
   // Calendar integrations data from backend
   const [calendars, setCalendars] = useState<CalendarIntegration[]>([]);
   const [disconnectMode, setDisconnectMode] = useState(false);
+
+  // Delete account confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Apple connect form state
   const [appleId, setAppleId] = useState('');
@@ -132,6 +138,17 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
       // signOut does a full page reload, so onClose() is not needed
     } catch (error) {
       console.error('Failed to sign out:', error);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await deleteAccount();
+      await signOut();
+    } catch (error) {
+      console.error('Failed to delete account:', error);
+      setDeleting(false);
     }
   };
 
@@ -301,7 +318,7 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
               <div className="settings-popup-email">{userEmail}</div>
               {viewMode === 'main' && (
                 <button className="settings-popup-back-button" onClick={() => setViewMode('account')} style={{ marginRight: 0, marginLeft: 4 }}>
-                  <UserCircleGear size={16} weight="duotone" />
+                  <DotsThreeOutlineVertical size={16} />
                 </button>
               )}
             </div>
@@ -361,9 +378,15 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
               </button>
             </div>
           ) : viewMode === 'account' ? (
-            <div style={{ padding: '16px 12px', color: 'var(--text-secondary)', fontSize: '13px', textAlign: 'center' }}>
-              Account settings coming soon
-            </div>
+            <>
+              <div className="settings-popup-item" style={{ cursor: 'default', opacity: 0.8 }}>
+                <Clock size={20} weight="duotone" />
+                <span>Timezone</span>
+                <div className="settings-popup-value">
+                  {userTimezone || 'Not set'}
+                </div>
+              </div>
+            </>
           ) : viewMode === 'main' ? (
             <>
               <button className="settings-popup-item" onClick={handleUpgradePlan}>
@@ -413,14 +436,6 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                   </AnimatePresence>
                 </div>
               </button>
-
-              <div className="settings-popup-item" style={{ cursor: 'default', opacity: 0.8 }}>
-                <Clock size={20} weight="duotone" />
-                <span>Timezone</span>
-                <div className="settings-popup-value">
-                  {userTimezone || 'Not set'}
-                </div>
-              </div>
 
               <button
                 className="settings-popup-item"
@@ -529,12 +544,12 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
           ) : viewMode === 'account' ? (
             <button
               className="settings-popup-item settings-popup-logout"
-              onClick={handleLogout}
+              onClick={() => setShowDeleteConfirm(true)}
               onMouseEnter={() => setLogoutHovered(true)}
               onMouseLeave={() => setLogoutHovered(false)}
             >
-              <SignOut size={20} weight={logoutHovered ? "bold" : "regular"} />
-              <span style={{ fontWeight: logoutHovered ? 600 : 400 }}>Log out</span>
+              <MaskSad size={20} weight={logoutHovered ? "bold" : "regular"} />
+              <span style={{ fontWeight: logoutHovered ? 600 : 400 }}>Delete account</span>
             </button>
           ) : viewMode === 'integrations' && disconnectMode ? (
             <button
@@ -567,6 +582,39 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
           )}
         </div>
       </div>
+
+      {/* Delete account confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="auth-modal-backdrop" style={{ pointerEvents: 'auto' }} onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteConfirm(false); }}>
+          <div className="auth-modal" style={{ maxWidth: 360, gap: 0, textAlign: 'center' }}>
+            <MaskSad size={40} weight="duotone" style={{ color: 'var(--error)', marginBottom: 8 }} />
+            <h2 className="display-text auth-modal-heading" style={{ fontSize: '1.5rem', padding: '0 1rem 0.75rem', color: 'var(--error)' }}>
+              Delete your account?
+            </h2>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 0 1.5rem', lineHeight: 1.5, padding: '0 1rem' }}>
+              This will permanently delete your account, events, sessions, and disconnect all calendar providers. This cannot be undone.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+              <button
+                className="menu-button menu-button-action"
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                style={{ background: 'var(--error)', color: 'white', opacity: deleting ? 0.5 : 1, width: '100%', margin: 0 }}
+              >
+                <span className="menu-button-text">{deleting ? 'Deleting...' : 'Permanently delete'}</span>
+              </button>
+              <button
+                className="menu-button menu-button-action"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                style={{ width: '100%', margin: 0 }}
+              >
+                <span className="menu-button-text">Cancel</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

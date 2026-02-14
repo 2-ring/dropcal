@@ -131,12 +131,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (shouldSync && !syncInitiatedRef.current) {
           syncInitiatedRef.current = true;
-          // Background: sync profile, store tokens, load preferences
+          // Background: sync profile + store tokens in parallel, then load preferences
           (async () => {
-            try {
-              const result = await syncUserProfile();
-              console.log(result.is_new_user ? 'Account created successfully' : 'Welcome back');
+            // Run profile sync and token storage concurrently
+            const profileSyncPromise = syncUserProfile()
+              .then(result => console.log(result.is_new_user ? 'Account created successfully' : 'Welcome back'))
+              .catch(error => console.error('Failed to sync user profile:', error));
 
+            const tokenStoragePromise = hasProviderToken
+              ? storeGoogleCalendarTokens({
+                  access_token: newSession.provider_token!,
+                  refresh_token: newSession.provider_refresh_token || undefined,
+                })
+                  .then(() => console.log('Google Calendar tokens stored successfully'))
+                  .catch(error => console.error('Failed to store Google Calendar tokens:', error))
+              : Promise.resolve();
+
+            await Promise.all([profileSyncPromise, tokenStoragePromise]);
+
+            // Load preferences after profile is synced
+            try {
               const profile = await getUserProfile();
               if (profile.user?.preferences) {
                 setPreferences(profile.user.preferences);
@@ -145,20 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setPrimaryCalendarProvider(profile.user.primary_calendar_provider);
               }
             } catch (error) {
-              console.error('Failed to sync user profile:', error);
-            }
-
-            // Store Google Calendar tokens if present (only after OAuth redirect)
-            if (hasProviderToken) {
-              try {
-                await storeGoogleCalendarTokens({
-                  access_token: newSession.provider_token!,
-                  refresh_token: newSession.provider_refresh_token || undefined,
-                });
-                console.log('Google Calendar tokens stored successfully');
-              } catch (error) {
-                console.error('Failed to store Google Calendar tokens:', error);
-              }
+              console.error('Failed to load user profile:', error);
             }
 
             // Signal that calendar tokens are now stored and ready

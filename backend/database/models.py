@@ -748,7 +748,10 @@ class Session:
             List of session dicts, ordered by created_at desc
         """
         supabase = get_supabase()
-        response = supabase.table("sessions").select("*")\
+        # Select only columns needed for the session list — skip heavy blobs
+        # like processed_events and input_content to speed up the query
+        list_columns = "id,user_id,title,input_type,status,event_ids,created_at,added_to_calendar,guest_mode"
+        response = supabase.table("sessions").select(list_columns)\
             .eq("user_id", user_id)\
             .neq("status", "error")\
             .order("created_at", desc=True)\
@@ -758,7 +761,7 @@ class Session:
         return [
             s for s in response.data
             if s.get('status') in ('pending', 'processing')
-            or len(s.get('event_ids') or s.get('processed_events') or []) > 0
+            or len(s.get('event_ids') or []) > 0
         ]
 
     @staticmethod

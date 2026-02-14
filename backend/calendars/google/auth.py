@@ -7,6 +7,7 @@ from google.oauth2.credentials import Credentials
 from typing import Optional
 from datetime import datetime
 import os
+import threading
 
 from database.models import User
 
@@ -220,12 +221,15 @@ def store_google_tokens_from_supabase(user_id: str, provider_token: dict) -> Non
     if not user.get('primary_calendar_provider'):
         User.set_primary_calendar(user_id, 'google')
 
-    # Fetch and store timezone from Google Calendar settings
-    try:
-        from . import fetch
-        settings = fetch.get_calendar_settings(user_id)
-        if settings and settings.get('timezone'):
-            from preferences.service import PersonalizationService
-            PersonalizationService.save_timezone(user_id, settings['timezone'])
-    except Exception as e:
-        print(f"Warning: Could not fetch/store timezone for user {user_id}: {e}")
+    # Fetch and store timezone from Google Calendar settings (non-blocking)
+    def _fetch_timezone():
+        try:
+            from . import fetch
+            settings = fetch.get_calendar_settings(user_id)
+            if settings and settings.get('timezone'):
+                from preferences.service import PersonalizationService
+                PersonalizationService.save_timezone(user_id, settings['timezone'])
+        except Exception as e:
+            print(f"Warning: Could not fetch/store timezone for user {user_id}: {e}")
+
+    threading.Thread(target=_fetch_timezone, daemon=True).start()

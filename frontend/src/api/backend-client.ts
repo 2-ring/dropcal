@@ -666,6 +666,23 @@ export async function getUserPreferences(): Promise<{
   return handleResponse(response);
 }
 
+/**
+ * Delete the current user's account and all associated data.
+ */
+export async function deleteAccount(): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_URL}/auth/delete-account`, {
+    method: 'DELETE',
+    headers,
+  });
+
+  return handleResponse(response);
+}
+
 // ============================================================================
 // Guest Mode API Functions (No Authentication Required)
 // ============================================================================
