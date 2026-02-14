@@ -7,7 +7,7 @@ export function Privacy() {
       <PageHeader />
       <div className="legal-content">
         <h1>Privacy Policy</h1>
-        <p className="legal-updated">Last updated: February 13, 2026</p>
+        <p className="legal-updated">Last updated: February 14, 2026</p>
 
         <p>
           DropCal ("we", "our", "us") operates the dropcal.ai website and
@@ -95,7 +95,7 @@ export function Privacy() {
           All AI processing is performed on a per-user basis to provide
           features directly to you. We do not use your data to train, create,
           or improve any generalized or foundational AI models. Our AI
-          providers contractually commit to not using API inputs for model
+          providers' API terms prohibit them from using API inputs for model
           training.
         </p>
 
@@ -123,18 +123,19 @@ export function Privacy() {
             <strong>AI Providers (Anthropic, xAI, OpenAI)</strong> — Your input
             content, extracted event data, and calendar event samples are sent
             to AI models for event extraction and personalization. These
-            providers process data under commercial API agreements that prohibit
-            using inputs for model training.
+            providers' API terms prohibit them from using inputs for model
+            training.
           </li>
           <li>
             <strong>Deepgram</strong> — Audio files are sent for speech-to-text
             transcription when you submit audio recordings.
           </li>
           <li>
-            <strong>PostHog</strong> — Product analytics. We collect anonymized
-            usage data (page views, feature usage) to understand how DropCal is
-            used and improve the service. PostHog does not receive your calendar
-            data or input content.
+            <strong>PostHog</strong> — Product analytics. We collect usage data
+            such as page views and feature interactions to understand how
+            DropCal is used and improve the service. If you are signed in, this
+            data is associated with your account. PostHog does not receive your
+            calendar data or input content.
           </li>
         </ul>
 
@@ -197,9 +198,11 @@ export function Privacy() {
         </p>
         <p>
           If you disconnect a calendar provider, we delete the associated
-          access tokens from our systems. If you delete your account, we
-          permanently delete all of your data, including your profile, sessions,
-          events, uploaded files, learned preferences, and stored embeddings.
+          access tokens from our active systems. If you delete your account, we
+          delete all of your data from our active systems, including your
+          profile, sessions, events, uploaded files, learned preferences, and
+          stored embeddings. Residual copies may persist in encrypted backups
+          for a limited period before being overwritten.
         </p>
         <p>
           You may also revoke DropCal's access to your Google account at any
@@ -217,9 +220,9 @@ export function Privacy() {
         <h2>Cookies and Tracking</h2>
         <p>
           We use essential cookies for authentication and session management
-          (via Supabase). We use PostHog for anonymized product analytics
-          (page views and feature usage). We do not use advertising cookies or
-          sell data to advertisers.
+          (via Supabase). We use PostHog for product analytics (page views and
+          feature usage). We do not use advertising cookies or sell data to
+          advertisers.
         </p>
 
         <h2>Your Rights</h2>
@@ -240,10 +243,20 @@ export function Privacy() {
           </li>
         </ul>
 
+        <h2>Children</h2>
+        <p>
+          DropCal is not intended for use by anyone under the age of 13. We do
+          not knowingly collect personal information from children under 13. If
+          we become aware that we have collected data from a child under 13, we
+          will take steps to delete it promptly.
+        </p>
+
         <h2>Changes to This Policy</h2>
         <p>
           We may update this policy from time to time. We will notify users of
           significant changes by updating the date at the top of this page.
+          Your continued use of DropCal after changes are posted constitutes
+          acceptance of the updated policy.
         </p>
 
         <h2>Contact</h2>

@@ -172,13 +172,16 @@ data_collection_service = DataCollectionService(calendar_service)
 
 # Initialize Agents with their configured models (standard)
 agent_1_identification = EventIdentificationAgent(llm_agent_1)
-agent_2_extraction = EventExtractionAgent(llm_agent_2)
+from config.text import create_instructor_client
+_ic, _mn, _pv = create_instructor_client('agent_2_extraction')
+agent_2_extraction = EventExtractionAgent(_ic, _mn, _pv)
 agent_4_modification = EventModificationAgent(llm_agent_4)
 agent_3_personalization = PersonalizationAgent(llm_agent_3)
 
 # Initialize light agents for simple inputs (used by /process endpoint)
 agent_1_identification_light = EventIdentificationAgent(llm_agent_1_light)
-agent_2_extraction_light = EventExtractionAgent(llm_agent_2_light)
+_ic_l, _mn_l, _pv_l = create_instructor_client('agent_2_extraction', light=True)
+agent_2_extraction_light = EventExtractionAgent(_ic_l, _mn_l, _pv_l)
 
 # Initialize input processor factory and register all processors
 input_processor_factory = InputProcessorFactory()

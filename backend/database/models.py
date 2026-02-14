@@ -950,7 +950,8 @@ class Session:
     @staticmethod
     def delete(session_id: str) -> bool:
         """
-        Delete a session.
+        Delete a session and clean up associated resources.
+        Deletes uploaded files from storage and hard-deletes linked events.
 
         Args:
             session_id: Session's UUID
@@ -959,6 +960,31 @@ class Session:
             True if deletion was successful
         """
         supabase = get_supabase()
+
+        # Fetch session first to get file path and event IDs
+        session = Session.get_by_id(session_id)
+        if not session:
+            return False
+
+        # Delete uploaded file from Supabase Storage if this was a file-based session
+        input_type = session.get('input_type', 'text')
+        input_content = session.get('input_content', '')
+        if input_type != 'text' and input_content and '/' in input_content:
+            try:
+                from storage.file_handler import FileStorage
+                FileStorage.delete_file(input_content)
+            except Exception as e:
+                print(f"Warning: Failed to delete file {input_content} for session {session_id}: {e}")
+
+        # Hard-delete associated events
+        event_ids = session.get('event_ids') or []
+        if event_ids:
+            try:
+                supabase.table("events").delete().in_("id", event_ids).execute()
+            except Exception as e:
+                print(f"Warning: Failed to delete events for session {session_id}: {e}")
+
+        # Delete the session itself
         response = supabase.table("sessions").delete().eq("id", session_id).execute()
         return len(response.data) > 0
 

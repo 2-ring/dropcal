@@ -17,7 +17,11 @@ from utils.encryption import decrypt_token
 class GoogleCalendarClient:
     """Client for Google Calendar API using database-stored tokens."""
 
-    SCOPES = ['https://www.googleapis.com/auth/calendar']
+    SCOPES = [
+        'https://www.googleapis.com/auth/calendar.events',
+        'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
+        'https://www.googleapis.com/auth/calendar.settings.readonly',
+    ]
 
     def __init__(self, user_id: str):
         """

@@ -17,7 +17,11 @@ class CalendarService:
     """Service class for Google Calendar API operations"""
 
     # OAuth 2.0 scopes - request access to read and write calendar events
-    SCOPES = ['https://www.googleapis.com/auth/calendar']
+    SCOPES = [
+        'https://www.googleapis.com/auth/calendar.events',
+        'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
+        'https://www.googleapis.com/auth/calendar.settings.readonly',
+    ]
 
     # OAuth redirect URI - must match what's configured in Google Cloud Console
     # Use environment variable in production, fallback to localhost for development

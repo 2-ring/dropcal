@@ -11,7 +11,11 @@ import os
 from database.models import User
 
 
-SCOPES = ['https://www.googleapis.com/auth/calendar']
+SCOPES = [
+    'https://www.googleapis.com/auth/calendar.events',
+    'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
+    'https://www.googleapis.com/auth/calendar.settings.readonly',
+]
 
 
 def load_credentials(user_id: str) -> Optional[Credentials]:

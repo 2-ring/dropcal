@@ -18,6 +18,8 @@ from events.service import EventService
 from preferences.service import PersonalizationService
 from processing.parallel import process_events_parallel, EventProcessingResult
 from processing.chunked_identification import identify_events_chunked
+from extraction.langextract_identifier import identify_events_langextract
+from config.langextract import PASSES_SIMPLE, PASSES_COMPLEX
 from config.posthog import (
     set_tracking_context, flush_posthog, capture_agent_error,
     capture_pipeline_trace, capture_phase_span, get_tracking_property,
@@ -406,13 +408,17 @@ class SessionProcessor:
             )
             title_thread.start()
 
-            # Phase 1: Event Identification (with chunking for large inputs)
+            # Phase 1: Event Identification (LangExtract for text inputs)
             phase1_start = _time.time()
-            identification_result = identify_events_chunked(
-                agent=agent_1,
-                raw_input=text,
-                metadata={},
-                requires_vision=False,
+
+            # Determine extraction passes from complexity
+            from config.complexity import InputComplexityAnalyzer, ComplexityLevel
+            complexity_for_passes = InputComplexityAnalyzer.analyze(text, input_type='text')
+            passes = PASSES_COMPLEX if complexity_for_passes.level == ComplexityLevel.COMPLEX else PASSES_SIMPLE
+
+            identification_result = identify_events_langextract(
+                text=text,
+                extraction_passes=passes,
                 tracking_context={
                     'distinct_id': user_id,
                     'trace_id': session_id,
@@ -583,21 +589,43 @@ class SessionProcessor:
             )
             title_thread.start()
 
-            # Phase 1: Event Identification (with chunking for large text inputs)
+            # Phase 1: Event Identification
             phase1_start = _time.time()
-            identification_result = identify_events_chunked(
-                agent=agent_1,
-                raw_input=text,
-                metadata=metadata,
-                requires_vision=requires_vision,
-                tracking_context={
-                    'distinct_id': user_id,
-                    'trace_id': session_id,
-                    'pipeline': pipeline_label,
-                    'input_type': input_type,
-                    'is_guest': is_guest,
-                },
-            )
+
+            if requires_vision:
+                # Image inputs: use old Agent 1 with vision (LangExtract is text-only)
+                identification_result = identify_events_chunked(
+                    agent=agent_1,
+                    raw_input=text,
+                    metadata=metadata,
+                    requires_vision=True,
+                    tracking_context={
+                        'distinct_id': user_id,
+                        'trace_id': session_id,
+                        'pipeline': pipeline_label,
+                        'input_type': input_type,
+                        'is_guest': is_guest,
+                    },
+                )
+            else:
+                # Text-based inputs (audio transcript, PDF/docling, document, email):
+                # use LangExtract for identification
+                from config.complexity import InputComplexityAnalyzer, ComplexityLevel
+                complexity_for_passes = InputComplexityAnalyzer.analyze(text, input_type=file_type)
+                passes = PASSES_COMPLEX if complexity_for_passes.level == ComplexityLevel.COMPLEX else PASSES_SIMPLE
+
+                identification_result = identify_events_langextract(
+                    text=text,
+                    extraction_passes=passes,
+                    tracking_context={
+                        'distinct_id': user_id,
+                        'trace_id': session_id,
+                        'pipeline': pipeline_label,
+                        'input_type': input_type,
+                        'is_guest': is_guest,
+                    },
+                )
+
             phase1_ms = (_time.time() - phase1_start) * 1000
 
             capture_phase_span(
