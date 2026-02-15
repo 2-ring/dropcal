@@ -15,7 +15,7 @@ import {
     SoundcloudLogo,
     TwitchLogo,
     DiscordLogo,
-    PlayCircle,
+    EyesIcon,
     ArrowSquareOut
 } from '@phosphor-icons/react'
 import { CTAButton } from './CTAButton'
@@ -52,32 +52,24 @@ function MicrosoftLogo({ className }: { className?: string }) {
 
 export function Omnipresence() {
 
-    // 1. Icon List (Source) - Multi-colored as requested
+    // 1. Icon List (Source)
     const iconSource = [
-        { Icon: Envelope, color: '#EA4335' },
-        { Icon: ChatCircleText, color: '#34A853' },
-        { Icon: Camera, color: '#FBBC04' },
-        { Icon: FileText, color: '#4285F4' },
-        { Icon: Microphone, color: '#F97316' },
-        { Icon: LinkIcon, color: '#A855F7' },
-        { Icon: WhatsappLogo, color: '#25D366' },
-        { Icon: SlackLogo, color: '#4A154B' },
-        { Icon: FigmaLogo, color: '#F24E1E' },
-        { Icon: NotionLogo, color: 'var(--text-secondary)' }, // Notion usually B/W, but Neutral Duo for now looks good
-        { Icon: SpotifyLogo, color: '#1DB954' },
-        { Icon: SoundcloudLogo, color: '#FF5500' },
-        { Icon: TwitchLogo, color: '#9146FF' },
-        { Icon: DiscordLogo, color: '#5865F2' },
+        { Icon: Envelope },
+        { Icon: ChatCircleText },
+        { Icon: Camera },
+        { Icon: FileText },
+        { Icon: Microphone },
+        { Icon: LinkIcon },
+        { Icon: WhatsappLogo },
+        { Icon: SlackLogo },
+        { Icon: FigmaLogo },
+        { Icon: NotionLogo },
+        { Icon: SpotifyLogo },
+        { Icon: SoundcloudLogo },
+        { Icon: TwitchLogo },
+        { Icon: DiscordLogo },
     ]
 
-    // Prepare the React Nodes for the component
-    // We want neutral Duotone styling for the icons themselves
-    // Wait, recent request was "Neutral Duotone" then user said "Look at commit before... for coloring" (Multi-colored)
-    // Then user said "No... icons should not be colored" (Neutral).
-    // THEN User said "No look how the COLORING... was done before" (Multi-colored)
-    // THEN User said "I DONT want colors!!!!... secondary text color duo tone" (Neutral).
-    // The LATEST instruction is "I DONT want colors!!!!... secondary text color duo tone".
-    // So I will use NEUTRAL_COLOR.
     const NEUTRAL_COLOR = 'var(--text-secondary)'
 
     const iconNodes = iconSource.map((item, i) => (
@@ -128,7 +120,7 @@ export function Omnipresence() {
                         </div>
                         <div className="platform-chip">
                             <MicrosoftLogo className="platform-icon" />
-                            Outlook
+                            Microsoft
                         </div>
                     </div>
 
@@ -145,7 +137,7 @@ export function Omnipresence() {
                         to="/"
                         backgroundColor="#ffffff"
                         textColor="var(--primary-color)"
-                        iconLeft={<PlayCircle size={22} weight="duotone" />}
+                        iconLeft={<EyesIcon size={22} weight="duotone" />}
                         iconRight={<ArrowSquareOut size={20} weight="duotone" />}
                     />
                 </div>

@@ -42,10 +42,10 @@
     padding: 6px 12px;
 
     background-color: transparent;
-    border: var(--chip-border) solid var(--background);
+    border: var(--chip-border) solid #ffffff;
     border-radius: 9999px;
 
-    color: var(--background);
+    color: #ffffff;
     font-size: 15px;
     font-weight: 700;
 
@@ -138,12 +138,30 @@
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     z-index: 20;
     overflow: hidden;
-    animation: phone-float 4s ease-in-out infinite;
+    opacity: 0;
+    animation:
+        phone-enter 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+        phone-float 5s ease-in-out 1.2s infinite;
+}
+
+@keyframes phone-enter {
+    0% {
+        opacity: 0;
+        transform: translateY(80px) scale(0.97);
+    }
+    70% {
+        opacity: 1;
+        transform: translateY(-6px) scale(1);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 @keyframes phone-float {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-14px); }
+    50% { transform: translateY(-10px); }
 }
 
 .phone-screen {
@@ -188,7 +206,6 @@
     width: 36px;
     height: 36px;
 }
-
 
 /* Screen Content Placeholder */
 .app-screen-placeholder {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { List, X, Mailbox, FingerprintSimple, Flask } from '@phosphor-icons/react'
 import { Logo } from '../../components/Logo'
+import { CTAButton } from './CTAButton'
 import { useTheme } from '../../theme/ThemeProvider'
 import wordImageLight from '../../assets/brand/light/word.png'
 import wordImageDark from '../../assets/brand/dark/word.png'
@@ -45,10 +46,14 @@ export function NavBar() {
                             <FingerprintSimple size={20} weight="duotone" />
                             Log In
                         </button>
-                        <button className="nav-cta-button" onClick={() => navigate('/')}>
-                            <Flask size={20} weight="duotone" style={{ marginRight: '8px' }} />
-                            Join Beta
-                        </button>
+                        <CTAButton
+                            text="Join Beta"
+                            iconLeft={<Flask size={20} weight="duotone" />}
+                            to="/"
+                            backgroundColor="var(--primary)"
+                            textColor="white"
+                            className="nav-cta-button"
+                        />
 
                         <button
                             className="mobile-menu-toggle"

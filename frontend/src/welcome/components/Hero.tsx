@@ -7,12 +7,12 @@ import {
     Microphone,
     ChatCircleText,
     Notepad,
-    CalendarBlank,
     CheckCircle,
     ShootingStar,
     Link
 } from '@phosphor-icons/react';
 import { CTAButton } from './CTAButton';
+import { AppIcon } from '../AppIcon';
 import './Hero.css';
 
 // Input Data
@@ -156,10 +156,7 @@ const Hero = () => {
                             animate={{ scale: [1, 1.05, 1] }}
                             transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
                         >
-                            <div className="dropcal-icon">
-                                <CalendarBlank weight="duotone" />
-                            </div>
-
+                            <AppIcon size={120} />
                         </motion.div>
                     </div>
 

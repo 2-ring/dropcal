@@ -32,7 +32,7 @@
     font-size: 11px;
     opacity: 0.5;
     z-index: 0;
-    color: var(--background);
+    color: #ffffff;
 }
 
 .footer-legal {
@@ -43,7 +43,7 @@
     font-size: 11px;
     opacity: 0.5;
     z-index: 0;
-    color: var(--background);
+    color: #ffffff;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -58,13 +58,17 @@
     gap: 0;
 }
 
+.footer-center > :first-child {
+    margin-bottom: -12px;
+}
+
 .footer-socials {
     display: flex;
     gap: 12px;
 }
 
 .social-link {
-    color: var(--background);
+    color: #ffffff;
     opacity: 0.8;
     font-size: 20px;
     transition: all 0.2s ease;
@@ -74,7 +78,7 @@
 }
 
 .social-link:hover {
-    color: var(--background);
+    color: #ffffff;
     opacity: 1;
     transform: translateY(-2px);
 }
