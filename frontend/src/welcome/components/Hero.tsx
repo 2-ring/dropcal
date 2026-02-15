@@ -13,6 +13,7 @@ import {
     ShootingStar,
     Link
 } from '@phosphor-icons/react';
+import { CTAButton } from './CTAButton';
 import './Hero.css';
 
 // Input Data
@@ -61,49 +62,25 @@ const Hero = () => {
                 </p>
 
                 <div className="hero-ctas">
-                    <button onClick={() => navigate('/')} className="hero-cta-button">
-                        <ShootingStar size={22} weight="duotone" />
-                        See the magic
-                        <Link size={18} weight="bold" />
-                    </button>
+                    <CTAButton
+                        text="See the magic"
+                        to="/"
+                        backgroundColor="var(--primary)"
+                        textColor="white"
+                        iconLeft={<ShootingStar size={22} weight="duotone" />}
+                        iconRight={<Link size={18} weight="bold" />}
+                    />
                 </div>
 
                 <div className="hero-animation">
                     {/* Left Column: Inputs */}
                     <div className="anim-column input-column">
                         {INPUTS.map((input, index) => {
-                            // Calculate relative position based on activeIndex
-                            // We want active item in center, but let's just do a simple stack visual 
-                            // where the active one pops out.
-                            // Actually, the PRD says: "stack of input cards... at any given moment one is active"
-                            // Let's position them absolute, but offset by index to make a list.
-                            // Simpler approach: Map them all, layout via flex column, but manage opacity/scale.
-
-                            // Refined approach: Render a "window" of items or just all of them with styles applied
-                            // relative to the active index.
-
                             const isActive = index === activeIndex;
-                            // Wrap distance for cyclic effect logic if we wanted a true carousel visual, 
-                            // but purely linear list with highlight is easier to parse.
-
-                            // Let's do a visual list, but "active" one is highlighted.
-                            // Just rendering all of them in a column might be too tall.
-                            // Let's use Framer Motion to animate their vertical positions so the active one is always vertically centered?
-                            // The PRD says "vertical stack... active card is active... others dimmed".
-                            // Let's render them relative to the active one.
-
-                            // Let's try rendering relative positions: 
-                            // 0 is active.
-                            // -1 is previous
-                            // 1 is next
-                            // We can use modulo logic to find relative index.
-
                             const len = INPUTS.length;
-                            // Proper modulo that handles negative numbers for cyclic 'previous' items
                             let relativeIndex = (index - activeIndex + len) % len;
                             if (relativeIndex > len / 2) relativeIndex -= len;
 
-                            // Only Show ones within range -2 to +2?
                             if (Math.abs(relativeIndex) > 2) return null;
 
                             return (
@@ -149,13 +126,9 @@ const Hero = () => {
                             viewBox="0 0 400 200"
                             preserveAspectRatio="none"
                         >
-
-
                             {/* Path from Input (Left) to Center */}
-                            {/* Assuming roughly center-left to center */}
                             <motion.path
                                 d="M 50,100 C 120,100 120,100 180,100"
-                                // Bezier curve: start (50,100), control1, control2, end (180,100) -> Center x is ~200
                                 fill="none"
                                 stroke="var(--primary)"
                                 strokeWidth="2"

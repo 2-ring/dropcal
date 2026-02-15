@@ -29,55 +29,77 @@
 
 .platform-chips {
     display: flex;
+    justify-content: center;
+    /* Center them if needed, or align left? User didn't specify, but existing was left aligned in flex usually. Default flex is row. */
+    align-items: center;
     margin-bottom: 32px;
+    padding-left: 4px;
+    /* Offset the first negative margin if needed, roughly */
 }
 
 .platform-chip {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    /* Light translucent background for chips on blue */
-    background-color: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #ffffff;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.3s ease;
+    gap: 10px;
+    padding: 10px 24px;
+
+    /* Design: Black bg, Cream border */
+    background-color: #111111;
+    /* Almost black to be softer? Or pure black. User image looked dark. */
+    background-color: #1a1a1a;
+    /* User said "black background". Let's go with a very dark grey/black to be safe or #000.  */
+    background-color: #0E0E0E;
+
+    border: 3px solid #FFFBEB;
+    /* Cream/Off-white */
+    border-radius: 9999px;
+    /* Pill */
+
+    color: #FFFBEB;
+    /* Text matches border */
+    font-size: 16px;
+    font-weight: 700;
+    /* Bold text */
+
+    /* Negative margin for overlap */
+    margin-left: -3px;
+    /* Equal to border width */
+
+    position: relative;
+    /* For stacking context */
+    z-index: 1;
+
+    transition: transform 0.2s ease, z-index 0s;
 }
 
 .platform-chip:hover {
-    background-color: rgba(255, 255, 255, 0.25);
-    color: #ffffff;
+    z-index: 10;
+    transform: translateY(-2px);
+    background-color: #000000;
 }
 
 .platform-chip:first-child {
-    border-top-left-radius: 9999px;
-    border-bottom-left-radius: 9999px;
-    border-right: none;
-}
-
-.platform-chip:last-child {
-    border-top-right-radius: 9999px;
-    border-bottom-right-radius: 9999px;
-    border-left: none;
-}
-
-.platform-chip:not(:first-child):not(:last-child) {
-    border-left: 1px solid rgba(255, 255, 255, 0.2);
-    border-right: 1px solid rgba(255, 255, 255, 0.2);
+    margin-left: 0;
 }
 
 .platform-icon {
-    width: 16px;
-    height: 16px;
-    opacity: 0.9;
-    color: #ffffff;
+    width: 20px;
+    height: 20px;
+    color: #FFFBEB;
+    /* Icon matches border/text */
+}
+
+.platform-icon-windows {
+    width: 20px;
+    height: 20px;
+    /* No color override, use SVG colors */
 }
 
 .omnipresence-title {
-    font-family: var(--display-font), var(--font-serif, serif);
+    font-family: 'Chillax', sans-serif;
     font-size: 48px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
     line-height: 1.1;
     color: #ffffff;
     margin-bottom: 24px;
@@ -94,21 +116,27 @@
 .omnipresence-cta {
     display: inline-flex;
     align-items: center;
-    padding: 12px 28px;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    border-radius: 12px;
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: 500;
-    background: transparent;
+    gap: 10px;
+    padding: 16px 32px;
+    border: none;
+    border-radius: 100px;
+
+    /* Solid Background Style (White on Blue) */
+    background-color: #ffffff;
+    color: var(--primary-color, #1170C5);
+
+    font-size: 18px;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .omnipresence-cta:hover {
-    border-color: #ffffff;
-    background-color: rgba(255, 255, 255, 0.1);
-    transform: translateY(-1px);
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    background-color: #f8fafc;
+    /* Slight dim on hover */
 }
 
 /* Right Visual */
