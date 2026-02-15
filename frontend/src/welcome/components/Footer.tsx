@@ -15,19 +15,11 @@ export function Footer() {
 
                 {/* Center: Brand + Socials */}
                 <div className="footer-center">
-                    <div className="footer-logo">
-                        <WordMark size={24} themeOverride="white" />
-                    </div>
+                    <WordMark size={24} themeOverride="white" />
                     <div className="footer-socials">
-                        <a href="#" className="social-link" aria-label="Twitter">
-                            <TwitterLogo weight="duotone" />
-                        </a>
-                        <a href="#" className="social-link" aria-label="Instagram">
-                            <InstagramLogo weight="duotone" />
-                        </a>
-                        <a href="#" className="social-link" aria-label="LinkedIn">
-                            <LinkedinLogo weight="duotone" />
-                        </a>
+                        <TwitterLogo weight="duotone" className="social-link" />
+                        <InstagramLogo weight="duotone" className="social-link" />
+                        <LinkedinLogo weight="duotone" className="social-link" />
                     </div>
                 </div>
 

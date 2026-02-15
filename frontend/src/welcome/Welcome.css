@@ -5,7 +5,7 @@
   color: var(--text-primary);
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Ensure smooth scrolling for the whole page */

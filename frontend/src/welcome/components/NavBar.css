@@ -1,72 +1,100 @@
+/* ===== Nav wrapper — sticky, transparent shell ===== */
 .welcome-nav {
     position: sticky;
     top: 0;
     z-index: 1000;
     width: 100%;
     height: 80px;
-    transition: all 0.3s ease;
-    border-bottom: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 24px;
 }
 
-.welcome-nav.scrolled {
-    background-color: rgba(var(--background-rgb, 255, 255, 255), 0.85);
-    /* Fallback if var not set, adjust to theme */
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom-color: rgba(0, 0, 0, 0.05);
-}
-
-/* Dark mode adjustments would typically go here or use CSS variables from theme */
-@media (prefers-color-scheme: dark) {
-    .welcome-nav.scrolled {
-        background-color: rgba(10, 10, 10, 0.85);
-        /* Approximate dark bg */
-        border-bottom-color: rgba(255, 255, 255, 0.05);
-    }
-}
-
+/* ===== Dock container — transitions between full-width and pill ===== */
 .nav-container {
     max-width: 1200px;
-    height: 100%;
-    margin: 0 auto;
-    padding: 0 24px;
+    width: 100%;
+    padding: 12px 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    border-radius: 999px;
+    background: transparent;
+    border: 1px solid transparent;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+    transition:
+        max-width 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+        padding 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+        background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        backdrop-filter 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        -webkit-backdrop-filter 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.welcome-nav.nav-docked .nav-container {
+    max-width: 820px;
+    padding: 8px 24px;
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.03),
+        0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .welcome-nav.nav-docked .nav-container {
+    background: rgba(26, 26, 26, 0.78);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.08),
+        0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== Logo + wordmark ===== */
 .nav-logo {
     cursor: pointer;
     display: flex;
     align-items: center;
 }
 
-.nav-links {
-    display: flex;
-    gap: 32px;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+.nav-wordmark-text {
+    height: 32px;
+    width: auto;
+    max-width: 110px;
+    object-fit: contain;
+    display: block;
+    margin-left: 8px;
+    opacity: 1;
+    overflow: hidden;
+    transition:
+        opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+        max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.nav-link {
-    font-size: 18px;
-    color: var(--text-secondary, #666);
-    text-decoration: none;
-    transition: color 0.2s;
-    font-weight: 500;
+.welcome-nav.nav-docked .nav-wordmark-text {
+    opacity: 0;
+    max-width: 0;
+    margin-left: 0;
 }
 
-.nav-link:hover {
-    color: var(--text-primary, #000);
-}
-
+/* ===== CTA container ===== */
 .nav-cta-container {
     display: flex;
     align-items: center;
     gap: 24px;
+    transition: gap 0.45s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.welcome-nav.nav-docked .nav-cta-container {
+    gap: 24px;
+}
+
+/* ===== Links & buttons ===== */
 .nav-secondary-link {
     display: flex;
     align-items: center;
@@ -81,6 +109,7 @@
     transition: color 0.2s;
     padding: 0;
     font-family: inherit;
+    white-space: nowrap;
 }
 
 .nav-secondary-link:hover {
@@ -96,10 +125,19 @@
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition:
+        transform 0.2s,
+        box-shadow 0.2s,
+        padding 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
-    /* Ensure icon and text are aligned */
+    white-space: nowrap;
+}
+
+.welcome-nav.nav-docked .nav-cta-button {
+    padding: 12px 24px;
+    font-size: 16px;
 }
 
 .nav-cta-button:hover {
@@ -107,6 +145,7 @@
     box-shadow: 0 4px 12px rgba(17, 112, 197, 0.25);
 }
 
+/* ===== Mobile menu toggle ===== */
 .mobile-menu-toggle {
     display: none;
     background: none;
@@ -116,11 +155,10 @@
     padding: 4px;
 }
 
-/* Mobile Menu */
+/* ===== Mobile menu overlay ===== */
 .mobile-menu {
     position: fixed;
     top: 64px;
-    /* Below nav */
     left: 0;
     width: 100%;
     height: calc(100vh - 64px);
@@ -152,23 +190,23 @@
     font-weight: 600;
 }
 
-/* Responsive */
+/* ===== Responsive ===== */
 @media (max-width: 768px) {
-    .nav-links {
-        display: none;
-    }
-
     .nav-secondary-link {
         display: none;
-        /* Hide secondary links on mobile to avoid crowding */
     }
 
     .nav-cta-button {
         display: none;
-        /* Hide primary CTA on mobile, show inside menu or just use formatting */
     }
 
     .mobile-menu-toggle {
         display: block;
+    }
+
+    /* On mobile, don't compress the dock as much */
+    .welcome-nav.nav-docked .nav-container {
+        max-width: 200px;
+        padding: 8px 16px;
     }
 }

@@ -58,17 +58,6 @@
     gap: 0;
 }
 
-.footer-logo {
-    opacity: 0.9;
-    transition: opacity 0.2s;
-    line-height: 0;
-    /* Remove line-height gap */
-}
-
-.footer-logo:hover {
-    opacity: 1;
-}
-
 .footer-socials {
     display: flex;
     gap: 12px;

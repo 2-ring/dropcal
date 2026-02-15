@@ -1,36 +1,40 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { List, X, Mailbox, FingerprintSimple, Flask } from '@phosphor-icons/react'
-import { WordMark } from '../../components/WordMark'
+import { Logo } from '../../components/Logo'
+import { useTheme } from '../../theme/ThemeProvider'
+import wordImageLight from '../../assets/brand/light/word.png'
+import wordImageDark from '../../assets/brand/dark/word.png'
 import './NavBar.css'
 
 export function NavBar() {
     const navigate = useNavigate()
-    const [isScrolled, setIsScrolled] = useState(false)
+    const { resolvedTheme } = useTheme()
+    const [isDocked, setIsDocked] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+    const wordImage = resolvedTheme === 'dark' ? wordImageDark : wordImageLight
 
     useEffect(() => {
         const handleScroll = () => {
-            setIsScrolled(window.scrollY > 10)
+            setIsDocked(window.scrollY > 150)
         }
-        window.addEventListener('scroll', handleScroll)
+        window.addEventListener('scroll', handleScroll, { passive: true })
         return () => window.removeEventListener('scroll', handleScroll)
     }, [])
 
     return (
         <>
-            <nav className={`welcome-nav ${isScrolled ? 'scrolled' : ''}`}>
+            <nav className={`welcome-nav ${isDocked ? 'nav-docked' : ''}`}>
                 <div className="nav-container">
                     <div className="nav-logo" onClick={() => navigate('/')}>
-                        <WordMark size={36} />
+                        <Logo size={32} />
+                        <img
+                            src={wordImage}
+                            alt="DropCal"
+                            className="nav-wordmark-text"
+                        />
                     </div>
-
-                    {/* Center links removed as per user request */}
-                    {/* <div className="nav-links">
-                        <a href="#" className="nav-link">Product</a>
-                        <a href="#" className="nav-link">Pricing</a>
-                        <a href="#" className="nav-link">Beta</a>
-                    </div> */}
 
                     <div className="nav-cta-container">
                         <a href="mailto:lucas@dropcal.ai" className="nav-secondary-link">
