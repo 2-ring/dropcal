@@ -16,3 +16,7 @@
   object-fit: contain;
   display: block;
 }
+
+.wordmark-word-white {
+  filter: brightness(0) invert(1);
+}

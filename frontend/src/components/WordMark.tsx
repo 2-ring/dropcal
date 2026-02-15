@@ -9,8 +9,8 @@ interface WordMarkProps {
   size?: number
   /** Optional class name for additional styling */
   className?: string
-  /** Optional theme override to force light or dark mode */
-  themeOverride?: 'light' | 'dark'
+  /** Optional theme override to force light, dark, or white mode */
+  themeOverride?: 'light' | 'dark' | 'white'
 }
 
 /**
@@ -22,6 +22,8 @@ export function WordMark({ size = 32, className = '', themeOverride }: WordMarkP
 
   // Determine effective theme
   const effectiveTheme = themeOverride || resolvedTheme
+
+  const isWhite = themeOverride === 'white'
 
   // Select word image based on theme
   const wordImage = effectiveTheme === 'dark' ? wordImageDark : wordImageLight
@@ -46,12 +48,12 @@ export function WordMark({ size = 32, className = '', themeOverride }: WordMarkP
     >
       <Logo
         size={size}
-        color={themeOverride === 'dark' ? '#ffffff' : undefined}
+        color={isWhite ? '#ffffff' : themeOverride === 'dark' ? '#ffffff' : undefined}
       />
       <img
         src={wordImage}
         alt="DropCal"
-        className="wordmark-word"
+        className={`wordmark-word${isWhite ? ' wordmark-word-white' : ''}`}
       />
     </div>
   )

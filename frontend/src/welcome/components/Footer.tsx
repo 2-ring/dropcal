@@ -16,7 +16,7 @@ export function Footer() {
                 {/* Center: Brand + Socials */}
                 <div className="footer-center">
                     <div className="footer-logo">
-                        <WordMark size={24} themeOverride="dark" />
+                        <WordMark size={24} themeOverride="white" />
                     </div>
                     <div className="footer-socials">
                         <a href="#" className="social-link" aria-label="Twitter">
@@ -33,7 +33,11 @@ export function Footer() {
 
                 {/* Right: Legal */}
                 <div className="footer-right">
-                    {/* Legal links handled by global footer */}
+                    <span className="footer-legal">
+                        <a href="/privacy" className="footer-legal-link">Privacy Policy</a>
+                        <span className="footer-legal-divider">·</span>
+                        <a href="/terms" className="footer-legal-link">Terms of Service</a>
+                    </span>
                 </div>
 
             </div>

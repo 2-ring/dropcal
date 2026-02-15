@@ -29,33 +29,26 @@
 
 .platform-chips {
     display: flex;
-    justify-content: center;
-    /* Center them if needed, or align left? User didn't specify, but existing was left aligned in flex usually. Default flex is row. */
+    justify-content: flex-start;
     align-items: center;
     margin-bottom: 32px;
-    padding-left: 4px;
-    /* Offset the first negative margin if needed, roughly */
 }
 
 .platform-chip {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 24px;
+    gap: 6px;
+    padding: 8px 14px;
 
-    /* Design update: Transparent background, Thick Primary Text Color border */
     background-color: transparent;
-    border: 3px solid var(--text-primary);
+    border: 2px solid var(--background);
     border-radius: 9999px;
-    /* Pill */
 
-    color: var(--text-primary);
-    font-size: 16px;
+    color: var(--background);
+    font-size: 15px;
     font-weight: 700;
 
-    /* Negative margin for overlap */
-    margin-left: -3px;
-    /* Equal to border width */
+    margin-left: -2px;
 
     position: relative;
     /* For stacking context */
@@ -67,7 +60,6 @@
 .platform-chip:hover {
     z-index: 10;
     transform: translateY(-2px);
-    background-color: var(--background);
 }
 
 .platform-chip:first-child {
@@ -140,14 +132,17 @@
     width: 300px;
     height: 600px;
     background: #ffffff;
-    /* Phone frame usually needs to stand out, white or black. White frame looks clean on blue. */
     border-radius: 48px;
     border: 8px solid #f3f4f6;
-    /* Light gray border for phone frame */
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    /* Stronger shadow */
     z-index: 20;
     overflow: hidden;
+    animation: phone-float 4s ease-in-out infinite;
+}
+
+@keyframes phone-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-14px); }
 }
 
 .phone-screen {

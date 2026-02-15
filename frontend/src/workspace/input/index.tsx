@@ -95,6 +95,11 @@ export function InputWorkspace({
       ) : (
         <>
           <DesktopInputWorkspace {...inputProps} />
+          <div className="desktop-legal-links">
+            <a href="/privacy">Privacy Policy</a>
+            <span>·</span>
+            <a href="/terms">Terms of Service</a>
+          </div>
           <AnimatePresence mode="wait">
             {currentNotification && (
               <NotificationBar
