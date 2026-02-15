@@ -7,7 +7,7 @@
   /* Solid color based on feedback */
   text-decoration: none;
   border-bottom: none;
-  pointer-events: none;
+  cursor: pointer;
 }
 
 .top-bar-content {

@@ -59,17 +59,6 @@ const Hero = () => {
                     Photos, PDFs, emails, voice notes, text — DropCal turns any input into perfectly formatted calendar events. One click.
                 </p>
 
-                <div className="hero-ctas">
-                    <CTAButton
-                        text="See the magic"
-                        to="/"
-                        backgroundColor="var(--primary)"
-                        textColor="white"
-                        iconLeft={<ShootingStar size={22} weight="duotone" />}
-                        iconRight={<Link size={18} weight="bold" />}
-                    />
-                </div>
-
                 <div className="hero-animation">
                     {/* Left Column: Inputs */}
                     <div className="anim-column input-column">
@@ -208,6 +197,17 @@ const Hero = () => {
                 <div className="hero-labels">
                     <span className="hero-label-text">Any Input</span>
                     <span className="hero-label-text">Your Calendar</span>
+                </div>
+
+                <div className="hero-ctas">
+                    <CTAButton
+                        text="See the magic"
+                        to="/"
+                        backgroundColor="var(--primary)"
+                        textColor="white"
+                        iconLeft={<ShootingStar size={22} weight="duotone" />}
+                        iconRight={<Link size={18} weight="bold" />}
+                    />
                 </div>
             </div>
         </section>

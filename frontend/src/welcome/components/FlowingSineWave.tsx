@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import './FlowingSineWave.css'
+import { PathDescriptor, resolvePath } from './pathUtils'
 
 interface FlowingSineWaveProps {
     /** List of icon elements to rotate through */
@@ -8,10 +9,10 @@ interface FlowingSineWaveProps {
     iconSize: number;
     /** Exact spacing/padding between icons in pixels */
     gap: number;
-    /** SVG path definition (d attribute) for the curve */
-    path: string;
-    /** Total length of the path in pixels (used for distribution) */
-    pathLength: number;
+    /** SVG path string or array of {x,y} points (smooth spline) */
+    path: PathDescriptor;
+    /** Total length of the path in pixels. Auto-calculated if omitted. */
+    pathLength?: number;
     /** Duration of one full loop in seconds */
     duration: number;
     /** Optional class name for the wrapper */
@@ -23,10 +24,15 @@ export function FlowingSineWave({
     iconSize,
     gap,
     path,
-    pathLength,
+    pathLength: pathLengthOverride,
     duration,
     className = ''
 }: FlowingSineWaveProps) {
+
+    // Resolve path descriptor to SVG path string + measured length
+    const resolved = useMemo(() => resolvePath(path), [path])
+    const svgPath = resolved.path
+    const pathLength = pathLengthOverride ?? resolved.length
 
     // Calculate layout
     const stride = iconSize + gap
@@ -57,7 +63,7 @@ export function FlowingSineWave({
                         width: `${iconSize}px`,
                         height: `${iconSize}px`,
                         // @ts-ignore - CSS custom properties
-                        '--path': `path('${path}')`,
+                        '--path': `path('${svgPath}')`,
                         '--duration': `${duration}s`,
                         '--delay': `${item.delay}s`,
                     } as React.CSSProperties}
