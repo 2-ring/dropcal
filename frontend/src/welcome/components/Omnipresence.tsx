@@ -1,4 +1,3 @@
-import React from 'react'
 import './Omnipresence.css'
 import { FlowingSineWave } from './FlowingSineWave'
 import {
@@ -18,8 +17,11 @@ import {
     SpotifyLogo,
     SoundcloudLogo,
     TwitchLogo,
-    DiscordLogo
+    DiscordLogo,
+    PlayCircle,
+    ArrowSquareOut
 } from '@phosphor-icons/react'
+import { CTAButton } from './CTAButton'
 
 export function Omnipresence() {
 
@@ -104,17 +106,21 @@ export function Omnipresence() {
                     </div>
 
                     <h2 className="omnipresence-title">
-                        Schedule from anywhere,<br />
-                        on any device
+                        Schedule from anywhere
                     </h2>
 
                     <p className="omnipresence-subtext">
                         DropCal lives wherever scheduling information exists. Share a screenshot, forward an email, text a photo, paste a link. Your preferences sync across every surface.
                     </p>
 
-                    <button className="omnipresence-cta">
-                        See how it works
-                    </button>
+                    <CTAButton
+                        text="See how it works"
+                        to="/"
+                        backgroundColor="#ffffff"
+                        textColor="var(--primary-color)"
+                        iconLeft={<PlayCircle size={22} weight="duotone" />}
+                        iconRight={<ArrowSquareOut size={20} weight="duotone" />}
+                    />
                 </div>
 
                 {/* Right Side: Visual (Phone) */}

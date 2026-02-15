@@ -43,39 +43,33 @@
     gap: 10px;
     padding: 10px 24px;
 
-    /* Design: Black bg, Cream border */
-    background-color: #111111;
-    /* Almost black to be softer? Or pure black. User image looked dark. */
-    background-color: #1a1a1a;
-    /* User said "black background". Let's go with a very dark grey/black to be safe or #000.  */
-    background-color: #0E0E0E;
-
-    border: 3px solid #FFFBEB;
-    /* Cream/Off-white */
+    /* Design update: Theme background, Grey border */
+    background-color: var(--background);
+    border: 2px solid var(--text-secondary);
     border-radius: 9999px;
     /* Pill */
 
-    color: #FFFBEB;
-    /* Text matches border */
+    color: var(--text-primary);
+    /* Dark text on light background */
     font-size: 16px;
-    font-weight: 700;
-    /* Bold text */
+    font-weight: 600;
 
     /* Negative margin for overlap */
-    margin-left: -3px;
-    /* Equal to border width */
+    margin-left: -2px;
 
     position: relative;
     /* For stacking context */
     z-index: 1;
 
-    transition: transform 0.2s ease, z-index 0s;
+    transition: transform 0.2s ease, z-index 0s, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .platform-chip:hover {
     z-index: 10;
     transform: translateY(-2px);
-    background-color: #000000;
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background-color: var(--background);
 }
 
 .platform-chip:first-child {

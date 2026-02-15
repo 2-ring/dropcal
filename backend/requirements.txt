@@ -1,34 +1,34 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch
+torch==2.10.0+cpu
 flask==3.1.2
 flask-cors==6.0.2
 flask-limiter==3.5.0
 redis==5.0.1
 langchain-anthropic==1.3.1
-langchain-openai>=1.1.7
+langchain-openai==1.1.9
 python-dotenv==1.2.1
-openai>=2.17.0
-deepgram-sdk>=3.0.0
+openai==2.21.0
+deepgram-sdk==5.3.2
 pdf2image==1.17.0
-docling>=2.0.0
-Pillow>=11.1.0
+docling==2.54.0
+Pillow==12.1.1
 google-auth==2.28.0
 google-auth-oauthlib==1.2.0
 google-auth-httplib2==0.2.0
 google-api-python-client==2.117.0
 supabase==2.27.3
 gunicorn==21.2.0
-cryptography>=41.0.7
-sentence-transformers>=2.7.0
-huggingface-hub>=0.21.4
-faiss-cpu>=1.13.2
-scikit-learn>=1.5.0
-scipy>=1.11.4
-keybert>=0.8.5
+cryptography==43.0.3
+sentence-transformers==5.2.2
+huggingface-hub==1.4.1
+faiss-cpu==1.13.2
+scikit-learn==1.8.0
+scipy==1.17.0
+keybert==0.9.0
 # Core dependencies (explicit for production)
-pydantic>=2.0.0
-numpy>=1.24.0
-langchain-core>=0.1.0
+pydantic==2.12.5
+numpy==2.4.2
+langchain-core==1.2.12
 # Microsoft Calendar (Graph API)
 requests==2.31.0
 msal==1.24.0
@@ -38,8 +38,8 @@ icalendar==5.0.11
 pytz==2023.3
 python-dateutil==2.8.2
 # Structured output with automatic validation retries
-instructor>=1.0.0
+instructor==1.8.0
 # Analytics & LLM Observability
-posthog[langchain]>=4.0.0
+posthog[langchain]==7.8.6
 # Billing
-stripe>=8.0.0
+stripe==8.0.0
