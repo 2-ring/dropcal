@@ -92,15 +92,15 @@ export function Omnipresence() {
                 <div className="omnipresence-content">
                     <div className="platform-chips">
                         <div className="platform-chip">
-                            <GoogleLogo weight="duotone" className="platform-icon" />
-                            Google Calendar
+                            <GoogleLogo weight="fill" className="platform-icon" />
+                            Google
                         </div>
                         <div className="platform-chip">
-                            <AppleLogo weight="duotone" className="platform-icon" />
-                            Apple Calendar
+                            <AppleLogo weight="fill" className="platform-icon" />
+                            Apple
                         </div>
                         <div className="platform-chip">
-                            <MicrosoftOutlookLogo weight="duotone" className="platform-icon" />
+                            <MicrosoftOutlookLogo weight="fill" className="platform-icon" />
                             Outlook
                         </div>
                     </div>

@@ -20,7 +20,6 @@ supabase==2.27.3
 gunicorn==21.2.0
 cryptography==43.0.3
 sentence-transformers==5.2.2
-huggingface-hub==1.4.1
 faiss-cpu==1.13.2
 scikit-learn==1.8.0
 scipy==1.17.0
