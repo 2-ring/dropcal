@@ -1,0 +1,328 @@
+.omnipresence-section {
+    position: relative;
+    width: 100%;
+    /* Increased top padding for better spacing */
+    padding: 160px 24px;
+    background-color: var(--background-secondary);
+    overflow: hidden;
+}
+
+.omnipresence-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 64px;
+    position: relative;
+    z-index: 10;
+    /* Content sits above the background arc */
+}
+
+/* Left Content */
+.omnipresence-content {
+    flex: 0 0 45%;
+    z-index: 12;
+}
+
+.platform-chips {
+    display: flex;
+    margin-bottom: 32px;
+}
+
+.platform-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: var(--background-elevated);
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.platform-chip:hover {
+    background-color: var(--background-hover);
+    color: var(--text-primary);
+}
+
+.platform-chip:first-child {
+    border-top-left-radius: 9999px;
+    border-bottom-left-radius: 9999px;
+    border-right: none;
+}
+
+.platform-chip:last-child {
+    border-top-right-radius: 9999px;
+    border-bottom-right-radius: 9999px;
+    border-left: none;
+}
+
+.platform-chip:not(:first-child):not(:last-child) {
+    border-left: 1px solid var(--border-light);
+    border-right: 1px solid var(--border-light);
+}
+
+.platform-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.8;
+}
+
+.omnipresence-title {
+    font-family: var(--display-font), var(--font-serif, serif);
+    font-size: 48px;
+    line-height: 1.1;
+    color: var(--primary);
+    margin-bottom: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.omnipresence-subtext {
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    max-width: 460px;
+    margin-bottom: 40px;
+}
+
+.omnipresence-cta {
+    display: inline-flex;
+    align-items: center;
+    padding: 12px 28px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.omnipresence-cta:hover {
+    border-color: var(--text-secondary);
+    transform: translateY(-1px);
+    background-color: var(--background-hover);
+}
+
+/* Right Visual */
+.omnipresence-visual {
+    flex: 1;
+    position: relative;
+    height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.phone-mockup {
+    position: relative;
+    width: 300px;
+    height: 600px;
+    background: var(--background);
+    border-radius: 48px;
+    border: 8px solid var(--border);
+    box-shadow: 0 25px 50px -12px var(--shadow-heavy);
+    z-index: 20;
+    /* Phone sits above the floating icons */
+    overflow: hidden;
+}
+
+.phone-screen {
+    width: 100%;
+    height: 100%;
+    background: var(--background-secondary);
+    position: relative;
+    overflow: hidden;
+}
+
+.phone-notch {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 24px;
+    background: var(--border);
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    z-index: 20;
+}
+
+/* 
+ * Flowing Arc Animation 
+ * We create a massive circle positioned well below the viewport.
+ * Icons are placed on its circumference.
+ * Rotating the circle moves the icons in an arc.
+ */
+.arc-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 2500px;
+    /* Massive width */
+    height: 2500px;
+    border-radius: 50%;
+    /* Center the top of the circle roughly near the phone's center */
+    transform: translate(-50%, -20%);
+    pointer-events: none;
+    z-index: 10;
+    /* Behind phone (z-index 20) and content (z-index 12) if needed, but we want it visible */
+    /* Actually we want it behind the phone but maybe in front of background? */
+}
+
+/* We need distinct z-indexes:
+   1. Background
+   2. Arc Container (Icons) -> z-index 5
+   3. Omnipresence container -> z-index 10
+   4. Phone -> z-index 20
+*/
+
+.floating-icons-container {
+    /* Repurposing this as the wrapper for the whole arc system if needed, 
+       but we really just need the arc-container to be absolute relative to section or visual */
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* The actual rotating ring */
+.arc-ring {
+    position: absolute;
+    left: 50%;
+    /* Position the center of the ring far down so the top edge arcs across the screen */
+    top: 50%;
+    width: 3000px;
+    height: 3000px;
+    border-radius: 50%;
+    /* Dashed border to visualize path (optional, remove for prod) */
+    /* border: 1px dashed rgba(255, 255, 255, 0.05); */
+
+    transform: translate(-50%, -10%);
+    /* Adjust to move arc up/down */
+
+    animation: rotate-arc 60s linear infinite;
+}
+
+@keyframes rotate-arc {
+    0% {
+        transform: translate(-50%, -10%) rotate(0deg);
+    }
+
+    100% {
+        transform: translate(-50%, -10%) rotate(360deg);
+    }
+}
+
+.arc-icon-wrapper {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    /* Height is half of ring size (radius) */
+    height: 1500px;
+    width: 60px;
+    /* Width of icon slot */
+    transform-origin: bottom center;
+}
+
+.arc-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--background-elevated);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+
+    /* Counter-rotate if we want them upright, but reference shows them rotated */
+    /* transform: rotate(180deg); or keep natural */
+}
+
+.arc-icon svg {
+    width: 32px;
+    height: 32px;
+    color: var(--text-primary);
+}
+
+
+/* Screen Content Placeholder */
+.app-screen-placeholder {
+    padding: 60px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.app-header-ph {
+    width: 40%;
+    height: 8px;
+    background: var(--border-light);
+    border-radius: 4px;
+}
+
+.app-card-ph {
+    width: 100%;
+    height: 80px;
+    background: var(--background);
+    border-radius: 12px;
+    box-shadow: var(--shadow-light);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .omnipresence-container {
+        flex-direction: column;
+        padding: 0;
+    }
+
+    .omnipresence-content {
+        text-align: center;
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 60px;
+    }
+
+    .platform-chips {
+        justify-content: center;
+    }
+
+    .omnipresence-title {
+        font-size: 36px;
+    }
+
+    .omnipresence-visual {
+        width: 100%;
+        height: 500px;
+        overflow: visible;
+        /* Let arc spill out */
+    }
+
+    .arc-ring {
+        width: 2000px;
+        height: 2000px;
+        transform: translate(-50%, 10%);
+        /* Adjust for mobile */
+    }
+
+    .arc-icon-wrapper {
+        height: 1000px;
+    }
+
+    @keyframes rotate-arc {
+        0% {
+            transform: translate(-50%, 10%) rotate(0deg);
+        }
+
+        100% {
+            transform: translate(-50%, 10%) rotate(360deg);
+        }
+    }
+}

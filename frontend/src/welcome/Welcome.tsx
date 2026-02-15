@@ -1,7 +1,12 @@
 import { useNavigate } from 'react-router-dom'
-import { ShootingStar, Link } from '@phosphor-icons/react'
-import { PageHeader } from '../components/PageHeader'
-import { FunnelAnimation } from './FunnelAnimation'
+import { TopBar } from './components/TopBar'
+import { NavBar } from './components/NavBar'
+import Hero from './components/Hero'
+import { Personalization } from './components/Personalization'
+import { FeatureDetails } from './components/FeatureDetails'
+import { Omnipresence } from './components/Omnipresence'
+import { BottomCTA } from './components/BottomCTA'
+import { Footer } from './components/Footer'
 import './Welcome.css'
 
 export function Welcome() {
@@ -9,23 +14,18 @@ export function Welcome() {
 
   return (
     <div className="welcome">
-      <PageHeader />
-
-      <main className="welcome-main">
+      <TopBar />
+      <NavBar />
+      <div className="welcome-main">
         <div className="welcome-content">
-          <h1 className="display-text welcome-hero">
-            Drop anything in.
-            <br />
-            Get events out.
-          </h1>
-          <FunnelAnimation />
-          <button onClick={() => navigate('/')} className="welcome-cta">
-            <ShootingStar size={22} weight="duotone" />
-            See the magic
-            <Link size={18} weight="bold" />
-          </button>
+          <Hero />
+          <Personalization />
+          <Omnipresence />
+          <FeatureDetails />
+          <BottomCTA />
         </div>
-      </main>
+      </div>
+      <Footer />
     </div>
   )
 }

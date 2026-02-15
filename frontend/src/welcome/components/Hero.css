@@ -1,0 +1,300 @@
+.welcome-hero-section {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    /* background-color: var(--background); */
+    overflow: hidden;
+    padding: 120px 20px;
+}
+
+.hero-bg-orb {
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, var(--primary-faint) 0%, rgba(17, 112, 197, 0) 70%);
+    filter: blur(80px);
+    z-index: 0;
+    pointer-events: none;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+    max-width: 1200px;
+}
+
+.hero-headline {
+    font-family: 'Chillax', sans-serif;
+    /* Fallback to sans-serif if Chillax not loaded */
+    font-size: clamp(40px, 5vw, 72px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    margin-bottom: 24px;
+    color: var(--primary);
+}
+
+.hero-headline span {
+    display: block;
+}
+
+.hero-headline .gradient-text {
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+}
+
+.hero-subtext {
+    font-size: clamp(16px, 2vw, 19px);
+    line-height: 1.6;
+    color: var(--text-secondary);
+    max-width: 520px;
+    margin-bottom: 36px;
+}
+
+.hero-ctas {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 80px;
+}
+
+.hero-cta-button {
+    background-color: var(--primary);
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    padding: 16px 48px;
+    border: none;
+    border-radius: 100px;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hero-cta-button:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.4);
+}
+
+
+/* Animation Section */
+.hero-animation {
+    width: 100%;
+    max-width: 1000px;
+    height: 350px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* border: 1px dashed rgba(255,255,255,0.1); Debugging border */
+}
+
+.anim-column {
+    width: 240px;
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    perspective: 1000px;
+}
+
+.anim-center {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    height: 100%;
+}
+
+.dropcal-icon-wrapper {
+    position: relative;
+    z-index: 2;
+}
+
+.dropcal-icon {
+    width: 72px;
+    height: 72px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    font-size: 32px;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 10px 30px -10px var(--shadow-heavy);
+}
+
+.pulse-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    border-radius: 24px;
+    border: 2px solid var(--primary);
+    opacity: 0;
+    z-index: 1;
+}
+
+/* Cards */
+.input-card,
+.output-card {
+    position: absolute;
+    width: 100%;
+    height: 56px;
+    background-color: var(--background-elevated);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    /* transform-origin: center center; */
+}
+
+.input-card.active,
+.output-card.active {
+    background-color: var(--background-hover);
+    /* Slightly lighter */
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px var(--shadow-medium);
+    z-index: 10;
+}
+
+.input-card-icon {
+    font-size: 20px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--info-background);
+    border-radius: 8px;
+}
+
+.input-card-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.input-card-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.input-card-type {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.output-card-bar {
+    width: 4px;
+    height: 32px;
+    border-radius: 4px;
+}
+
+.output-card-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.output-card-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.output-card-details {
+    font-size: 11px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.output-card-check {
+    color: var(--success);
+    /* Green check */
+    font-size: 16px;
+}
+
+.hero-labels {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+    padding: 0 20px;
+}
+
+.hero-label-text {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .hero-headline {
+        font-size: 40px;
+    }
+
+    .hero-animation {
+        flex-direction: column;
+        height: auto;
+        gap: 40px;
+    }
+
+    .anim-column {
+        width: 100%;
+        height: 300px;
+        /* Give it specific height for mobile carousel */
+    }
+
+    .anim-center {
+        height: 120px;
+    }
+
+    .hero-ctas {
+        flex-direction: column;
+        width: 100%;
+        padding: 0 20px;
+    }
+
+    .hero-btn {
+        width: 100%;
+    }
+}
