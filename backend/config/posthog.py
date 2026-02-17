@@ -23,6 +23,10 @@ _posthog_initialized = False
 _init_lock = threading.Lock()
 _local = threading.local()
 
+# Sentinel: pass to set_tracking_context to explicitly clear a field
+# (None = "don't update", CLEAR = "reset to None").
+CLEAR = object()
+
 # Detected once at import time — included on every PostHog event for filtering.
 _ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 
@@ -90,6 +94,14 @@ _AUTO_INCLUDE_ATTRS = (
 )
 
 
+def _set(field, value):
+    """Set a thread-local field. CLEAR resets to None, None is a no-op."""
+    if value is CLEAR:
+        setattr(_local, field, None)
+    elif value is not None:
+        setattr(_local, field, value)
+
+
 def set_tracking_context(
     distinct_id=None,
     trace_id=None,
@@ -99,32 +111,21 @@ def set_tracking_context(
     num_events=None,
     has_personalization=None,
     event_index=None,
+    event_description=None,
     chunk_index=None,
     calendar_name=None,
     parent_id=None,
+    group_index=None,
+    num_groups=None,
+    group_category=None,
 ):
     """
     Set the tracking context for the current thread.
     Call this before running agents so LLM calls are attributed correctly.
 
-    All non-None values are stored in thread-local storage and automatically
-    merged into every PostHog event via get_invoke_config(). Use None to
-    skip updating a field (partial updates are safe).
-
-    Args:
-        distinct_id: User ID (for per-user cost tracking)
-        trace_id: Groups related LLM calls (e.g., session ID)
-        pipeline: Pipeline label (e.g., "Session: text", "Edit event")
-        input_type: Input modality ('text', 'image', 'audio', 'pdf', etc.)
-        is_guest: Whether this is a guest session
-        num_events: Total events identified (set after IDENTIFY stage)
-        has_personalization: Whether PERSONALIZE stage will run
-        event_index: Which event in the batch (set per worker thread)
-        chunk_index: Which chunk for chunked identification
-        calendar_name: Calendar being analyzed (pattern discovery)
-        parent_id: Override parent span ID (e.g., event span ID for per-event grouping)
+    Pass None to skip a field (partial updates). Pass CLEAR to reset a field.
     """
-    # Core fields are always set (even if None, to reset between pipelines)
+    # Core fields
     if distinct_id is not None:
         _local.distinct_id = distinct_id
     if trace_id is not None:
@@ -132,23 +133,19 @@ def set_tracking_context(
     if pipeline is not None:
         _local.pipeline = pipeline
 
-    # Extended context: only set if provided (partial updates)
-    if input_type is not None:
-        _local.input_type = input_type
-    if is_guest is not None:
-        _local.is_guest = is_guest
-    if num_events is not None:
-        _local.num_events = num_events
-    if has_personalization is not None:
-        _local.has_personalization = has_personalization
-    if event_index is not None:
-        _local.event_index = event_index
-    if chunk_index is not None:
-        _local.chunk_index = chunk_index
-    if calendar_name is not None:
-        _local.calendar_name = calendar_name
-    if parent_id is not None:
-        _local.parent_id = parent_id
+    # Extended context
+    _set('input_type', input_type)
+    _set('is_guest', is_guest)
+    _set('num_events', num_events)
+    _set('has_personalization', has_personalization)
+    _set('event_index', event_index)
+    _set('event_description', event_description)
+    _set('chunk_index', chunk_index)
+    _set('calendar_name', calendar_name)
+    _set('parent_id', parent_id)
+    _set('group_index', group_index)
+    _set('num_groups', num_groups)
+    _set('group_category', group_category)
 
 
 def get_tracking_property(name, default=None):
@@ -194,13 +191,40 @@ _INPUT_TYPE_DISPLAY = {
 }
 
 
+def _truncate(s, max_len=50):
+    return s[:max_len] + '…' if len(s) > max_len else s
+
+
 def _build_span_name(agent_name):
-    """Build a span name with event context if available (e.g., 'Extraction (Event 3/8)')."""
+    """
+    Build a descriptive span name from thread-local context.
+
+    Nested under a stage span (parent_id set):
+        Group context  → "Errands" (Group 1/3)
+        Event context  → "1:1 with Manager" (Event 6/9)
+    Top-level (no parent_id):
+        No context     → Identify
+    """
     label = _AGENT_LABELS.get(agent_name, agent_name)
+
+    # Group context (batch Structure)
+    group_index = getattr(_local, 'group_index', None)
+    num_groups = getattr(_local, 'num_groups', None)
+    group_category = getattr(_local, 'group_category', None)
+
+    if group_index is not None and num_groups:
+        desc = f'"{_truncate(group_category)}" ' if group_category else ''
+        return f'{desc}(Group {group_index + 1}/{num_groups})'
+
+    # Event context (per-event Structure, Personalize)
     event_index = getattr(_local, 'event_index', None)
     num_events = getattr(_local, 'num_events', None)
+    event_description = getattr(_local, 'event_description', None)
+
     if event_index is not None and num_events:
-        label = f"{label} (Event {event_index + 1}/{num_events})"
+        desc = f'"{_truncate(event_description)}" ' if event_description else ''
+        return f'{desc}(Event {event_index + 1}/{num_events})'
+
     return label
 
 
@@ -367,27 +391,10 @@ def capture_pipeline_trace(
         logger.debug(f"PostHog: Failed to capture pipeline trace: {e}")
 
 
-def capture_event_span(
-    session_id,
-    span_id,
-    event_index,
-    num_events,
-    duration_ms,
-    event_description=None,
-    outcome='success',
-):
+def capture_stage_span(session_id, span_id, stage_name):
     """
-    Capture a span for a single event being processed (extraction + personalization).
-    Groups all LLM calls for this event under one collapsible node in the trace tree.
-
-    Args:
-        session_id: Pipeline trace ID (parent)
-        span_id: Pre-generated UUID for this event span (used as parent_id by children)
-        event_index: 0-based index of this event in the batch
-        num_events: Total events in the batch
-        duration_ms: Total processing time for this event
-        event_description: Short description of the event (from IDENTIFY stage)
-        outcome: 'success' or 'error'
+    Capture a stage span (e.g., "Structure", "Personalize") under the pipeline trace.
+    Individual LLM calls nest under this via parent_id.
     """
     client = _ensure_client()
     if not client:
@@ -396,30 +403,16 @@ def capture_event_span(
     try:
         distinct_id = getattr(_local, 'distinct_id', None) or 'anonymous'
 
-        # Build a descriptive name: "Event 3/8: CS 201 Lecture"
-        name = f"Event {event_index + 1}/{num_events}"
-        if event_description:
-            # Truncate long descriptions
-            desc = event_description[:60] + '...' if len(event_description) > 60 else event_description
-            name = f"{name}: {desc}"
-
         event_properties = {
             '$ai_trace_id': session_id,
             '$ai_session_id': str(session_id),
             '$ai_parent_id': str(session_id),
             '$ai_span_id': span_id,
-            '$ai_span_name': name,
-            '$ai_latency': duration_ms / 1000,
+            '$ai_span_name': stage_name,
             '$ai_framework': 'dropcal',
             'environment': _ENVIRONMENT,
-            'event_index': event_index,
-            'num_events': num_events,
         }
 
-        if outcome == 'error':
-            event_properties['$ai_is_error'] = True
-
-        # Include thread-local context
         for attr in ('input_type', 'is_guest', 'has_personalization'):
             val = getattr(_local, attr, None)
             if val is not None:
@@ -431,66 +424,7 @@ def capture_event_span(
             properties=event_properties,
         )
     except Exception as e:
-        logger.debug(f"PostHog: Failed to capture event span: {e}")
-
-
-def capture_phase_span(
-    phase_name,
-    session_id,
-    duration_ms,
-    outcome='success',
-    properties=None,
-):
-    """
-    Capture a manual $ai_span event representing a phase within a pipeline.
-    E.g., identification phase, processing (extraction + personalization) phase.
-
-    Args:
-        phase_name: Phase identifier ('identification', 'processing', etc.)
-        session_id: Parent trace ID (the pipeline trace)
-        duration_ms: Phase duration in milliseconds
-        outcome: 'success', 'error', or 'no_events'
-        properties: Optional dict of phase-specific metadata
-    """
-    client = _ensure_client()
-    if not client:
-        return
-
-    try:
-        distinct_id = getattr(_local, 'distinct_id', None) or 'anonymous'
-
-        event_properties = {
-            '$ai_trace_id': session_id,
-            '$ai_session_id': str(session_id),
-            '$ai_parent_id': str(session_id),
-            '$ai_span_id': str(uuid.uuid4()),
-            '$ai_span_name': phase_name,
-            '$ai_latency': duration_ms / 1000,
-            '$ai_framework': 'dropcal',
-            'environment': _ENVIRONMENT,
-            'phase': phase_name,
-            'outcome': outcome,
-        }
-
-        # Include thread-local context
-        for attr in ('input_type', 'is_guest'):
-            val = getattr(_local, attr, None)
-            if val is not None:
-                event_properties[attr] = val
-
-        if properties:
-            event_properties.update(properties)
-
-        if outcome == 'error':
-            event_properties['$ai_is_error'] = True
-
-        client.capture(
-            distinct_id=distinct_id,
-            event='$ai_span',
-            properties=event_properties,
-        )
-    except Exception as e:
-        logger.debug(f"PostHog: Failed to capture phase span: {e}")
+        logger.debug(f"PostHog: Failed to capture stage span: {e}")
 
 
 # ============================================================================

@@ -107,9 +107,16 @@ def identify_events_langextract(
         )
 
         # PostHog tracking (uses actual model/provider from centralized config)
+        # LangExtract doesn't expose token usage, so tokens are unavailable.
+        output_summary = [
+            {'description': e.description, 'raw_text': e.raw_text[:200]}
+            for e in events
+        ]
         capture_llm_generation(
             "identification", model_name, provider_name,
             duration_ms,
+            input_content=text[:2000],
+            output_content=str(output_summary),
             properties={
                 'extraction_passes': passes,
                 'num_events_found': len(events),

@@ -23,8 +23,8 @@ from extraction.langextract_identifier import identify_events_langextract
 from config.langextract import PASSES_SIMPLE, PASSES_COMPLEX
 from config.posthog import (
     set_tracking_context, flush_posthog, capture_agent_error,
-    capture_pipeline_trace, capture_event_span,
-    get_tracking_property,
+    capture_pipeline_trace, capture_stage_span,
+    get_tracking_property, CLEAR,
 )
 import time as _time
 
@@ -308,6 +308,12 @@ class SessionProcessor:
 
         total_events = len(events)
 
+        # Stage span IDs: Structure and Personalize each get a parent span
+        # so individual LLM calls nest under them in PostHog.
+        import uuid as _uuid
+        structure_span_id = str(_uuid.uuid4())
+        personalize_span_id = str(_uuid.uuid4())
+
         # ── Small batches: skip consolidation, use per-event flow ──────────
         if total_events <= 3:
             logger.info(f"Session {session_id}: {total_events} events — skipping CONSOLIDATE")
@@ -319,7 +325,12 @@ class SessionProcessor:
                 use_personalization=use_personalization,
                 db_lock=db_lock, _parent_input_type=_parent_input_type,
                 _parent_pipeline=_parent_pipeline,
+                structure_span_id=structure_span_id,
+                personalize_span_id=personalize_span_id,
             )
+            capture_stage_span(session_id, structure_span_id, 'Structure')
+            if use_personalization:
+                capture_stage_span(session_id, personalize_span_id, 'Personalize')
             return
 
         # ── CONSOLIDATE: group + dedup + cross-event context ───────────────
@@ -352,19 +363,25 @@ class SessionProcessor:
                 use_personalization=use_personalization,
                 db_lock=db_lock, _parent_input_type=_parent_input_type,
                 _parent_pipeline=_parent_pipeline,
+                structure_span_id=structure_span_id,
+                personalize_span_id=personalize_span_id,
             )
+            capture_stage_span(session_id, structure_span_id, 'Structure')
+            if use_personalization:
+                capture_stage_span(session_id, personalize_span_id, 'Personalize')
             return
 
         # ── STRUCTURE + RESOLVE + PERSONALIZE: per-group in parallel ───────
         def process_single_group(group_idx, group_data):
             """Process one group: batch STRUCTURE → per-event RESOLVE + PERSONALIZE + DB."""
-            import uuid as _uuid
             category, indexed_events = group_data
             group_events = [ie for _, ie in indexed_events]
             original_indices = [idx for idx, _ in indexed_events]
-            group_start = _time.time()
 
-            # Propagate tracking context to this worker thread
+            num_groups = len(groups)
+
+            # Propagate tracking context with group info.
+            # parent_id=structure_span_id so batch STRUCTURE nests under the Structure stage span.
             set_tracking_context(
                 distinct_id=user_id,
                 trace_id=session_id,
@@ -373,6 +390,12 @@ class SessionProcessor:
                 is_guest=is_guest,
                 num_events=total_events,
                 has_personalization=use_personalization,
+                parent_id=structure_span_id,
+                group_index=group_idx,
+                num_groups=num_groups,
+                group_category=category,
+                event_index=CLEAR,
+                event_description=CLEAR,
             )
 
             try:
@@ -398,8 +421,16 @@ class SessionProcessor:
                     if i >= len(extracted_events):
                         break
                     extracted_event = extracted_events[i]
-                    event_span_id = str(_uuid.uuid4())
-                    event_start = _time.time()
+
+                    # Switch to event context + Personalize stage span
+                    set_tracking_context(
+                        event_index=orig_idx,
+                        event_description=identified_event.description,
+                        parent_id=personalize_span_id,
+                        group_index=CLEAR,
+                        num_groups=CLEAR,
+                        group_category=CLEAR,
+                    )
 
                     try:
                         # RESOLVE: NL temporal → ISO 8601
@@ -438,12 +469,6 @@ class SessionProcessor:
                                 attendees=calendar_event.attendees
                             )
 
-                        capture_event_span(
-                            session_id=session_id, span_id=event_span_id,
-                            event_index=orig_idx, num_events=total_events,
-                            duration_ms=(_time.time() - event_start) * 1000,
-                            event_description=identified_event.description,
-                        )
                         results.append(EventProcessingResult(
                             index=orig_idx, success=True, calendar_event=calendar_event
                         ))
@@ -453,13 +478,9 @@ class SessionProcessor:
                             f"Error on event {orig_idx+1} (group '{category}') "
                             f"in session {session_id}: {e}\n{traceback.format_exc()}"
                         )
-                        capture_event_span(
-                            session_id=session_id, span_id=event_span_id,
-                            event_index=orig_idx, num_events=total_events,
-                            duration_ms=(_time.time() - event_start) * 1000,
-                            event_description=identified_event.description,
-                            outcome='error',
-                        )
+                        capture_agent_error("personalization", e, {
+                            'session_id': session_id, 'event_index': orig_idx,
+                        })
                         results.append(EventProcessingResult(
                             index=orig_idx, success=False,
                             warning=f"Event {orig_idx+1}: {str(e)}", error=e,
@@ -479,8 +500,14 @@ class SessionProcessor:
                     'session_id': session_id, 'group': category,
                 })
                 for orig_idx, identified_event in indexed_events:
-                    event_span_id = str(_uuid.uuid4())
-                    event_start = _time.time()
+                    set_tracking_context(
+                        event_index=orig_idx,
+                        event_description=identified_event.description,
+                        parent_id=structure_span_id,
+                        group_index=CLEAR,
+                        num_groups=CLEAR,
+                        group_category=CLEAR,
+                    )
                     try:
                         extracted_event = structurer.execute(
                             identified_event.raw_text,
@@ -493,6 +520,7 @@ class SessionProcessor:
                             extracted_event, user_timezone=timezone
                         )
                         if use_personalization:
+                            set_tracking_context(parent_id=personalize_span_id)
                             calendar_event = personalizer.execute(
                                 event=calendar_event,
                                 discovered_patterns=patterns,
@@ -518,12 +546,6 @@ class SessionProcessor:
                                 recurrence=calendar_event.recurrence,
                                 attendees=calendar_event.attendees
                             )
-                        capture_event_span(
-                            session_id=session_id, span_id=event_span_id,
-                            event_index=orig_idx, num_events=total_events,
-                            duration_ms=(_time.time() - event_start) * 1000,
-                            event_description=identified_event.description,
-                        )
                     except Exception as inner_e:
                         logger.error(
                             f"Fallback error on event {orig_idx+1} in session "
@@ -544,6 +566,11 @@ class SessionProcessor:
             events=group_list,
             process_single_event=lambda idx, item: process_single_group(idx, item),
         )
+
+        # Capture stage spans (after all groups complete)
+        capture_stage_span(session_id, structure_span_id, 'Structure')
+        if use_personalization:
+            capture_stage_span(session_id, personalize_span_id, 'Personalize')
 
         if batch_result.warnings:
             logger.warning(
@@ -566,14 +593,13 @@ class SessionProcessor:
         db_lock,
         _parent_input_type,
         _parent_pipeline,
+        structure_span_id: str = None,
+        personalize_span_id: str = None,
     ) -> None:
         """Legacy per-event processing (used for small batches and fallback)."""
 
         def process_single_event(idx, event):
-            import uuid as _uuid
-            event_span_id = str(_uuid.uuid4())
-            event_start = _time.time()
-
+            # Structure: nest under Structure stage span
             set_tracking_context(
                 distinct_id=user_id,
                 trace_id=session_id,
@@ -583,7 +609,8 @@ class SessionProcessor:
                 num_events=len(events),
                 has_personalization=use_personalization,
                 event_index=idx,
-                parent_id=event_span_id,
+                event_description=event.description,
+                parent_id=structure_span_id,
             )
             try:
                 extracted_event = structurer.execute(
@@ -598,7 +625,9 @@ class SessionProcessor:
                     extracted_event, user_timezone=timezone
                 )
 
+                # Personalize: nest under Personalize stage span
                 if use_personalization:
+                    set_tracking_context(parent_id=personalize_span_id)
                     calendar_event = personalizer.execute(
                         event=calendar_event,
                         discovered_patterns=patterns,
@@ -627,13 +656,6 @@ class SessionProcessor:
                         attendees=calendar_event.attendees
                     )
 
-                capture_event_span(
-                    session_id=session_id, span_id=event_span_id,
-                    event_index=idx, num_events=len(events),
-                    duration_ms=(_time.time() - event_start) * 1000,
-                    event_description=event.description,
-                )
-
                 return EventProcessingResult(
                     index=idx, success=True, calendar_event=calendar_event
                 )
@@ -642,12 +664,6 @@ class SessionProcessor:
                 logger.error(
                     f"Error processing event {idx+1} in session {session_id}: "
                     f"{e}\n{traceback.format_exc()}"
-                )
-                capture_event_span(
-                    session_id=session_id, span_id=event_span_id,
-                    event_index=idx, num_events=len(events),
-                    duration_ms=(_time.time() - event_start) * 1000,
-                    event_description=event.description, outcome='error',
                 )
                 capture_agent_error("extraction", e, {
                     'session_id': session_id, 'event_index': idx,
@@ -696,6 +712,17 @@ class SessionProcessor:
                 pipeline=pipeline_label,
                 input_type=input_type,
                 is_guest=is_guest,
+                # Clear per-session fields to prevent leakage from reused threads
+                parent_id=CLEAR,
+                num_events=CLEAR,
+                has_personalization=CLEAR,
+                event_index=CLEAR,
+                event_description=CLEAR,
+                group_index=CLEAR,
+                num_groups=CLEAR,
+                group_category=CLEAR,
+                chunk_index=CLEAR,
+                calendar_name=CLEAR,
             )
 
             # Select pipeline stages based on input complexity
@@ -830,6 +857,17 @@ class SessionProcessor:
                 pipeline=pipeline_label,
                 input_type=input_type,
                 is_guest=is_guest,
+                # Clear per-session fields to prevent leakage from reused threads
+                parent_id=CLEAR,
+                num_events=CLEAR,
+                has_personalization=CLEAR,
+                event_index=CLEAR,
+                event_description=CLEAR,
+                group_index=CLEAR,
+                num_groups=CLEAR,
+                group_category=CLEAR,
+                chunk_index=CLEAR,
+                calendar_name=CLEAR,
             )
 
             # Determine if vision is needed (only images; PDFs use text extraction)

@@ -10,6 +10,75 @@ import caldav
 from . import auth, transform
 
 
+def list_calendars(user_id: str) -> List[Dict[str, Any]]:
+    """
+    List all calendars accessible to the user via CalDAV.
+
+    Args:
+        user_id: User's UUID
+
+    Returns:
+        List of calendar dicts in universal format (matching Google Calendar API shape).
+
+    Raises:
+        ValueError: If user not authenticated or CalDAV query fails
+    """
+    client = auth.get_caldav_client(user_id)
+    if not client:
+        raise ValueError(f"User {user_id} not authenticated with Apple Calendar")
+
+    try:
+        principal = client.principal()
+        calendars = principal.calendars()
+
+        if not calendars:
+            return []
+
+        result = []
+        for i, cal in enumerate(calendars):
+            # Extract properties safely
+            props = {}
+            try:
+                props = cal.get_properties([
+                    caldav.dav.DisplayName(),
+                    caldav.elements.ical.CalendarColor(),
+                ])
+            except Exception:
+                pass
+
+            display_name = None
+            color = None
+
+            # Try to get display name from properties
+            for key, value in props.items():
+                key_str = str(key)
+                if 'displayname' in key_str.lower():
+                    display_name = str(value) if value else None
+                elif 'calendar-color' in key_str.lower() or 'color' in key_str.lower():
+                    color = str(value) if value else None
+
+            # Fallback: use the calendar's name attribute
+            if not display_name:
+                display_name = getattr(cal, 'name', None) or f'Calendar {i + 1}'
+
+            # CalDAV calendar URL as the unique ID
+            cal_id = str(cal.url) if cal.url else f'apple-cal-{i}'
+
+            result.append({
+                'id': cal_id,
+                'summary': display_name,
+                'backgroundColor': color or '#1170C5',
+                'foregroundColor': '#ffffff',
+                'primary': i == 0,
+                'accessRole': 'owner',
+            })
+
+        return result
+
+    except Exception as e:
+        raise ValueError(f"Failed to list Apple calendars: {str(e)}")
+
+
 def list_events(
     user_id: str,
     max_results: int = 100,
