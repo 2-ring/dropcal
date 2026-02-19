@@ -102,10 +102,10 @@ body {
 }
 
 .header-logo {
-  width: 24px;
-  height: 24px;
+  font-size: 24px;
   flex-shrink: 0;
   color: var(--primary);
+  line-height: 1;
 }
 
 .header-title {
@@ -300,6 +300,42 @@ body {
   background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='24' ry='24' stroke='%234A9EFF' stroke-width='6' stroke-dasharray='20 16' stroke-dashoffset='0' stroke-linecap='round'%3e%3canimate attributeName='stroke-dashoffset' values='0;-72' dur='2s' repeatCount='indefinite'/%3e%3c/rect%3e%3c/svg%3e");
 }
 
+/* Success state */
+.drop-zone.success {
+  pointer-events: auto;
+  background-color: rgba(46, 125, 50, 0.08);
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='24' ry='24' stroke='%232e7d32' stroke-width='6' stroke-dasharray='20 16' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
+}
+
+.drop-zone.success:hover {
+  background-color: rgba(46, 125, 50, 0.08);
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='24' ry='24' stroke='%232e7d32' stroke-width='6' stroke-dasharray='20 16' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
+}
+
+[data-theme="dark"] .drop-zone.success,
+[data-theme="dark"] .drop-zone.success:hover {
+  background-color: rgba(102, 187, 106, 0.10);
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='24' ry='24' stroke='%2366bb6a' stroke-width='6' stroke-dasharray='20 16' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
+}
+
+/* Error state */
+.drop-zone.error {
+  pointer-events: auto;
+  background-color: rgba(196, 30, 58, 0.08);
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='24' ry='24' stroke='%23c41e3a' stroke-width='6' stroke-dasharray='20 16' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
+}
+
+.drop-zone.error:hover {
+  background-color: rgba(196, 30, 58, 0.08);
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='24' ry='24' stroke='%23c41e3a' stroke-width='6' stroke-dasharray='20 16' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
+}
+
+[data-theme="dark"] .drop-zone.error,
+[data-theme="dark"] .drop-zone.error:hover {
+  background-color: rgba(229, 115, 115, 0.10);
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='24' ry='24' stroke='%23e57373' stroke-width='6' stroke-dasharray='20 16' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
+}
+
 .drop-zone-content {
   display: flex;
   flex-direction: column;
@@ -489,6 +525,10 @@ body {
   color: var(--background);
 }
 
+.event-count-badge.unsynced {
+  background: var(--text-tertiary);
+}
+
 /* Processing pulse indicator */
 @keyframes processingPulse {
   0%, 100% { opacity: 0.4; }
@@ -560,14 +600,15 @@ body {
 }
 
 /* ============================================================
-   View: Feedback
+   Drop Zone: Inline Feedback
    ============================================================ */
 
-.feedback-card {
+.drop-zone-feedback {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  padding: 24px 16px;
   text-align: center;
 }
 
@@ -591,14 +632,217 @@ body {
   color: var(--text-primary);
 }
 
+.drop-zone.success .feedback-title {
+  color: var(--success);
+}
+
+.drop-zone.error .feedback-title {
+  color: var(--error);
+}
+
 .feedback-subtitle {
   font-size: 13px;
   color: var(--text-secondary);
   line-height: 1.4;
+  margin-top: -8px;
 }
 
 .error-text {
   font-size: 13px;
   color: var(--error);
   line-height: 1.4;
+}
+
+.feedback-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ============================================================
+   View: Settings
+   ============================================================ */
+
+/* Settings header */
+.settings-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.15s ease;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.settings-back-btn:hover {
+  color: var(--text-primary);
+}
+
+.settings-user-email {
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Settings menu container */
+.settings-menu {
+  padding: 8px;
+}
+
+/* Settings menu item */
+.settings-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  border-radius: 6px;
+  font-family: inherit;
+}
+
+.settings-item:hover:not(.settings-logout-item):not(.settings-footer-nav) {
+  background-color: var(--surface-hover);
+}
+
+.settings-item:hover:not(.settings-logout-item):not(.settings-footer-nav) .settings-item-icon {
+  color: var(--text-primary);
+}
+
+/* Menu item icon (Phosphor font) */
+.settings-item-icon {
+  color: var(--text-secondary);
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+  width: 20px;
+  text-align: center;
+}
+
+/* First span in a settings item gets flex:1 */
+.settings-item > span:first-of-type {
+  flex: 1;
+}
+
+/* Value display (date format) — right-aligned */
+.settings-value {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+/* Settings footer */
+.settings-footer {
+  padding: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* Log out / disconnect button (red) */
+.settings-logout-item {
+  color: var(--error);
+}
+
+.settings-logout-item .settings-item-icon {
+  color: var(--error);
+}
+
+.settings-logout-item:hover {
+  background-color: var(--error-bg);
+}
+
+/* Footer nav link (back from disconnect mode) */
+.settings-footer-nav {
+  color: var(--text-secondary);
+}
+
+.settings-footer-nav:hover {
+  color: var(--text-primary);
+  background: transparent !important;
+}
+
+/* ---- Integrations sub-view ---- */
+
+.settings-integration-row {
+  align-items: center;
+}
+
+.settings-integration-row:hover {
+  background-color: var(--surface-hover);
+}
+
+.settings-integration-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 1px;
+  min-width: 0;
+}
+
+.settings-integration-name {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.settings-integration-detail {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-integration-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+/* Active (default) integration row highlight */
+.settings-integration-active {
+  background-color: var(--primary-faint);
+}
+
+.settings-integration-active:hover {
+  background-color: var(--primary-faint-hover);
+}
+
+/* Star icon states */
+.settings-star-active {
+  color: var(--text-primary);
+}
+
+.settings-star-inactive {
+  color: var(--text-tertiary);
 }

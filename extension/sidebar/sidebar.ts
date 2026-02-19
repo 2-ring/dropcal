@@ -83,11 +83,9 @@ function groupEventsByDate(events: CalendarEvent[]): Map<string, CalendarEvent[]
   return groups;
 }
 
-// Phosphor MapPin bold SVG (16px)
-const MAP_PIN_SVG = `<svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor"><path d="M128,16a88.1,88.1,0,0,0-88,88c0,75.3,80,132.17,83.36,134.55a8,8,0,0,0,9.28,0C136,236.17,216,179.3,216,104A88.1,88.1,0,0,0,128,16Zm0,56a32,32,0,1,1-32,32A32,32,0,0,1,128,72Z"/></svg>`;
-
-// Phosphor Equals bold SVG (16px)
-const EQUALS_SVG = `<svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor"><path d="M224,160a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,160Zm-8-72H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"/></svg>`;
+// Phosphor icon HTML (font-based)
+const MAP_PIN_ICON = `<i class="ph-bold ph-map-pin" style="font-size: 16px"></i>`;
+const EQUALS_ICON = `<i class="ph-bold ph-equals" style="font-size: 16px"></i>`;
 
 function renderEvents(events: CalendarEvent[]): void {
   eventsList.innerHTML = '';
@@ -156,7 +154,7 @@ function renderEvents(events: CalendarEvent[]): void {
       if (event.location) {
         html += `
           <div class="event-card-meta">
-            ${MAP_PIN_SVG}
+            ${MAP_PIN_ICON}
             <span>${escapeHtml(event.location)}</span>
           </div>
         `;
@@ -165,7 +163,7 @@ function renderEvents(events: CalendarEvent[]): void {
       if (event.description) {
         html += `
           <div class="event-card-meta event-card-description">
-            ${EQUALS_SVG}
+            ${EQUALS_ICON}
             <span>${escapeHtml(event.description)}</span>
           </div>
         `;

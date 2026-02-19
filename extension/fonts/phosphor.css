@@ -4621,3 +4621,63 @@
 .ph.ph-youtube-logo:before {
   content: "\e4fc";
 }
+
+/* ===== Bold Weight ===== */
+
+@font-face {
+  font-family: "Phosphor-Bold";
+  src: url("./Phosphor-Bold.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+.ph-bold {
+  font-family: "Phosphor-Bold" !important;
+  speak: never;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.ph-bold.ph-arrow-fat-up:before {
+  content: "\e52e";
+}
+.ph-bold.ph-map-pin:before {
+  content: "\e316";
+}
+.ph-bold.ph-equals:before {
+  content: "\e21c";
+}
+
+/* Duotone weight: loaded from phosphor-duotone.css (full icon set) */
+
+/* ===== Fill Weight ===== */
+
+@font-face {
+  font-family: "Phosphor-Fill";
+  src: url("./Phosphor-Fill.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+.ph-fill {
+  font-family: "Phosphor-Fill" !important;
+  speak: never;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.ph-fill.ph-drop:before {
+  content: "\e210";
+}

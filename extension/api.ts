@@ -93,6 +93,79 @@ export async function getUserPreferences(): Promise<{ theme_mode?: string }> {
   return data.user.preferences || {};
 }
 
+// Fetch full user profile (email, plan, preferences, etc.)
+export async function getUserProfile(): Promise<{
+  email: string;
+  display_name: string | null;
+  photo_url: string | null;
+  plan: string;
+  primary_calendar_provider: string | null;
+  preferences: Record<string, any>;
+}> {
+  const response = await fetch(`${API_URL}/auth/profile`, {
+    method: 'GET',
+    headers: authHeaders(),
+  });
+  const data = await handleResponse<{ user: any }>(response);
+  return {
+    email: data.user.email,
+    display_name: data.user.display_name,
+    photo_url: data.user.photo_url,
+    plan: data.user.plan || 'free',
+    primary_calendar_provider: data.user.primary_calendar_provider,
+    preferences: data.user.preferences || {},
+  };
+}
+
+// Update user preferences (theme_mode, date_format)
+export async function updateUserPreferences(prefs: {
+  theme_mode?: string;
+  date_format?: string;
+}): Promise<{ preferences: Record<string, any> }> {
+  const response = await fetch(`${API_URL}/auth/preferences`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify(prefs),
+  });
+  return handleResponse(response);
+}
+
+// Get all calendar providers
+export async function getCalendarProviders(): Promise<{
+  providers: Array<{
+    provider: string;
+    email: string;
+    connected: boolean;
+    is_primary: boolean;
+  }>;
+}> {
+  const response = await fetch(`${API_URL}/calendar/provider/list`, {
+    method: 'GET',
+    headers: authHeaders(),
+  });
+  return handleResponse(response);
+}
+
+// Set primary calendar provider
+export async function setPrimaryCalendarProvider(provider: string): Promise<void> {
+  const response = await fetch(`${API_URL}/calendar/provider/set-primary`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ provider }),
+  });
+  await handleResponse(response);
+}
+
+// Disconnect a calendar provider
+export async function disconnectCalendarProvider(provider: string): Promise<void> {
+  const response = await fetch(`${API_URL}/calendar/provider/disconnect`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ provider }),
+  });
+  await handleResponse(response);
+}
+
 // Upload a file (from drop zone / file picker) as FormData
 export async function uploadFile(
   fileData: Uint8Array,

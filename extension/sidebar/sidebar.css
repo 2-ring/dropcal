@@ -235,7 +235,7 @@ body {
   color: var(--text-secondary);
 }
 
-.event-card-meta svg {
+.event-card-meta i {
   flex-shrink: 0;
 }
 

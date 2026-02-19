@@ -3,33 +3,46 @@ import { initTheme } from '../theme';
 
 // ===== View State Machine =====
 // 'processing' reuses the input view with the animated drop zone border.
+// Success/error feedback is shown inline in the drop zone (green/red border).
 
-type View = 'auth' | 'input' | 'processing' | 'feedback';
+type View = 'auth' | 'input' | 'processing' | 'settings';
 
 let currentView: View = 'auth';
 const viewAuth = document.getElementById('view-auth')!;
 const viewInput = document.getElementById('view-input')!;
-const viewFeedback = document.getElementById('view-feedback')!;
+const viewSettings = document.getElementById('view-settings')!;
 const popupHeader = document.getElementById('popup-header')!;
 const dropZone = document.getElementById('drop-zone')!;
+const dropZoneContent = document.getElementById('drop-zone-content')!;
+const dropZoneSuccess = document.getElementById('drop-zone-success')!;
+const dropZoneError = document.getElementById('drop-zone-error')!;
+const feedbackActions = document.getElementById('feedback-actions')!;
 
-const allViews = [viewAuth, viewInput, viewFeedback];
+const allViews = [viewAuth, viewInput, viewSettings];
+
+function resetDropZone(): void {
+  dropZone.classList.remove('processing', 'success', 'error');
+  dropZoneContent.classList.remove('hidden');
+  dropZoneSuccess.classList.add('hidden');
+  dropZoneError.classList.add('hidden');
+  feedbackActions.classList.add('hidden');
+}
 
 function showView(view: View): void {
   for (const v of allViews) v.classList.add('hidden');
-  popupHeader.classList.toggle('hidden', view === 'auth');
+  popupHeader.classList.toggle('hidden', view === 'auth' || view === 'settings');
 
   if (view === 'auth') {
     viewAuth.classList.remove('hidden');
   } else if (view === 'input') {
     viewInput.classList.remove('hidden');
-    dropZone.classList.remove('processing');
+    resetDropZone();
   } else if (view === 'processing') {
     viewInput.classList.remove('hidden');
+    resetDropZone();
     dropZone.classList.add('processing');
-  } else if (view === 'feedback') {
-    viewFeedback.classList.remove('hidden');
-    dropZone.classList.remove('processing');
+  } else if (view === 'settings') {
+    viewSettings.classList.remove('hidden');
   }
 
   currentView = view;
@@ -42,6 +55,16 @@ const headerBrand = document.getElementById('header-brand')!;
 headerBrand.addEventListener('click', (e) => {
   e.preventDefault();
   chrome.tabs.create({ url: 'https://dropcal.ai' });
+});
+
+const btnSettings = document.getElementById('btn-settings')!;
+
+btnSettings.addEventListener('click', () => {
+  previousView = currentView as Exclude<View, 'settings'>;
+  showView('settings');
+  settingsSubView = 'main';
+  showSettingsSubView('main');
+  loadSettingsData();
 });
 
 // ============================================================
@@ -325,7 +348,7 @@ function renderHistory(sessions: SessionRecord[]): void {
         row.appendChild(pulse);
       } else if (session.eventCount > 0) {
         const badge = document.createElement('div');
-        badge.className = 'event-count-badge';
+        badge.className = `event-count-badge${session.addedToCalendar ? '' : ' unsynced'}`;
         badge.textContent = String(session.eventCount);
         row.appendChild(badge);
       }
@@ -343,11 +366,10 @@ function renderHistory(sessions: SessionRecord[]): void {
 }
 
 // ============================================================
-// View: Feedback
+// Inline Feedback (shown inside drop zone)
 // ============================================================
 
-const feedbackSuccess = document.getElementById('feedback-success')!;
-const feedbackError = document.getElementById('feedback-error')!;
+const feedbackIcon = document.getElementById('feedback-icon')!;
 const feedbackTitle = document.getElementById('feedback-title')!;
 const feedbackSubtitle = document.getElementById('feedback-subtitle')!;
 const feedbackErrorText = document.getElementById('feedback-error-text')!;
@@ -359,24 +381,59 @@ let feedbackSessionId: string | null = null;
 
 function showFeedbackSuccess(session: SessionRecord): void {
   feedbackSessionId = session.sessionId;
-  feedbackSuccess.classList.remove('hidden');
-  feedbackError.classList.add('hidden');
+
+  // Set icon to session icon or fallback to checkmark
+  if (session.icon) {
+    feedbackIcon.className = `ph-duotone ph-${session.icon} feedback-icon feedback-icon-success`;
+  } else {
+    feedbackIcon.className = 'ph-duotone ph-check-fat feedback-icon feedback-icon-success';
+  }
 
   const count = session.eventCount;
   feedbackTitle.textContent = count === 1 ? '1 Event Scheduled' : `${count} Events Scheduled`;
   feedbackSubtitle.textContent = session.title || '';
   feedbackSubtitle.classList.toggle('hidden', !session.title);
 
-  showView('feedback');
+  // Swap drop zone to success state
+  dropZone.classList.remove('processing', 'error');
+  dropZone.classList.add('success');
+  dropZoneContent.classList.add('hidden');
+  dropZoneError.classList.add('hidden');
+  dropZoneSuccess.classList.remove('hidden');
+
+  // Show action buttons below drop zone
+  btnOpenSession.classList.remove('hidden');
+  btnDismissSuccess.classList.remove('hidden');
+  btnDismissError.classList.add('hidden');
+  feedbackActions.classList.remove('hidden');
+
+  // Ensure input view is visible
+  viewInput.classList.remove('hidden');
+  popupHeader.classList.remove('hidden');
+  currentView = 'input';
 }
 
 function showFeedbackError(message: string): void {
   feedbackSessionId = null;
-  feedbackSuccess.classList.add('hidden');
-  feedbackError.classList.remove('hidden');
   feedbackErrorText.textContent = message;
 
-  showView('feedback');
+  // Swap drop zone to error state
+  dropZone.classList.remove('processing', 'success');
+  dropZone.classList.add('error');
+  dropZoneContent.classList.add('hidden');
+  dropZoneSuccess.classList.add('hidden');
+  dropZoneError.classList.remove('hidden');
+
+  // Show action buttons below drop zone
+  btnOpenSession.classList.add('hidden');
+  btnDismissSuccess.classList.add('hidden');
+  btnDismissError.classList.remove('hidden');
+  feedbackActions.classList.remove('hidden');
+
+  // Ensure input view is visible
+  viewInput.classList.remove('hidden');
+  popupHeader.classList.remove('hidden');
+  currentView = 'input';
 }
 
 btnOpenSession.addEventListener('click', () => {
@@ -391,6 +448,272 @@ btnDismissSuccess.addEventListener('click', () => {
 btnDismissError.addEventListener('click', () => {
   showView('input');
   loadHistory();
+});
+
+// ============================================================
+// View: Settings
+// ============================================================
+
+// ----- Settings state -----
+
+type SettingsSubView = 'main' | 'integrations' | 'disconnect';
+let settingsSubView: SettingsSubView = 'main';
+let settingsDateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' = 'MM/DD/YYYY';
+let settingsThemeMode: 'auto' | 'light' | 'dark' = 'auto';
+let settingsProviders: Array<{
+  provider: 'google' | 'microsoft' | 'apple';
+  email: string;
+  connected: boolean;
+  is_primary: boolean;
+}> = [];
+let settingsPlan: 'free' | 'pro' = 'free';
+let previousView: View = 'input';
+
+// ----- Settings DOM refs -----
+
+const settingsBackBtn = document.getElementById('settings-back-btn')!;
+const settingsUserEmailEl = document.getElementById('settings-user-email')!;
+const settingsMain = document.getElementById('settings-main')!;
+const settingsIntegrationsView = document.getElementById('settings-integrations-view')!;
+const settingsProvidersList = document.getElementById('settings-providers-list')!;
+const settingsUpgrade = document.getElementById('settings-upgrade')!;
+const settingsDateFormatBtn = document.getElementById('settings-date-format')!;
+const settingsDateIcon = document.getElementById('settings-date-icon')!;
+const settingsDateValue = document.getElementById('settings-date-value')!;
+const settingsThemeBtn = document.getElementById('settings-theme')!;
+const settingsThemeIcon = document.getElementById('settings-theme-icon')!;
+const settingsThemeLabel = document.getElementById('settings-theme-label')!;
+const settingsIntegrationsBtn = document.getElementById('settings-integrations-btn')!;
+const settingsLogout = document.getElementById('settings-logout')!;
+const settingsDisconnectBtn = document.getElementById('settings-disconnect-btn')!;
+const settingsDisconnectBack = document.getElementById('settings-disconnect-back')!;
+
+// ----- Settings functions -----
+
+function showSettingsSubView(sub: SettingsSubView): void {
+  settingsSubView = sub;
+
+  // Toggle main vs integrations menu
+  settingsMain.classList.toggle('hidden', sub !== 'main');
+  settingsIntegrationsView.classList.toggle('hidden', sub === 'main');
+
+  // Footer button visibility
+  settingsLogout.classList.toggle('hidden', sub !== 'main');
+  settingsDisconnectBtn.classList.toggle('hidden', sub !== 'integrations');
+  settingsDisconnectBack.classList.toggle('hidden', sub !== 'disconnect');
+}
+
+function loadSettingsData(): void {
+  chrome.runtime.sendMessage({ type: 'GET_USER_PROFILE' }, (response) => {
+    if (response?.ok && response.profile) {
+      const p = response.profile;
+      settingsUserEmailEl.textContent = p.email || '';
+      settingsPlan = p.plan === 'pro' ? 'pro' : 'free';
+      settingsDateFormat = p.preferences?.date_format === 'DD/MM/YYYY' ? 'DD/MM/YYYY' : 'MM/DD/YYYY';
+      settingsThemeMode = (['auto', 'light', 'dark'].includes(p.preferences?.theme_mode) ? p.preferences.theme_mode : 'auto') as 'auto' | 'light' | 'dark';
+
+      // Update upgrade button text based on plan
+      const upgradeSpan = settingsUpgrade.querySelector('span')!;
+      upgradeSpan.textContent = settingsPlan === 'pro' ? 'Manage subscription' : 'Upgrade plan';
+
+      updateDateFormatUI();
+      updateThemeUI();
+    }
+  });
+}
+
+function updateDateFormatUI(): void {
+  settingsDateValue.textContent = settingsDateFormat;
+  if (settingsDateFormat === 'DD/MM/YYYY') {
+    settingsDateIcon.className = 'ph ph-globe-simple settings-item-icon';
+  } else {
+    settingsDateIcon.className = 'ph ph-football-helmet settings-item-icon';
+  }
+}
+
+function updateThemeUI(): void {
+  if (settingsThemeMode === 'auto') {
+    settingsThemeIcon.className = 'ph ph-flashlight settings-item-icon';
+    settingsThemeLabel.textContent = 'Auto theme';
+  } else if (settingsThemeMode === 'dark') {
+    settingsThemeIcon.className = 'ph ph-moon-stars settings-item-icon';
+    settingsThemeLabel.textContent = 'Dark mode';
+  } else {
+    settingsThemeIcon.className = 'ph ph-sun-horizon settings-item-icon';
+    settingsThemeLabel.textContent = 'Light mode';
+  }
+}
+
+function loadCalendarProviders(): void {
+  chrome.runtime.sendMessage({ type: 'GET_CALENDAR_PROVIDERS' }, (response) => {
+    if (response?.ok && response.providers) {
+      settingsProviders = response.providers;
+      renderProviders();
+    }
+  });
+}
+
+function renderProviders(): void {
+  settingsProvidersList.innerHTML = '';
+
+  const providerDefs: Array<{
+    key: 'google' | 'microsoft' | 'apple';
+    name: string;
+    iconClass: string;
+  }> = [
+    { key: 'google', name: 'Google', iconClass: 'ph ph-google-logo' },
+    { key: 'microsoft', name: 'Outlook', iconClass: 'ph ph-microsoft-outlook-logo' },
+    { key: 'apple', name: 'Apple', iconClass: 'ph ph-apple-logo' },
+  ];
+
+  for (const def of providerDefs) {
+    const provider = settingsProviders.find(p => p.provider === def.key);
+    const isConnected = provider?.connected ?? false;
+    const isPrimary = provider?.is_primary ?? false;
+    const inDisconnect = settingsSubView === 'disconnect';
+
+    const row = document.createElement('button');
+    row.className = 'settings-item settings-integration-row';
+    if (isConnected && isPrimary && !inDisconnect) {
+      row.classList.add('settings-integration-active');
+    }
+
+    const icon = document.createElement('i');
+    icon.className = `${def.iconClass} settings-item-icon`;
+
+    const info = document.createElement('div');
+    info.className = 'settings-integration-info';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'settings-integration-name';
+    nameSpan.textContent = def.name;
+
+    const detailSpan = document.createElement('span');
+    detailSpan.className = 'settings-integration-detail';
+
+    if (!isConnected) {
+      detailSpan.textContent = inDisconnect ? 'Not connected' : 'Connect';
+      if (inDisconnect) {
+        row.style.opacity = '0.4';
+        row.style.cursor = 'default';
+      }
+    } else if (inDisconnect) {
+      detailSpan.textContent = 'Disconnect';
+      detailSpan.style.color = 'var(--error)';
+    } else {
+      detailSpan.textContent = provider?.email || '';
+    }
+
+    info.appendChild(nameSpan);
+    info.appendChild(detailSpan);
+
+    row.appendChild(icon);
+    row.appendChild(info);
+
+    // Right-side indicator
+    if (isConnected) {
+      const action = document.createElement('div');
+      action.className = 'settings-integration-actions';
+
+      if (inDisconnect) {
+        const signOutIcon = document.createElement('i');
+        signOutIcon.className = 'ph ph-sign-out';
+        signOutIcon.style.color = 'var(--error)';
+        action.appendChild(signOutIcon);
+      } else {
+        const starIcon = document.createElement('i');
+        starIcon.className = isPrimary ? 'ph ph-star settings-star-active' : 'ph ph-star settings-star-inactive';
+        action.appendChild(starIcon);
+      }
+
+      row.appendChild(action);
+    }
+
+    // Click handlers
+    if (isConnected && inDisconnect) {
+      row.addEventListener('click', () => {
+        chrome.runtime.sendMessage({ type: 'DISCONNECT_PROVIDER', provider: def.key }, (resp) => {
+          if (resp?.ok) loadCalendarProviders();
+        });
+      });
+    } else if (isConnected) {
+      row.addEventListener('click', () => {
+        chrome.runtime.sendMessage({ type: 'SET_PRIMARY_PROVIDER', provider: def.key }, (resp) => {
+          if (resp?.ok) {
+            // Optimistic update
+            for (const p of settingsProviders) {
+              p.is_primary = p.provider === def.key;
+            }
+            renderProviders();
+          }
+        });
+      });
+    } else if (!inDisconnect) {
+      // Not connected — open dropcal.ai to connect
+      row.addEventListener('click', () => {
+        chrome.tabs.create({ url: 'https://dropcal.ai' });
+      });
+    }
+
+    settingsProvidersList.appendChild(row);
+  }
+}
+
+// ----- Settings event listeners -----
+
+settingsBackBtn.addEventListener('click', () => {
+  if (settingsSubView === 'integrations' || settingsSubView === 'disconnect') {
+    showSettingsSubView('main');
+  } else {
+    showView(previousView);
+    if (previousView === 'input') loadHistory();
+  }
+});
+
+settingsUpgrade.addEventListener('click', () => {
+  chrome.tabs.create({ url: 'https://dropcal.ai/plans' });
+});
+
+settingsDateFormatBtn.addEventListener('click', () => {
+  settingsDateFormat = settingsDateFormat === 'MM/DD/YYYY' ? 'DD/MM/YYYY' : 'MM/DD/YYYY';
+  updateDateFormatUI();
+  chrome.runtime.sendMessage({
+    type: 'UPDATE_PREFERENCES',
+    preferences: { date_format: settingsDateFormat },
+  });
+});
+
+// Theme toggle: auto → light → dark → auto
+settingsThemeBtn.addEventListener('click', () => {
+  const cycle: Array<'auto' | 'light' | 'dark'> = ['auto', 'light', 'dark'];
+  const idx = cycle.indexOf(settingsThemeMode);
+  settingsThemeMode = cycle[(idx + 1) % 3];
+  updateThemeUI();
+  chrome.runtime.sendMessage({
+    type: 'UPDATE_PREFERENCES',
+    preferences: { theme_mode: settingsThemeMode },
+  });
+});
+
+settingsIntegrationsBtn.addEventListener('click', () => {
+  showSettingsSubView('integrations');
+  loadCalendarProviders();
+});
+
+settingsLogout.addEventListener('click', () => {
+  chrome.runtime.sendMessage({ type: 'SIGN_OUT' }, () => {
+    showView('auth');
+  });
+});
+
+settingsDisconnectBtn.addEventListener('click', () => {
+  showSettingsSubView('disconnect');
+  renderProviders();
+});
+
+settingsDisconnectBack.addEventListener('click', () => {
+  showSettingsSubView('integrations');
+  renderProviders();
 });
 
 // ============================================================
@@ -451,10 +774,12 @@ function onHistoryUpdate(sessions: SessionRecord[]): void {
     if (newest) {
       if (newest.status === 'processed') {
         showFeedbackSuccess(newest);
+        renderHistory(sessions);
         return;
       }
       if (newest.status === 'error') {
         showFeedbackError(newest.errorMessage || 'Processing failed');
+        renderHistory(sessions);
         return;
       }
     }

@@ -6,6 +6,7 @@ export interface Session {
   icon?: string | null;
   event_ids?: string[];
   error_message?: string | null;
+  added_to_calendar: boolean;
   created_at: string;
 }
 
@@ -51,6 +52,7 @@ export interface SessionRecord {
   title: string | null;
   icon?: string | null;
   eventCount: number;
+  addedToCalendar: boolean;
   eventSummaries: string[]; // First 3 event titles for popup subtitle
   events: CalendarEvent[]; // Full events for sidebar rendering
   errorMessage?: string;
@@ -61,6 +63,27 @@ export interface SessionRecord {
 
 export interface SessionHistory {
   sessions: SessionRecord[]; // Most recent first, max 10
+}
+
+// User profile data for settings view
+export interface UserProfile {
+  email: string;
+  display_name: string | null;
+  photo_url: string | null;
+  plan: 'free' | 'pro';
+  primary_calendar_provider: string | null;
+  preferences: {
+    theme_mode?: string;
+    date_format?: string;
+  };
+}
+
+// Calendar provider for integrations sub-view
+export interface CalendarProvider {
+  provider: 'google' | 'microsoft' | 'apple';
+  email: string;
+  connected: boolean;
+  is_primary: boolean;
 }
 
 // Message types between background service worker, popup, and content script
@@ -84,4 +107,11 @@ export type ExtensionMessage =
   // Phase 2 — history
   | { type: 'GET_HISTORY' }
   // Phase 2 — sidebar
-  | { type: 'OPEN_SIDEBAR'; sessionId: string };
+  | { type: 'OPEN_SIDEBAR'; sessionId: string }
+  // Settings
+  | { type: 'GET_USER_PROFILE' }
+  | { type: 'UPDATE_PREFERENCES'; preferences: { theme_mode?: string; date_format?: string } }
+  | { type: 'GET_CALENDAR_PROVIDERS' }
+  | { type: 'SET_PRIMARY_PROVIDER'; provider: string }
+  | { type: 'DISCONNECT_PROVIDER'; provider: string }
+  | { type: 'SIGN_OUT' };

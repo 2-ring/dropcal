@@ -95,7 +95,7 @@ export function InputWorkspace({
       ) : (
         <>
           <DesktopInputWorkspace {...inputProps} />
-          <div className="desktop-legal-links">
+          <div className="desktop-legal-links" style={{ position: 'fixed', bottom: 4, left: 8 }}>
             <a href="/privacy">Privacy Policy</a>
             <span>·</span>
             <a href="/terms">Terms of Service</a>

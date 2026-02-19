@@ -7,6 +7,11 @@ import {
   getSession,
   getSessionEvents,
   getUserPreferences,
+  getUserProfile,
+  updateUserPreferences,
+  getCalendarProviders,
+  setPrimaryCalendarProvider,
+  disconnectCalendarProvider,
 } from './api';
 
 const POLL_INTERVAL_MS = 2000;
@@ -111,6 +116,7 @@ async function migratePhase1Job(): Promise<void> {
       status: 'processed',
       title: job.sessionTitle || null,
       eventCount: job.eventCount,
+      addedToCalendar: false,
       eventSummaries: (job.events || []).slice(0, 3).map((e) => e.summary),
       events: job.events || [],
       createdAt: job.createdAt,
@@ -154,6 +160,7 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
       status: 'polling',
       title: null,
       eventCount: 0,
+      addedToCalendar: false,
       eventSummaries: [],
       events: [],
       createdAt: Date.now(),
@@ -205,6 +212,7 @@ async function pollSession(sessionId: string): Promise<void> {
           title: session.title || null,
           icon: session.icon || null,
           eventCount: count,
+          addedToCalendar: session.added_to_calendar,
           eventSummaries: events.slice(0, 3).map((e) => e.summary),
           events,
         });
@@ -306,6 +314,7 @@ async function capturePageText(): Promise<string | null> {
       status: 'polling',
       title: pageData.title || null,
       eventCount: 0,
+      addedToCalendar: false,
       eventSummaries: [],
       events: [],
       createdAt: Date.now(),
@@ -436,6 +445,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           status: 'polling',
           title: null,
           eventCount: 0,
+          addedToCalendar: false,
           eventSummaries: [],
           events: [],
           createdAt: Date.now(),
@@ -469,6 +479,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           status: 'polling',
           title: null,
           eventCount: 0,
+          addedToCalendar: false,
           eventSummaries: [],
           events: [],
           createdAt: Date.now(),
@@ -504,6 +515,108 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     });
     sendResponse({ ok: true });
     return false;
+  }
+
+  // Settings — get full user profile
+  if (message.type === 'GET_USER_PROFILE') {
+    ensureAuth().then(async (hasAuth) => {
+      if (!hasAuth) {
+        sendResponse({ ok: false, error: 'Not authenticated' });
+        return;
+      }
+      try {
+        const profile = await getUserProfile();
+        sendResponse({ ok: true, profile });
+      } catch (error) {
+        console.error('DropCal: Failed to get profile', error);
+        sendResponse({ ok: false, error: 'Failed to load profile' });
+      }
+    });
+    return true;
+  }
+
+  // Settings — update preferences (theme_mode, date_format)
+  if (message.type === 'UPDATE_PREFERENCES') {
+    ensureAuth().then(async (hasAuth) => {
+      if (!hasAuth) {
+        sendResponse({ ok: false, error: 'Not authenticated' });
+        return;
+      }
+      try {
+        const result = await updateUserPreferences(message.preferences);
+        // If theme_mode was updated, also update local storage for immediate theme change
+        if (message.preferences.theme_mode) {
+          await chrome.storage.local.set({ themeMode: message.preferences.theme_mode });
+        }
+        sendResponse({ ok: true, preferences: result.preferences });
+      } catch (error) {
+        console.error('DropCal: Failed to update preferences', error);
+        sendResponse({ ok: false, error: 'Failed to save preferences' });
+      }
+    });
+    return true;
+  }
+
+  // Settings — get calendar providers
+  if (message.type === 'GET_CALENDAR_PROVIDERS') {
+    ensureAuth().then(async (hasAuth) => {
+      if (!hasAuth) {
+        sendResponse({ ok: false, error: 'Not authenticated' });
+        return;
+      }
+      try {
+        const result = await getCalendarProviders();
+        sendResponse({ ok: true, providers: result.providers });
+      } catch (error) {
+        console.error('DropCal: Failed to get providers', error);
+        sendResponse({ ok: false, error: 'Failed to load providers' });
+      }
+    });
+    return true;
+  }
+
+  // Settings — set primary calendar provider
+  if (message.type === 'SET_PRIMARY_PROVIDER') {
+    ensureAuth().then(async (hasAuth) => {
+      if (!hasAuth) {
+        sendResponse({ ok: false, error: 'Not authenticated' });
+        return;
+      }
+      try {
+        await setPrimaryCalendarProvider(message.provider);
+        sendResponse({ ok: true });
+      } catch (error) {
+        console.error('DropCal: Failed to set primary', error);
+        sendResponse({ ok: false, error: 'Failed to set primary provider' });
+      }
+    });
+    return true;
+  }
+
+  // Settings — disconnect calendar provider
+  if (message.type === 'DISCONNECT_PROVIDER') {
+    ensureAuth().then(async (hasAuth) => {
+      if (!hasAuth) {
+        sendResponse({ ok: false, error: 'Not authenticated' });
+        return;
+      }
+      try {
+        await disconnectCalendarProvider(message.provider);
+        sendResponse({ ok: true });
+      } catch (error) {
+        console.error('DropCal: Failed to disconnect', error);
+        sendResponse({ ok: false, error: 'Failed to disconnect provider' });
+      }
+    });
+    return true;
+  }
+
+  // Settings — sign out (user-initiated)
+  if (message.type === 'SIGN_OUT') {
+    clearAuth().then(() => {
+      sendResponse({ ok: true });
+    });
+    return true;
   }
 
   return false;
