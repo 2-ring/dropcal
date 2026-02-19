@@ -176,6 +176,10 @@
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
+    .welcome-nav {
+        height: 50px;
+    }
+
     .nav-secondary-link {
         display: none;
     }
@@ -192,5 +196,10 @@
     .welcome-nav.nav-docked .nav-container {
         max-width: 200px;
         padding: 8px 16px;
+    }
+
+    .mobile-menu {
+        top: 50px;
+        height: calc(100vh - 50px);
     }
 }

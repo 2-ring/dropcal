@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { FirstAid as FirstAidIcon, CheckFat as CheckIcon, ChatCircleDots as ChatIcon, PaperPlaneTilt as SendIcon, CalendarStar as CalendarStarIcon, Images, Files, Microphone, Pen, CalendarDots } from '@phosphor-icons/react'
+import { FirstAid as FirstAidIcon, CheckFat as CheckIcon, ChatCircleDots as ChatIcon, PaperPlaneTilt as SendIcon, CalendarStar as CalendarStarIcon, Images, Files, Microphone, Pen, CalendarDots, CaretLeft } from '@phosphor-icons/react'
 import Skeleton from 'react-loading-skeleton'
 import type { LoadingStateConfig } from './types'
 import { Tooltip } from '../../components/Tooltip'
@@ -74,7 +74,7 @@ export function TopBar({
   isScrollable = true,
   inputType,
   inputContent,
-  onBack: _onBack
+  onBack
 }: TopBarProps) {
   const input: InputInfo | null = inputType
     ? { type: inputType, content: inputContent || '' }
@@ -85,11 +85,11 @@ export function TopBar({
   return (
     <div className={`event-confirmation-header ${!isScrollable ? 'no-scroll' : ''}`}>
       <div className="event-confirmation-header-content">
-        {/* {onBack && (
+        {onBack && (
           <button className="header-back-button" onClick={onBack} title="Back">
             <CaretLeft size={20} weight="bold" />
           </button>
-        )} */}
+        )}
         <div className="header-left">
           {input && InputIcon ? (
             <div className="input-display">

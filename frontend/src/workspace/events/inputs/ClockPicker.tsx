@@ -146,6 +146,9 @@ export function ClockPicker({ value, onChange, onCancel }: ClockPickerProps) {
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onTouchStart={e => e.stopPropagation()}
+        onTouchMove={e => e.stopPropagation()}
+        onTouchEnd={e => e.stopPropagation()}
       >
         <div className="clock-picker-hand" style={{ transform: `rotate(${handAngle}deg)` }}>
           <div className="clock-picker-hand-line" />

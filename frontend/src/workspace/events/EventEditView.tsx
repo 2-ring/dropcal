@@ -140,7 +140,7 @@ export function EventEditView({
     if (!recurrenceConfig) return
     const days = recurrenceConfig.days.includes(day)
       ? recurrenceConfig.days.filter(d => d !== day)
-      : [...recurrenceConfig.days, day]
+      : [...recurrenceConfig.days, day].sort((a, b) => ALL_DAYS.indexOf(a) - ALL_DAYS.indexOf(b))
     // Keep at least one day selected
     if (days.length === 0) return
     updateRecurrence({ days })

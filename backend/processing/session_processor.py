@@ -106,10 +106,14 @@ class SessionProcessor:
         return text, metadata
 
     def _convert_document(self, file_path: str) -> str:
-        """Download a document from Supabase and convert to Markdown."""
+        """Download a document from Supabase and convert to text.
+
+        For PDFs: tries PyPDF2 first (<1s), falls back to Docling (~30s)
+        only if PyPDF2 extracts very little text (scanned/image PDFs).
+        For other documents: uses Docling directly.
+        """
         import tempfile
         from storage.file_handler import FileStorage
-        from docling.document_converter import DocumentConverter
 
         file_bytes = FileStorage.download_file(file_path)
 
@@ -119,6 +123,16 @@ class SessionProcessor:
             tmp_path = tmp.name
 
         try:
+            # Fast path for PDFs: PyPDF2 text extraction
+            if ext.lower() == '.pdf':
+                text = self._fast_pdf_extract(tmp_path)
+                if text and len(text.strip()) > 100:
+                    logger.info(f"PDF extracted (fast): {file_path} → {len(text)} chars")
+                    return text
+                logger.info(f"Fast PDF extraction got {len(text.strip()) if text else 0} chars, falling back to Docling")
+
+            # Slow path: Docling (layout-aware, handles scanned PDFs)
+            from docling.document_converter import DocumentConverter
             converter = DocumentConverter()
             result = converter.convert(tmp_path)
             text = result.document.export_to_markdown()
@@ -126,10 +140,60 @@ class SessionProcessor:
             if not text or not text.strip():
                 raise ValueError("No text content could be extracted from the document")
 
-            logger.info(f"Document converted: {file_path} → {len(text)} chars")
+            logger.info(f"Document converted (Docling): {file_path} → {len(text)} chars")
             return text
         finally:
             os.unlink(tmp_path)
+
+    @staticmethod
+    def _fast_pdf_extract(pdf_path: str) -> str:
+        """Extract text from a PDF using pdfplumber. Fast (~1-2s) and handles tables."""
+        try:
+            import pdfplumber
+            pages = []
+            with pdfplumber.open(pdf_path) as pdf:
+                for page in pdf.pages:
+                    # Extract tables as markdown
+                    tables = page.find_tables()
+                    if tables:
+                        # Get table bounding boxes to exclude from regular text
+                        table_bboxes = [t.bbox for t in tables]
+                        # Extract non-table text
+                        filtered = page.filter(
+                            lambda obj: not any(
+                                obj.get('x0', 0) >= bbox[0] - 1
+                                and obj.get('top', 0) >= bbox[1] - 1
+                                and obj.get('x1', 0) <= bbox[2] + 1
+                                and obj.get('bottom', 0) <= bbox[3] + 1
+                                for bbox in table_bboxes
+                            )
+                        )
+                        prose = (filtered.extract_text() or '').strip()
+                        if prose:
+                            pages.append(prose)
+                        # Render each table as markdown
+                        for table in tables:
+                            rows = table.extract()
+                            if not rows:
+                                continue
+                            md_lines = []
+                            # Header row
+                            header = [str(c or '').strip() for c in rows[0]]
+                            md_lines.append('| ' + ' | '.join(header) + ' |')
+                            md_lines.append('| ' + ' | '.join('---' for _ in header) + ' |')
+                            # Data rows
+                            for row in rows[1:]:
+                                cells = [str(c or '').strip() for c in row]
+                                md_lines.append('| ' + ' | '.join(cells) + ' |')
+                            pages.append('\n'.join(md_lines))
+                    else:
+                        text = (page.extract_text() or '').strip()
+                        if text:
+                            pages.append(text)
+            return '\n\n'.join(pages)
+        except Exception as e:
+            logger.debug(f"pdfplumber extraction failed: {e}")
+            return ''
 
     def _get_user_timezone(self, user_id: str) -> str:
         """Get user's timezone from profile, default to America/New_York."""
@@ -249,7 +313,9 @@ class SessionProcessor:
                 chunk_index=CLEAR, calendar_name=CLEAR,
             )
 
-            # Title generation in background
+            # ── Start parallel background work ──────────────────────────
+            # Title generation + personalization context load run in parallel
+            # with EXTRACT since they're independent.
             title_thread = threading.Thread(
                 target=self._generate_and_update_title,
                 args=(session_id, text, metadata or {}),
@@ -257,7 +323,31 @@ class SessionProcessor:
             )
             title_thread.start()
 
+            # Pre-load personalization context in parallel with extraction
+            context_result = {}
+            def _load_context():
+                t0 = _time.time()
+                p, h = self._load_personalization_context(user_id, is_guest)
+                context_result['patterns'] = p
+                context_result['historical_events'] = h
+                # Pre-build similarity index while we're at it
+                if p is not None:
+                    self.personalize_agent.build_similarity_index(h)
+                logger.info(f"[timing] context_load: {_time.time() - t0:.2f}s")
+
+            # Also pre-fetch timezone in the same thread
+            tz_result = {}
+            def _load_context_and_tz():
+                _load_context()
+                t0 = _time.time()
+                tz_result['timezone'] = self._get_user_timezone(user_id)
+                logger.info(f"[timing] timezone_fetch: {_time.time() - t0:.2f}s")
+
+            context_thread = threading.Thread(target=_load_context_and_tz, daemon=True)
+            context_thread.start()
+
             # ── EXTRACT: single LLM call ────────────────────────────────
+            t_extract = _time.time()
             with stage_span("extraction") as span:
                 span.input = {"text": text, "input_type": input_type}
                 extracted_events = self.extractor.execute(
@@ -266,6 +356,7 @@ class SessionProcessor:
                 span.output = [
                     e.model_dump() for e in extracted_events
                 ] if extracted_events else []
+            logger.info(f"[timing] extract: {_time.time() - t_extract:.2f}s")
 
             if not extracted_events:
                 logger.warning(f"No events found in session {session_id}")
@@ -280,7 +371,7 @@ class SessionProcessor:
                 DBSession.mark_error(session_id, "No events found in the provided input")
                 return
 
-            # Save extracted event summaries
+            # Save extracted event summaries (non-blocking)
             DBSession.update_extracted_events(session_id, [
                 {'raw_text': [], 'description': e.summary}
                 for e in extracted_events
@@ -288,7 +379,11 @@ class SessionProcessor:
             set_tracking_context(num_events=len(extracted_events))
 
             # ── RESOLVE: per-event, deterministic (Duckling) ────────────
-            timezone = self._get_user_timezone(user_id)
+            # Wait for timezone (should be ready by now, extract takes ~6s)
+            context_thread.join()
+            timezone = tz_result.get('timezone', 'America/New_York')
+
+            t_resolve = _time.time()
             calendar_events = []
             for extracted in extracted_events:
                 try:
@@ -300,6 +395,7 @@ class SessionProcessor:
                     logger.warning(
                         f"Temporal resolution failed for '{extracted.summary}': {e}"
                     )
+            logger.info(f"[timing] resolve: {_time.time() - t_resolve:.2f}s")
 
             if not calendar_events:
                 DBSession.mark_error(session_id, "No events could be resolved")
@@ -321,16 +417,17 @@ class SessionProcessor:
                     stream.push_event(self._calendar_event_to_frontend(cal_event))
 
             # ── PERSONALIZE: single batched call (or skip) ──────────────
-            patterns, historical_events = self._load_personalization_context(
-                user_id, is_guest
-            )
+            # Context was loaded in parallel with EXTRACT
+            patterns = context_result.get('patterns')
+            historical_events = context_result.get('historical_events')
             use_personalization = patterns is not None
             set_tracking_context(has_personalization=use_personalization)
 
             if use_personalization:
                 logger.info(f"Session {session_id}: Personalizing {len(calendar_events)} events")
-                # Pre-build similarity index once (thread-safe reuse)
-                self.personalize_agent.build_similarity_index(historical_events)
+                # Similarity index was already built in the context thread
+
+                t_personalize = _time.time()
 
                 def _personalize_event(i, cal_event):
                     # Copy parent thread's tracking context into this worker thread
@@ -375,13 +472,22 @@ class SessionProcessor:
                                 'session_id': session_id, 'event_index': i,
                             })
 
+                logger.info(f"[timing] personalize: {_time.time() - t_personalize:.2f}s")
+
                 # Stream personalized versions (replace resolved events)
                 if stream:
                     stream.events.clear()
                     for cal_event in calendar_events:
                         stream.push_event(self._calendar_event_to_frontend(cal_event))
 
-            # ── SAVE: write events to DB, then embeddings in background ─
+            # ── SIGNAL FRONTEND: pipeline complete ───────────────────────
+            # Mark stream done BEFORE saving to DB — frontend already has
+            # the events via SSE, no need to wait for DB writes + embeddings.
+            if stream:
+                stream.mark_done()
+
+            # ── SAVE: write events to DB + embeddings (post-stream) ──────
+            t_save = _time.time()
             events_data = []
             for calendar_event in calendar_events:
                 events_data.append({
@@ -407,13 +513,11 @@ class SessionProcessor:
                 session_id=session_id,
                 events_data=events_data,
             )
+            logger.info(f"[timing] save: {_time.time() - t_save:.2f}s")
 
             DBSession.update_status(session_id, 'processed')
 
-            # Signal SSE stream that pipeline is complete
-            if stream:
-                stream.mark_done()
-
+            logger.info(f"[timing] total_pipeline: {_time.time() - pipeline_start:.2f}s")
             capture_pipeline_trace(
                 session_id, input_type, is_guest, 'success',
                 num_events=len(calendar_events),

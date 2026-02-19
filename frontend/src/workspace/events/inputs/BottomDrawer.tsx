@@ -72,7 +72,7 @@ export function BottomDrawer({ isOpen, onClose, title, children }: BottomDrawerP
   if (!isOpen) return null
 
   return createPortal(
-    <div className="drawer-backdrop" onPointerDown={handleBackdropPointerDown}>
+    <div className="drawer-backdrop" onPointerDown={handleBackdropPointerDown} onClick={e => e.stopPropagation()}>
       <div
         className="drawer-panel"
         ref={panelRef}
