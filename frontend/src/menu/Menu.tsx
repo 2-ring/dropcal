@@ -1,9 +1,11 @@
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Sidebar as SidebarIcon, Baby, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, GoogleLogo, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
 import type { SessionListItem } from '../sessions'
 import type { InputType } from '../sessions'
 import { Account } from './Account'
 import { MenuButton } from './MenuButton'
 import { SkeletonSessionGroup } from '../components/skeletons'
+import { TypingText } from '../components/TypingText'
 import { useAuth } from '../auth/AuthContext'
 import { Tooltip } from '../components/Tooltip'
 import { useTheme } from '../theme/ThemeProvider'
@@ -34,6 +36,36 @@ export function Menu({
 }: MenuProps) {
   const { resolvedTheme } = useTheme()
   const { user, primaryCalendarProvider } = useAuth()
+
+  // Track sessions whose titles should animate (arrived while processing)
+  const [animatingTitles, setAnimatingTitles] = useState<Set<string>>(new Set())
+  const prevTitlesRef = useRef<Map<string, string | undefined>>(new Map())
+
+  useEffect(() => {
+    const prev = prevTitlesRef.current
+    const newAnimating = new Set(animatingTitles)
+
+    for (const session of sessions) {
+      const prevTitle = prev.get(session.id)
+      // Animate if title just appeared on a previously-processing session
+      if (session.title && !prevTitle && prev.has(session.id)) {
+        newAnimating.add(session.id)
+      }
+      prev.set(session.id, session.title)
+    }
+
+    if (newAnimating.size !== animatingTitles.size) {
+      setAnimatingTitles(newAnimating)
+    }
+  }, [sessions])
+
+  const handleTitleAnimationComplete = useCallback((sessionId: string) => {
+    setAnimatingTitles(prev => {
+      const next = new Set(prev)
+      next.delete(sessionId)
+      return next
+    })
+  }, [])
 
   // Select brand images based on theme
   const wordImage = resolvedTheme === 'dark' ? wordImageDark : wordImageLight
@@ -216,7 +248,15 @@ export function Menu({
                         onClick={() => onSessionClick(session.id)}
                       >
                         <InputIcon size={16} weight="regular" className="chat-entry-icon" />
-                        <span className="chat-entry-title">{session.title}</span>
+                        <span className="chat-entry-title">
+                          {animatingTitles.has(session.id) ? (
+                            <TypingText
+                              text={session.title}
+                              speed={25}
+                              onComplete={() => handleTitleAnimationComplete(session.id)}
+                            />
+                          ) : session.title}
+                        </span>
                         {session.status === 'processing' ? (
                           <span className="processing-indicator" />
                         ) : session.eventCount > 0 ? (

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=360">
+  <link rel="stylesheet" href="popup.css">
+  <title>DropCal</title>
+</head>
+<body>
+  <div id="root">
+    <!-- Idle state -->
+    <div id="state-idle" class="state">
+      <img src="../icons/icon48.png" alt="DropCal" class="logo">
+      <p class="idle-text">Select text or right-click an image, then choose <strong>"Send to DropCal"</strong> from the context menu.</p>
+    </div>
+
+    <!-- Processing state -->
+    <div id="state-processing" class="state hidden">
+      <div class="spinner"></div>
+      <p class="processing-text">Processing...</p>
+    </div>
+
+    <!-- Success state -->
+    <div id="state-success" class="state hidden">
+      <div class="success-icon">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M4 10.5L8 14.5L16 6.5" stroke="#2e7d32" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <p id="event-count" class="event-count"></p>
+      <p id="session-title" class="session-title"></p>
+      <button id="btn-open" class="btn-primary">See in DropCal &rarr;</button>
+      <button id="btn-dismiss" class="btn-secondary">Dismiss</button>
+    </div>
+
+    <!-- Error state -->
+    <div id="state-error" class="state hidden">
+      <div class="error-icon">!</div>
+      <p id="error-message" class="error-text"></p>
+      <button id="btn-dismiss-error" class="btn-secondary">Dismiss</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -27,7 +27,8 @@ import { Clock as ClockIcon, MapPin as LocationIcon, TextAlignLeft as Descriptio
 import type { CalendarEvent } from './types'
 import { getEffectiveDateTime, isAllDay as checkIsAllDay } from './types'
 import { editViewVariants, editSectionVariants } from './animations'
-import { TimeInput, DateInput, TimezoneInput } from './inputs'
+import { TimeInput, DateInput, TimezoneInput, BottomDrawer } from './inputs'
+import { useViewport } from '../input/shared/hooks/useViewport'
 import {
   parseRRule, buildRRule, formatConfig, getDefaultConfig,
   type RecurrenceConfig, type RecurrenceFrequency, type DayCode, type EndType,
@@ -67,6 +68,7 @@ export function EventEditView({
     }
     return null
   })
+  const { isMobile } = useViewport()
   const calendarScrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null)
 
@@ -149,6 +151,141 @@ export function EventEditView({
   const recurrenceLabel = recurrenceConfig
     ? formatConfig(recurrenceConfig)
     : 'Does not repeat'
+
+  const recurrenceEditorContent = (
+    <div className="recurrence-editor">
+      {/* Frequency Chips */}
+      <div className="recurrence-frequency-chips">
+        {(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).map(freq => {
+          const isActive = freq === 'NONE' ? !recurrenceConfig : recurrenceConfig?.frequency === freq
+          return (
+            <button
+              key={freq}
+              className={`recurrence-chip ${isActive ? 'active' : ''}`}
+              onClick={() => handleFrequencySelect(freq as RecurrenceFrequency | 'NONE')}
+            >
+              {freq === 'NONE' ? 'None' : FREQUENCY_LABELS[freq]}
+            </button>
+          )
+        })}
+      </div>
+
+      {recurrenceConfig && (
+        <>
+          {/* Interval */}
+          <div className="recurrence-interval-row">
+            <span className="recurrence-label">Every</span>
+            <input
+              type="number"
+              min={1}
+              max={99}
+              className="recurrence-interval-input"
+              value={recurrenceConfig.interval}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10)
+                if (val >= 1 && val <= 99) updateRecurrence({ interval: val })
+              }}
+            />
+            <span className="recurrence-label">
+              {{
+                DAILY: recurrenceConfig.interval === 1 ? 'day' : 'days',
+                WEEKLY: recurrenceConfig.interval === 1 ? 'week' : 'weeks',
+                MONTHLY: recurrenceConfig.interval === 1 ? 'month' : 'months',
+                YEARLY: recurrenceConfig.interval === 1 ? 'year' : 'years',
+              }[recurrenceConfig.frequency]}
+            </span>
+          </div>
+
+          {/* Day Picker (weekly only) */}
+          {recurrenceConfig.frequency === 'WEEKLY' && (
+            <div className="recurrence-day-picker">
+              {ALL_DAYS.map(day => (
+                <button
+                  key={day}
+                  className={`recurrence-day-chip ${recurrenceConfig.days.includes(day) ? 'active' : ''}`}
+                  onClick={() => toggleDay(day)}
+                >
+                  {DAY_SHORT[day]}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Monthly day */}
+          {recurrenceConfig.frequency === 'MONTHLY' && (
+            <div className="recurrence-interval-row">
+              <span className="recurrence-label">On day</span>
+              <input
+                type="number"
+                min={1}
+                max={31}
+                className="recurrence-interval-input"
+                value={recurrenceConfig.monthDay || 1}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10)
+                  if (val >= 1 && val <= 31) updateRecurrence({ monthDay: val })
+                }}
+              />
+            </div>
+          )}
+
+          {/* End Condition */}
+          <div className="recurrence-end-section">
+            <span className="recurrence-label">Ends</span>
+            <div className="recurrence-end-chips">
+              {(['never', 'until', 'count'] as EndType[]).map(endType => (
+                <button
+                  key={endType}
+                  className={`recurrence-chip ${recurrenceConfig.endType === endType ? 'active' : ''}`}
+                  onClick={() => updateRecurrence({ endType })}
+                >
+                  {{ never: 'Never', until: 'On date', count: 'After' }[endType]}
+                </button>
+              ))}
+            </div>
+
+            {recurrenceConfig.endType === 'until' && (
+              <div className="recurrence-end-value">
+                <div className="recurrence-date-wrapper" onClick={(e) => handleEditClick('recurrenceEndDate', e)}>
+                  <DateInput
+                    value={recurrenceConfig.endDate ? new Date(recurrenceConfig.endDate + 'T00:00:00').toISOString() : new Date().toISOString()}
+                    onChange={(isoString) => {
+                      const d = new Date(isoString)
+                      const yyyy = d.getFullYear()
+                      const mm = String(d.getMonth() + 1).padStart(2, '0')
+                      const dd = String(d.getDate()).padStart(2, '0')
+                      updateRecurrence({ endDate: `${yyyy}-${mm}-${dd}` })
+                    }}
+                    onFocus={() => setEditingField('recurrenceEndDate')}
+                    onBlur={handleEditBlur}
+                    isEditing={editingField === 'recurrenceEndDate'}
+                    className="date-text"
+                  />
+                </div>
+              </div>
+            )}
+
+            {recurrenceConfig.endType === 'count' && (
+              <div className="recurrence-end-value">
+                <input
+                  type="number"
+                  min={1}
+                  max={999}
+                  className="recurrence-interval-input"
+                  value={recurrenceConfig.count || 10}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10)
+                    if (val >= 1 && val <= 999) updateRecurrence({ count: val })
+                  }}
+                />
+                <span className="recurrence-label">occurrences</span>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
 
   return (
     <div className="event-edit-overlay">
@@ -363,140 +500,13 @@ export function EventEditView({
                   <span className="date-text">{recurrenceLabel}</span>
                 </div>
 
-                {/* Recurrence Editor Panel */}
-                {showRecurrenceEditor && (
-                  <div className="recurrence-editor">
-                    {/* Frequency Chips */}
-                    <div className="recurrence-frequency-chips">
-                      {(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).map(freq => {
-                        const isActive = freq === 'NONE' ? !recurrenceConfig : recurrenceConfig?.frequency === freq
-                        return (
-                          <button
-                            key={freq}
-                            className={`recurrence-chip ${isActive ? 'active' : ''}`}
-                            onClick={() => handleFrequencySelect(freq as RecurrenceFrequency | 'NONE')}
-                          >
-                            {freq === 'NONE' ? 'None' : FREQUENCY_LABELS[freq]}
-                          </button>
-                        )
-                      })}
-                    </div>
-
-                    {recurrenceConfig && (
-                      <>
-                        {/* Interval */}
-                        <div className="recurrence-interval-row">
-                          <span className="recurrence-label">Every</span>
-                          <input
-                            type="number"
-                            min={1}
-                            max={99}
-                            className="recurrence-interval-input"
-                            value={recurrenceConfig.interval}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value, 10)
-                              if (val >= 1 && val <= 99) updateRecurrence({ interval: val })
-                            }}
-                          />
-                          <span className="recurrence-label">
-                            {{
-                              DAILY: recurrenceConfig.interval === 1 ? 'day' : 'days',
-                              WEEKLY: recurrenceConfig.interval === 1 ? 'week' : 'weeks',
-                              MONTHLY: recurrenceConfig.interval === 1 ? 'month' : 'months',
-                              YEARLY: recurrenceConfig.interval === 1 ? 'year' : 'years',
-                            }[recurrenceConfig.frequency]}
-                          </span>
-                        </div>
-
-                        {/* Day Picker (weekly only) */}
-                        {recurrenceConfig.frequency === 'WEEKLY' && (
-                          <div className="recurrence-day-picker">
-                            {ALL_DAYS.map(day => (
-                              <button
-                                key={day}
-                                className={`recurrence-day-chip ${recurrenceConfig.days.includes(day) ? 'active' : ''}`}
-                                onClick={() => toggleDay(day)}
-                              >
-                                {DAY_SHORT[day]}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Monthly day */}
-                        {recurrenceConfig.frequency === 'MONTHLY' && (
-                          <div className="recurrence-interval-row">
-                            <span className="recurrence-label">On day</span>
-                            <input
-                              type="number"
-                              min={1}
-                              max={31}
-                              className="recurrence-interval-input"
-                              value={recurrenceConfig.monthDay || 1}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value, 10)
-                                if (val >= 1 && val <= 31) updateRecurrence({ monthDay: val })
-                              }}
-                            />
-                          </div>
-                        )}
-
-                        {/* End Condition */}
-                        <div className="recurrence-end-section">
-                          <span className="recurrence-label">Ends</span>
-                          <div className="recurrence-end-chips">
-                            {(['never', 'until', 'count'] as EndType[]).map(endType => (
-                              <button
-                                key={endType}
-                                className={`recurrence-chip ${recurrenceConfig.endType === endType ? 'active' : ''}`}
-                                onClick={() => updateRecurrence({ endType })}
-                              >
-                                {{ never: 'Never', until: 'On date', count: 'After' }[endType]}
-                              </button>
-                            ))}
-                          </div>
-
-                          {recurrenceConfig.endType === 'until' && (
-                            <div className="recurrence-end-value">
-                              <div className="recurrence-date-wrapper" onClick={(e) => handleEditClick('recurrenceEndDate', e)}>
-                                <DateInput
-                                  value={recurrenceConfig.endDate ? new Date(recurrenceConfig.endDate + 'T00:00:00').toISOString() : new Date().toISOString()}
-                                  onChange={(isoString) => {
-                                    const d = new Date(isoString)
-                                    const yyyy = d.getFullYear()
-                                    const mm = String(d.getMonth() + 1).padStart(2, '0')
-                                    const dd = String(d.getDate()).padStart(2, '0')
-                                    updateRecurrence({ endDate: `${yyyy}-${mm}-${dd}` })
-                                  }}
-                                  onFocus={() => setEditingField('recurrenceEndDate')}
-                                  onBlur={handleEditBlur}
-                                  isEditing={editingField === 'recurrenceEndDate'}
-                                  className="date-text"
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          {recurrenceConfig.endType === 'count' && (
-                            <div className="recurrence-end-value">
-                              <input
-                                type="number"
-                                min={1}
-                                max={999}
-                                className="recurrence-interval-input"
-                                value={recurrenceConfig.count || 10}
-                                onChange={(e) => {
-                                  const val = parseInt(e.target.value, 10)
-                                  if (val >= 1 && val <= 999) updateRecurrence({ count: val })
-                                }}
-                              />
-                              <span className="recurrence-label">occurrences</span>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
+                {/* Recurrence Editor — inline on desktop, drawer on mobile */}
+                {isMobile ? (
+                  <BottomDrawer isOpen={showRecurrenceEditor} onClose={() => setShowRecurrenceEditor(false)}>
+                    {recurrenceEditorContent}
+                  </BottomDrawer>
+                ) : (
+                  showRecurrenceEditor && recurrenceEditorContent
                 )}
               </div>
             </div>

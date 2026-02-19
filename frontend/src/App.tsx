@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Routes, Route, useParams, useNavigate } from 'react-router-dom'
+import { Routes, Route, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { validateFile } from './workspace/input/validation'
 import { Workspace } from './workspace/Workspace'
 import { Menu } from './menu/Menu'
@@ -63,6 +63,7 @@ function AppContent() {
   const { user, loading: authLoading, calendarReady, showAppleCalendarSetup, dismissAppleCalendarSetup } = useAuth()
   const navigate = useNavigate()
   const { sessionId } = useParams<{ sessionId?: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { addNotification } = useNotifications()
 
   const [appState, setAppState] = useState<AppState>('input')
@@ -178,6 +179,14 @@ function AppContent() {
     if (sessionId) {
       // Wait for auth to finish loading before checking access
       if (authLoading) return
+
+      // Extension deep-link: seed guest token from ?token= query param
+      const tokenParam = searchParams.get('token')
+      if (tokenParam && !GuestSessionManager.getSessionIds().includes(sessionId)) {
+        GuestSessionManager.addGuestSession(sessionId, tokenParam)
+        searchParams.delete('token')
+        setSearchParams(searchParams, { replace: true })
+      }
 
       // Check if guest can access this session
       const isGuestSession = GuestSessionManager.getSessionIds().includes(sessionId)
