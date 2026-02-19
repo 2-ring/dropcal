@@ -31,9 +31,9 @@ import {
   uploadFile as apiUploadFile,
   getUserSessions,
   getSession,
-  pollSession,
   pushEvents,
   getSessionEvents,
+  streamSession,
   createGuestTextSession,
   uploadGuestFile,
   getGuestSession,
@@ -384,55 +384,35 @@ function AppContent() {
       }
       setSessionHistory(prev => [session, ...prev.filter(s => s.id !== session.id)])
 
-      // Poll for completion (use guest endpoint if not authenticated)
-      const completedSession = await pollSession(
-        session.id,
-        (updatedSession) => {
-          // Only update loading UI if user is still viewing this session
-          if (activeViewSessionRef.current === session.id) {
-            setCurrentSession(updatedSession)
-            if (updatedSession.status === 'processing') {
-              setLoadingConfig(LOADING_MESSAGES.EXTRACTING_EVENTS)
+      // Stream events via SSE (events arrive as they're resolved)
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = streamSession(session.id, {
+          onEvents: (events) => {
+            if (activeViewSessionRef.current !== session.id) return
+            setCalendarEvents(events)
+            if (events.length > 0) {
+              setAppState('review')
+              navigate(`/s/${session.id}`)
             }
-          }
-          // Keep sidebar in sync during processing
-          setSessionHistory(prev => prev.map(s => s.id === updatedSession.id ? updatedSession : s))
-        },
-        2000,
-        !user // isGuest parameter
-      )
-
-      // Optimistically update sidebar with completed session
-      if (!user) {
-        debugLog('guestSessions', 'completed session:', completedSession.id, completedSession.status, 'event_ids:', completedSession.event_ids?.length)
-      }
-      setSessionHistory(prev => prev.map(s => s.id === completedSession.id ? completedSession : s))
-
-      // If user navigated away, don't touch UI state
-      if (activeViewSessionRef.current !== session.id) {
-        return
-      }
-
-      // Fetch events from events table
-      const events = await getSessionEvents(completedSession.id, !user)
-
-      if (events.length === 0) {
-        // Backward compat: try processed_events blob
-        if (completedSession.processed_events && completedSession.processed_events.length > 0) {
-          setCalendarEvents(completedSession.processed_events as CalendarEvent[])
-        } else {
-          setFeedbackMessage("The text doesn't appear to contain any calendar events.")
-          setAppState('input')
-          return
-        }
-      } else {
-        setCalendarEvents(events)
-      }
-
-      setAppState('review')
-
-      // Navigate to the session URL
-      navigate(`/s/${completedSession.id}`)
+          },
+          onTitle: (title) => {
+            setSessionHistory(prev => prev.map(s =>
+              s.id === session.id ? { ...s, title } : s
+            ))
+          },
+          onComplete: () => {
+            setSessionHistory(prev => prev.map(s =>
+              s.id === session.id ? { ...s, status: 'processed' } : s
+            ))
+            setIsProcessing(false)
+            resolve()
+          },
+          onError: (error) => {
+            cleanup()
+            reject(new Error(error))
+          },
+        })
+      })
 
     } catch (error) {
       console.error('Text processing failed:', error)
@@ -490,55 +470,35 @@ function AppContent() {
 
       setLoadingConfig(LOADING_MESSAGES.PROCESSING_FILE)
 
-      // Poll for completion (use guest endpoint if not authenticated)
-      const completedSession = await pollSession(
-        session.id,
-        (updatedSession) => {
-          // Only update loading UI if user is still viewing this session
-          if (activeViewSessionRef.current === session.id) {
-            setCurrentSession(updatedSession)
-            if (updatedSession.status === 'processing') {
-              setLoadingConfig(LOADING_MESSAGES.EXTRACTING_EVENTS)
+      // Stream events via SSE (events arrive as they're resolved)
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = streamSession(session.id, {
+          onEvents: (events) => {
+            if (activeViewSessionRef.current !== session.id) return
+            setCalendarEvents(events)
+            if (events.length > 0) {
+              setAppState('review')
+              navigate(`/s/${session.id}`)
             }
-          }
-          // Keep sidebar in sync during processing
-          setSessionHistory(prev => prev.map(s => s.id === updatedSession.id ? updatedSession : s))
-        },
-        2000,
-        !user // isGuest parameter
-      )
-
-      // Optimistically update sidebar with completed session
-      if (!user) {
-        debugLog('guestSessions', 'completed file session:', completedSession.id, completedSession.status, 'event_ids:', completedSession.event_ids?.length)
-      }
-      setSessionHistory(prev => prev.map(s => s.id === completedSession.id ? completedSession : s))
-
-      // If user navigated away, don't touch UI state
-      if (activeViewSessionRef.current !== session.id) {
-        return
-      }
-
-      // Fetch events from events table
-      const events = await getSessionEvents(completedSession.id, !user)
-
-      if (events.length === 0) {
-        // Backward compat: try processed_events blob
-        if (completedSession.processed_events && completedSession.processed_events.length > 0) {
-          setCalendarEvents(completedSession.processed_events as CalendarEvent[])
-        } else {
-          setFeedbackMessage("Hmm, we couldn't find any events in there. Try a different file!")
-          setAppState('input')
-          return
-        }
-      } else {
-        setCalendarEvents(events)
-      }
-
-      setAppState('review')
-
-      // Navigate to the session URL
-      navigate(`/s/${completedSession.id}`)
+          },
+          onTitle: (title) => {
+            setSessionHistory(prev => prev.map(s =>
+              s.id === session.id ? { ...s, title } : s
+            ))
+          },
+          onComplete: () => {
+            setSessionHistory(prev => prev.map(s =>
+              s.id === session.id ? { ...s, status: 'processed' } : s
+            ))
+            setIsProcessing(false)
+            resolve()
+          },
+          onError: (error) => {
+            cleanup()
+            reject(new Error(error))
+          },
+        })
+      })
 
     } catch (error) {
       console.error('File processing failed:', error)

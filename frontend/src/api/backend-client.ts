@@ -182,6 +182,64 @@ export async function pollSession(
 }
 
 /**
+ * Stream session updates via Server-Sent Events.
+ *
+ * Receives events directly from the pipeline as they're resolved — no polling needed.
+ * Falls back to pollSession + getSessionEvents if SSE fails.
+ *
+ * @param sessionId - Session ID to stream
+ * @param callbacks - Event handlers for different stream events
+ * @returns Cleanup function to close the connection
+ */
+export function streamSession(
+  sessionId: string,
+  callbacks: {
+    onEvents: (events: CalendarEvent[]) => void
+    onTitle?: (title: string) => void
+    onComplete: () => void
+    onError: (error: string) => void
+  }
+): () => void {
+  const eventSource = new EventSource(`${API_URL}/sessions/${sessionId}/stream`)
+
+  eventSource.addEventListener('event', (e) => {
+    const data = JSON.parse(e.data)
+    callbacks.onEvents(data.events)
+  })
+
+  eventSource.addEventListener('title', (e) => {
+    const data = JSON.parse(e.data)
+    if (callbacks.onTitle) {
+      callbacks.onTitle(data.title)
+    }
+  })
+
+  eventSource.addEventListener('complete', () => {
+    callbacks.onComplete()
+    eventSource.close()
+  })
+
+  eventSource.addEventListener('error', (e) => {
+    // SSE 'error' can be a named event from the server or a connection error
+    if (e instanceof MessageEvent) {
+      const data = JSON.parse(e.data)
+      callbacks.onError(data.error || 'Processing failed')
+    } else {
+      callbacks.onError('Connection to server lost')
+    }
+    eventSource.close()
+  })
+
+  eventSource.addEventListener('timeout', () => {
+    callbacks.onError('Processing timed out')
+    eventSource.close()
+  })
+
+  // Return cleanup function
+  return () => eventSource.close()
+}
+
+/**
  * Health check endpoint.
  */
 export async function healthCheck(): Promise<{ status: string; message: string }> {

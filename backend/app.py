@@ -847,6 +847,10 @@ def create_text_session():
             input_content=input_text
         )
 
+        # Init SSE stream before spawning pipeline
+        from processing.stream import init_stream
+        init_stream(session['id'])
+
         # Start processing in background thread
         thread = threading.Thread(
             target=session_processor.process_text_session,
@@ -939,6 +943,10 @@ def upload_file_endpoint():
             # Clean up orphaned file if session creation fails
             FileStorage.delete_file(file_path)
             raise
+
+        # Init SSE stream before spawning pipeline
+        from processing.stream import init_stream
+        init_stream(session['id'])
 
         # Start processing in background thread
         thread = threading.Thread(
@@ -1105,6 +1113,10 @@ def create_guest_text_session():
             guest_mode=True
         )
 
+        # Init SSE stream before spawning pipeline
+        from processing.stream import init_stream
+        init_stream(session['id'])
+
         # Start processing in background thread
         thread = threading.Thread(
             target=session_processor.process_text_session,
@@ -1177,6 +1189,10 @@ def upload_guest_file():
         except Exception:
             FileStorage.delete_file(file_path)
             raise
+
+        # Init SSE stream before spawning pipeline
+        from processing.stream import init_stream
+        init_stream(session['id'])
 
         # Start processing in background thread
         thread = threading.Thread(

@@ -18,6 +18,7 @@ from preferences.agent import PersonalizationAgent
 from extraction.title_generator import get_title_generator
 from events.service import EventService
 from preferences.service import PersonalizationService
+from processing.stream import get_stream
 from config.posthog import (
     set_tracking_context, flush_posthog, capture_agent_error,
     capture_pipeline_trace, stage_span,
@@ -150,9 +151,41 @@ class SessionProcessor:
                 vision_metadata=metadata
             )
             DBSession.update_title(session_id, title)
+            # Push to SSE stream
+            stream = get_stream(session_id)
+            if stream:
+                stream.set_title(title)
             logger.info(f"Title generated for session {session_id}: '{title}'")
         except Exception as e:
             logger.warning(f"Error generating title for session {session_id}: {e}")
+
+    @staticmethod
+    def _calendar_event_to_frontend(cal_event) -> dict:
+        """Convert a CalendarEvent model to the dict shape the frontend expects."""
+        tz = 'America/New_York'
+        if cal_event.start.date is not None:
+            start = {'date': cal_event.start.date, 'timeZone': tz}
+            end = {'date': cal_event.end.date if cal_event.end else cal_event.start.date, 'timeZone': tz}
+        else:
+            start = {'dateTime': cal_event.start.dateTime, 'timeZone': tz}
+            end = {'dateTime': cal_event.end.dateTime if cal_event.end else None, 'timeZone': tz}
+
+        result = {
+            'summary': cal_event.summary or '',
+            'start': start,
+            'end': end,
+        }
+        if cal_event.location:
+            result['location'] = cal_event.location
+        if cal_event.description:
+            result['description'] = cal_event.description
+        if cal_event.calendar:
+            result['calendar'] = cal_event.calendar
+        if cal_event.recurrence:
+            result['recurrence'] = cal_event.recurrence
+        if cal_event.attendees:
+            result['attendees'] = cal_event.attendees
+        return result
 
     def _load_personalization_context(self, user_id: str, is_guest: bool):
         """Load personalization context (once per session)."""
@@ -236,6 +269,9 @@ class SessionProcessor:
 
             if not extracted_events:
                 logger.warning(f"No events found in session {session_id}")
+                stream = get_stream(session_id)
+                if stream:
+                    stream.mark_error("No events found in the provided input")
                 capture_pipeline_trace(
                     session_id, input_type, is_guest, 'no_events',
                     duration_ms=(_time.time() - pipeline_start) * 1000,
@@ -267,6 +303,9 @@ class SessionProcessor:
 
             if not calendar_events:
                 DBSession.mark_error(session_id, "No events could be resolved")
+                stream = get_stream(session_id)
+                if stream:
+                    stream.mark_error("No events could be resolved")
                 capture_pipeline_trace(
                     session_id, input_type, is_guest, 'error',
                     duration_ms=(_time.time() - pipeline_start) * 1000,
@@ -274,6 +313,12 @@ class SessionProcessor:
                 )
                 flush_posthog()
                 return
+
+            # Stream resolved events to frontend immediately
+            stream = get_stream(session_id)
+            if stream:
+                for cal_event in calendar_events:
+                    stream.push_event(self._calendar_event_to_frontend(cal_event))
 
             # ── PERSONALIZE: single batched call (or skip) ──────────────
             patterns, historical_events = self._load_personalization_context(
@@ -330,6 +375,12 @@ class SessionProcessor:
                                 'session_id': session_id, 'event_index': i,
                             })
 
+                # Stream personalized versions (replace resolved events)
+                if stream:
+                    stream.events.clear()
+                    for cal_event in calendar_events:
+                        stream.push_event(self._calendar_event_to_frontend(cal_event))
+
             # ── SAVE: write events to DB, then embeddings in background ─
             events_data = []
             for calendar_event in calendar_events:
@@ -359,6 +410,10 @@ class SessionProcessor:
 
             DBSession.update_status(session_id, 'processed')
 
+            # Signal SSE stream that pipeline is complete
+            if stream:
+                stream.mark_done()
+
             capture_pipeline_trace(
                 session_id, input_type, is_guest, 'success',
                 num_events=len(calendar_events),
@@ -377,6 +432,10 @@ class SessionProcessor:
                 f"Error processing session {session_id}: {error_message}\n"
                 f"{traceback.format_exc()}"
             )
+            # Signal SSE stream
+            stream = get_stream(session_id)
+            if stream:
+                stream.mark_error(error_message)
             capture_pipeline_trace(
                 session_id, input_type, is_guest, 'error',
                 duration_ms=(_time.time() - pipeline_start) * 1000,

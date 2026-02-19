@@ -1,10 +1,14 @@
 """
 Session routes for real-time updates via Server-Sent Events (SSE).
-Provides streaming updates for session titles as they're generated.
+
+Streams events, titles, and status updates directly from the pipeline
+to the frontend — no polling or DB round-trips needed.
 """
 
 from flask import Blueprint, Response, jsonify
 from database.models import Session as DBSession
+from processing.stream import get_stream, cleanup_stream
+from events.service import EventService
 import json
 import time
 
@@ -14,113 +18,138 @@ sessions_bp = Blueprint('sessions', __name__, url_prefix='/sessions')
 @sessions_bp.route('/<session_id>/stream', methods=['GET'])
 def stream_session_updates(session_id: str):
     """
-    Server-Sent Events endpoint for streaming session updates.
+    SSE endpoint for real-time session updates.
 
-    Streams title updates as soon as they're generated in the background.
-    Frontend opens an EventSource connection to this endpoint and receives
-    real-time updates as the session is processed.
-
-    Args:
-        session_id: Session ID to stream updates for
+    Reads from the in-memory stream (pushed by the pipeline) and sends
+    events to the frontend as they become ready. Falls back to DB polling
+    if no stream exists (e.g., reconnecting to an already-running session).
 
     Event types:
-        - title: New title has been generated
-        - status: Session status changed
-        - complete: Session processing complete
-        - error: Error occurred
+        - init: Initial session state
+        - event: A calendar event is ready (sent as list of all current events)
+        - title: Title has been generated
+        - complete: Pipeline finished, events saved to DB
+        - error: Pipeline failed
 
-    Example frontend usage:
-        const eventSource = new EventSource(`/api/sessions/${sessionId}/stream`);
-        eventSource.addEventListener('title', (e) => {
-            const data = JSON.parse(e.data);
-            updateSidebarTitle(data.title);
-        });
+    Frontend usage:
+        const es = new EventSource(`/api/sessions/${id}/stream`);
+        es.addEventListener('event', (e) => setEvents(JSON.parse(e.data).events));
+        es.addEventListener('complete', () => { es.close(); });
     """
     def generate():
-        """Generator function for SSE stream"""
-        # Get initial session state (lite: skip processed_events/input_content blobs)
         session = DBSession.get_by_id_lite(session_id)
         if not session:
             yield f"event: error\ndata: {json.dumps({'error': 'Session not found'})}\n\n"
             return
 
         # Send initial state
-        init_data = {
-            'id': session_id,
-            'status': session.get('status'),
-            'title': session.get('title')
-        }
-        yield f"event: init\ndata: {json.dumps(init_data)}\n\n"
+        yield f"event: init\ndata: {json.dumps({'id': session_id, 'status': session.get('status'), 'title': session.get('title')})}\n\n"
 
-        # Poll for updates (title generation usually takes 50-400ms)
+        # If already processed, send events from DB and close
+        if session.get('status') == 'processed':
+            events = EventService.get_events_by_session(session_id)
+            yield f"event: event\ndata: {json.dumps({'events': events})}\n\n"
+            yield f"event: complete\ndata: {json.dumps({'status': 'processed'})}\n\n"
+            return
+        if session.get('status') == 'error':
+            yield f"event: error\ndata: {json.dumps({'error': session.get('error_message', 'Processing failed')})}\n\n"
+            return
+
+        # Stream from in-memory pipeline
+        stream = get_stream(session_id)
+        if not stream:
+            # No stream — fall back to DB polling
+            yield from _poll_db_fallback(session_id, session)
+            return
+
+        last_event_count = 0
         last_title = session.get('title')
-        last_status = session.get('status')
-        from config.database import StreamConfig
-        max_polls = StreamConfig.MAX_POLLS
-        polls = 0
+        max_wait = 300  # 5 min max
 
-        while polls < max_polls:
-            time.sleep(StreamConfig.POLL_INTERVAL_SECONDS)
-            polls += 1
+        start = time.time()
+        while time.time() - start < max_wait:
+            stream.wait_for_update(timeout=0.5)
 
-            # Check for updates (lite: skip blobs)
-            session = DBSession.get_by_id_lite(session_id)
-            if not session:
-                break
+            # Title update
+            if stream.title and stream.title != last_title:
+                yield f"event: title\ndata: {json.dumps({'title': stream.title})}\n\n"
+                last_title = stream.title
 
-            current_title = session.get('title')
-            current_status = session.get('status')
+            # New events available
+            current_count = len(stream.events)
+            if current_count > last_event_count:
+                yield f"event: event\ndata: {json.dumps({'events': list(stream.events)})}\n\n"
+                last_event_count = current_count
 
-            # Title updated!
-            if current_title and current_title != last_title:
-                data = json.dumps({'title': current_title, 'timestamp': time.time()})
-                yield f"event: title\ndata: {data}\n\n"
-                last_title = current_title
+            # Error
+            if stream.error:
+                yield f"event: error\ndata: {json.dumps({'error': stream.error})}\n\n"
+                cleanup_stream(session_id)
+                return
 
-            # Status changed
-            if current_status != last_status:
-                data = json.dumps({'status': current_status, 'timestamp': time.time()})
-                yield f"event: status\ndata: {data}\n\n"
-                last_status = current_status
+            # Done
+            if stream.done:
+                # Send final events (may have been updated by personalization)
+                if len(stream.events) != last_event_count or last_event_count == 0:
+                    yield f"event: event\ndata: {json.dumps({'events': list(stream.events)})}\n\n"
+                yield f"event: complete\ndata: {json.dumps({'status': 'processed'})}\n\n"
+                cleanup_stream(session_id)
+                return
 
-                # If processed or error, end stream
-                if current_status in ['processed', 'error']:
-                    data = json.dumps({
-                        'status': current_status,
-                        'has_events': len(session.get('event_ids') or []) > 0
-                    })
-                    yield f"event: complete\ndata: {data}\n\n"
-                    break
-
-        # Timeout reached
-        if polls >= max_polls:
-            yield f"event: timeout\ndata: {json.dumps({'message': 'Stream timeout'})}\n\n"
+        # Timeout
+        yield f"event: timeout\ndata: {json.dumps({'message': 'Stream timeout'})}\n\n"
+        cleanup_stream(session_id)
 
     return Response(
         generate(),
         mimetype='text/event-stream',
         headers={
             'Cache-Control': 'no-cache',
-            'X-Accel-Buffering': 'no',  # Disable nginx buffering
+            'X-Accel-Buffering': 'no',
             'Connection': 'keep-alive'
         }
     )
 
 
+def _poll_db_fallback(session_id, session):
+    """Fallback: poll DB for status changes (no in-memory stream available)."""
+    last_title = session.get('title')
+    last_status = session.get('status')
+    from config.database import StreamConfig
+    max_polls = StreamConfig.MAX_POLLS
+
+    for _ in range(max_polls):
+        time.sleep(StreamConfig.POLL_INTERVAL_SECONDS)
+
+        session = DBSession.get_by_id_lite(session_id)
+        if not session:
+            break
+
+        current_title = session.get('title')
+        current_status = session.get('status')
+
+        if current_title and current_title != last_title:
+            yield f"event: title\ndata: {json.dumps({'title': current_title})}\n\n"
+            last_title = current_title
+
+        if current_status != last_status:
+            yield f"event: status\ndata: {json.dumps({'status': current_status})}\n\n"
+            last_status = current_status
+
+            if current_status in ['processed', 'error']:
+                if current_status == 'processed':
+                    events = EventService.get_events_by_session(session_id)
+                    yield f"event: event\ndata: {json.dumps({'events': events})}\n\n"
+                yield f"event: complete\ndata: {json.dumps({'status': current_status})}\n\n"
+                return
+
+    yield f"event: timeout\ndata: {json.dumps({'message': 'Stream timeout'})}\n\n"
+
+
 @sessions_bp.route('/<session_id>', methods=['DELETE'])
 def delete_session(session_id: str):
-    """
-    Delete a session.
-
-    Args:
-        session_id: Session UUID
-
-    Returns:
-        JSON with success message
-    """
+    """Delete a session."""
     success = DBSession.delete(session_id)
-
     if not success:
         return jsonify({'error': 'Session not found'}), 404
-
     return jsonify({'message': 'Session deleted successfully'})
