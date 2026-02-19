@@ -16,6 +16,7 @@ from extraction.extract import UnifiedExtractor
 from extraction.temporal_resolver import resolve_temporal
 from preferences.agent import PersonalizationAgent
 from extraction.title_generator import get_title_generator
+from extraction.icon_selector import get_icon_selector
 from events.service import EventService
 from preferences.service import PersonalizationService
 from processing.stream import get_stream
@@ -45,6 +46,7 @@ class SessionProcessor:
         self.personalization_service = PersonalizationService()
         self.pattern_refresh_service = pattern_refresh_service
         self.title_generator = get_title_generator()
+        self.icon_selector = get_icon_selector()
 
     # =========================================================================
     # Input preprocessing (unchanged)
@@ -223,6 +225,19 @@ class SessionProcessor:
         except Exception as e:
             logger.warning(f"Error generating title for session {session_id}: {e}")
 
+    def _select_and_update_icon(self, session_id: str, text: str) -> None:
+        """Select icon asynchronously (runs in background thread)."""
+        try:
+            icon = self.icon_selector.select(text)
+            DBSession.update_icon(session_id, icon)
+            # Push to SSE stream
+            stream = get_stream(session_id)
+            if stream:
+                stream.set_icon(icon)
+            logger.info(f"Icon selected for session {session_id}: '{icon}'")
+        except Exception as e:
+            logger.warning(f"Error selecting icon for session {session_id}: {e}")
+
     @staticmethod
     def _calendar_event_to_frontend(cal_event) -> dict:
         """Convert a CalendarEvent model to the dict shape the frontend expects."""
@@ -322,6 +337,13 @@ class SessionProcessor:
                 daemon=True
             )
             title_thread.start()
+
+            icon_thread = threading.Thread(
+                target=self._select_and_update_icon,
+                args=(session_id, text),
+                daemon=True
+            )
+            icon_thread.start()
 
             # Pre-load personalization context in parallel with extraction
             context_result = {}

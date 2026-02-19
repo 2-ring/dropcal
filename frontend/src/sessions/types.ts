@@ -110,6 +110,7 @@ export interface Session {
 export interface SessionListItem {
   id: string
   title: string
+  icon?: string
   timestamp: Date
   eventCount: number
   addedToCalendar: boolean

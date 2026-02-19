@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "DropCal",
   "description": "Right-click any text or image to create calendar events instantly.",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -12,7 +12,9 @@
     "contextMenus",
     "storage",
     "notifications",
-    "activeTab"
+    "activeTab",
+    "sidePanel",
+    "scripting"
   ],
   "host_permissions": [
     "https://api.dropcal.ai/*"
@@ -29,6 +31,9 @@
       "128": "icons/icon128.png"
     },
     "default_title": "DropCal"
+  },
+  "side_panel": {
+    "default_path": "sidebar/sidebar.html"
   },
   "content_scripts": [
     {

@@ -1,4 +1,4 @@
-import type { Session, CalendarEvent, AuthState } from './types';
+import type { Session, CalendarEvent } from './types';
 
 const API_URL = 'https://api.dropcal.ai';
 
@@ -81,4 +81,28 @@ export async function getSessionEvents(
     headers: authHeaders(),
   });
   return handleResponse(response);
+}
+
+// Upload a file (from drop zone / file picker) as FormData
+export async function uploadFile(
+  fileData: Uint8Array,
+  filename: string,
+  mimeType: string,
+): Promise<Session> {
+  const blob = new Blob([fileData], { type: mimeType });
+  const formData = new FormData();
+  formData.append('file', blob, filename);
+
+  const headers: Record<string, string> = {};
+  if (_authToken) {
+    headers['Authorization'] = `Bearer ${_authToken}`;
+  }
+
+  const response = await fetch(`${API_URL}/upload`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+  const data = await handleResponse<{ session: Session }>(response);
+  return data.session;
 }

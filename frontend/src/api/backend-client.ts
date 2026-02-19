@@ -196,6 +196,7 @@ export function streamSession(
   callbacks: {
     onEvents: (events: CalendarEvent[]) => void
     onTitle?: (title: string) => void
+    onIcon?: (icon: string) => void
     onComplete: () => void
     onError: (error: string) => void
   }
@@ -211,6 +212,13 @@ export function streamSession(
     const data = JSON.parse(e.data)
     if (callbacks.onTitle) {
       callbacks.onTitle(data.title)
+    }
+  })
+
+  eventSource.addEventListener('icon', (e) => {
+    const data = JSON.parse(e.data)
+    if (callbacks.onIcon) {
+      callbacks.onIcon(data.icon)
     }
   })
 

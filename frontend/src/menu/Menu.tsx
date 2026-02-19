@@ -2,17 +2,15 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Sidebar as SidebarIcon, Baby, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, GoogleLogo, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
 import type { SessionListItem } from '../sessions'
 import type { InputType } from '../sessions'
+import { ICON_MAP } from './iconMap'
 import { Account } from './Account'
 import { MenuButton } from './MenuButton'
 import { SkeletonSessionGroup } from '../components/skeletons'
 import { TypingText } from '../components/TypingText'
 import { useAuth } from '../auth/AuthContext'
 import { Tooltip } from '../components/Tooltip'
-import { useTheme } from '../theme/ThemeProvider'
 import { Logo } from '../components/Logo'
 import './Menu.css'
-import wordImageLight from '../assets/brand/light/word.png'
-import wordImageDark from '../assets/brand/dark/word.png'
 
 interface MenuProps {
   isOpen: boolean
@@ -34,7 +32,6 @@ export function Menu({
   onNewSession,
   isLoadingSessions = false,
 }: MenuProps) {
-  const { resolvedTheme } = useTheme()
   const { user, primaryCalendarProvider } = useAuth()
 
   // Track sessions whose titles should animate (arrived while processing)
@@ -66,9 +63,6 @@ export function Menu({
       return next
     })
   }, [])
-
-  // Select brand images based on theme
-  const wordImage = resolvedTheme === 'dark' ? wordImageDark : wordImageLight
 
   // Derive effective provider: prefer explicit primary, fall back to auth provider
   const rawAuthProvider = user?.app_metadata?.provider
@@ -192,7 +186,7 @@ export function Menu({
 
         <div className="sidebar-header">
           <div className="sidebar-logo">
-            <img src={wordImage} alt="DropCal" className="word-logo" />
+            <span className="display-text word-logo-text">dropcal</span>
           </div>
           <Tooltip content="Close sidebar">
             <button className="sidebar-toggle" onClick={onToggle}>
@@ -238,7 +232,9 @@ export function Menu({
                 <div key={period} className="chat-group">
                   <div className="chat-group-label">{period}</div>
                   {periodSessions.map((session) => {
-                    const InputIcon = getInputIcon(session.inputType)
+                    const ContentIcon = session.icon ? ICON_MAP[session.icon] : null
+                    const FallbackIcon = getInputIcon(session.inputType)
+                    const DisplayIcon = ContentIcon || FallbackIcon
                     return (
                       <div
                         key={session.id}
@@ -247,7 +243,7 @@ export function Menu({
                         } ${session.status === 'processing' ? 'processing' : ''}`}
                         onClick={() => onSessionClick(session.id)}
                       >
-                        <InputIcon size={16} weight="regular" className="chat-entry-icon" />
+                        <DisplayIcon size={16} weight="regular" className="chat-entry-icon" />
                         <span className="chat-entry-title">
                           {animatingTitles.has(session.id) ? (
                             <TypingText

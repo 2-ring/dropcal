@@ -808,7 +808,7 @@ class Session:
         Skips processed_events and input_content blobs for faster reads.
         """
         supabase = get_supabase()
-        lite_columns = "id,user_id,title,input_type,status,event_ids,created_at,added_to_calendar,guest_mode,error_message"
+        lite_columns = "id,user_id,title,icon,input_type,status,event_ids,created_at,added_to_calendar,guest_mode,error_message"
         response = supabase.table("sessions").select(lite_columns).eq("id", session_id).execute()
         return response.data[0] if response.data else None
 
@@ -829,7 +829,7 @@ class Session:
         supabase = get_supabase()
         # Select only columns needed for the session list — skip heavy blobs
         # like processed_events and input_content to speed up the query
-        list_columns = "id,user_id,title,input_type,status,event_ids,created_at,added_to_calendar,guest_mode"
+        list_columns = "id,user_id,title,icon,input_type,status,event_ids,created_at,added_to_calendar,guest_mode"
         response = supabase.table("sessions").select(list_columns)\
             .eq("user_id", user_id)\
             .neq("status", "error")\
@@ -1008,6 +1008,16 @@ class Session:
 
         response = supabase.table("sessions").update({
             "title": title
+        }).eq("id", session_id).execute()
+        return response.data[0]
+
+    @staticmethod
+    def update_icon(session_id: str, icon: str) -> Dict[str, Any]:
+        """Update session icon."""
+        supabase = get_supabase()
+
+        response = supabase.table("sessions").update({
+            "icon": icon
         }).eq("id", session_id).execute()
         return response.data[0]
 

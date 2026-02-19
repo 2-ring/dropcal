@@ -21,6 +21,8 @@ export interface CalendarEvent {
   start: CalendarDateTime;
   end: CalendarDateTime;
   location?: string;
+  description?: string;
+  recurrence?: string[];
 }
 
 // Auth state stored in chrome.storage.local (persists across browser restarts)
@@ -30,7 +32,7 @@ export interface AuthState {
   expiresAt: number; // Unix timestamp in seconds
 }
 
-// Extension state stored in chrome.storage.session
+// Phase 1 — single active job (kept for migration + context menu flow)
 export interface ActiveJob {
   sessionId: string;
   status: 'polling' | 'processed' | 'error';
@@ -41,13 +43,41 @@ export interface ActiveJob {
   createdAt: number;
 }
 
+// Phase 2 — persistent session history
+export interface SessionRecord {
+  sessionId: string;
+  status: 'polling' | 'processed' | 'error';
+  title: string | null;
+  eventCount: number;
+  eventSummaries: string[]; // First 3 event titles for popup subtitle
+  events: CalendarEvent[]; // Full events for sidebar rendering
+  errorMessage?: string;
+  createdAt: number;
+  inputType: 'text' | 'image' | 'page' | 'file';
+  pageUrl?: string;
+}
+
+export interface SessionHistory {
+  sessions: SessionRecord[]; // Most recent first, max 10
+}
+
 // Message types between background service worker, popup, and content script
 export type ExtensionMessage =
+  // Auth (content script ↔ background)
+  | { type: 'AUTH_TOKEN'; accessToken: string; refreshToken: string; expiresAt: number }
+  | { type: 'AUTH_SIGNED_OUT' }
+  // Popup queries
   | { type: 'GET_STATUS' }
-  | { type: 'STATUS_UPDATE'; job: ActiveJob | null }
+  | { type: 'GET_AUTH' }
+  | { type: 'SIGN_IN' }
+  // Phase 1 (context menu)
   | { type: 'OPEN_SESSION'; sessionId: string }
   | { type: 'CLEAR_JOB' }
-  | { type: 'SIGN_IN' }
-  | { type: 'GET_AUTH' }
-  | { type: 'AUTH_TOKEN'; accessToken: string; refreshToken: string; expiresAt: number }
-  | { type: 'AUTH_SIGNED_OUT' };
+  // Phase 2 — popup inputs
+  | { type: 'CAPTURE_PAGE' }
+  | { type: 'SUBMIT_TEXT'; text: string }
+  | { type: 'SUBMIT_FILE'; data: number[]; name: string; mimeType: string } // ArrayBuffer as number[] for messaging
+  // Phase 2 — history
+  | { type: 'GET_HISTORY' }
+  // Phase 2 — sidebar
+  | { type: 'OPEN_SIDEBAR'; sessionId: string };

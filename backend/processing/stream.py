@@ -15,6 +15,7 @@ class SessionStream:
     def __init__(self):
         self.events: List[Dict[str, Any]] = []
         self.title: Optional[str] = None
+        self.icon: Optional[str] = None
         self.done = False
         self.error: Optional[str] = None
         self._condition = threading.Condition()
@@ -27,6 +28,11 @@ class SessionStream:
     def set_title(self, title: str):
         with self._condition:
             self.title = title
+            self._condition.notify_all()
+
+    def set_icon(self, icon: str):
+        with self._condition:
+            self.icon = icon
             self._condition.notify_all()
 
     def mark_done(self):

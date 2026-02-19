@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=360">
+  <meta name="viewport" content="width=380">
   <link rel="stylesheet" href="popup.css">
   <title>DropCal</title>
 </head>
@@ -23,52 +23,65 @@
       </button>
     </div>
 
-    <!-- Idle state (signed in, no active job) -->
-    <div id="state-idle" class="state hidden">
-      <img src="../icons/icon48.png" alt="DropCal" class="logo">
-      <p class="idle-text">Select text or right-click an image, then choose <strong>"Send to DropCal"</strong> from the context menu.</p>
-    </div>
-
-    <!-- Processing state -->
-    <div id="state-processing" class="state hidden">
-      <div class="spinner"></div>
-      <p class="processing-text">Processing...</p>
-    </div>
-
-    <!-- Success state -->
-    <div id="state-success" class="state hidden">
-      <!-- Phosphor Confetti duotone -->
-      <div class="success-icon">
-        <svg width="36" height="36" viewBox="0 0 256 256" fill="#2e7d32">
-          <path d="M169.34,118.6l-58,80.34a8,8,0,0,1-5.65,3.42l-5.42.72L61,58.66l5.41-.72A8,8,0,0,1,72.8,61L120,94.15l6.94-9.61a24,24,0,0,1,39.07-2.63l.43.52A24,24,0,0,1,169.34,118.6Z" opacity="0.2"/>
-          <path d="M112.13,204.52a16,16,0,0,1-13,1.86l-5.42.72a16,16,0,0,1-17.68-19.05L55.92,52.67a16,16,0,0,1,21-14.42l.76.28a16,16,0,0,1,8.83,9.26l37.39,47.89,3-4.11A32,32,0,0,1,178.77,88l.43.52a32,32,0,0,1,3.83,36.43l-58,80.34A16,16,0,0,1,112.13,204.52ZM71.8,53.88l20.12,135.37,58-80.33a16,16,0,0,0-1.92-21.87l-.43-.52a16,16,0,0,0-23.58.29L118,95.43ZM200,40a8,8,0,0,1,0,16,8,8,0,0,0,0,16,8,8,0,0,1,0,16,24,24,0,0,1,0-48Zm40,48a8,8,0,0,1-8,8,8,8,0,0,0,0,16,8,8,0,0,1,0,16,24,24,0,0,1,0-48Zm-24,72a8,8,0,0,1,0,16,8,8,0,0,0,0,16,8,8,0,0,1,0,16,24,24,0,0,1,0-48Z"/>
-        </svg>
+    <!-- Main state (signed in) -->
+    <div id="state-main" class="hidden">
+      <!-- Header -->
+      <div class="popup-header">
+        <img src="../icons/icon48.png" alt="DropCal" class="header-logo">
+        <span class="header-title">DropCal</span>
       </div>
-      <p id="event-count" class="event-count"></p>
-      <p id="session-title" class="session-title"></p>
-      <button id="btn-open" class="btn-cta">
-        <!-- Phosphor ArrowSquareOut duotone -->
-        <svg class="btn-icon" width="18" height="18" viewBox="0 0 256 256" fill="currentColor">
-          <path d="M224,104v96a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V56A16,16,0,0,1,48,40h96Z" opacity="0.2"/>
-          <path d="M224,104a8,8,0,0,1-16,0V59.31l-66.34,66.35a8,8,0,0,1-11.32-11.32L196.69,48H152a8,8,0,0,1,0-16h64a8,8,0,0,1,8,8Zm-40,24a8,8,0,0,0-8,8v72H48V80h72a8,8,0,0,0,0-16H48A16,16,0,0,0,32,80V208a16,16,0,0,0,16,16H176a16,16,0,0,0,16-16V136A8,8,0,0,0,184,128Z"/>
-        </svg>
-        See in DropCal
-      </button>
-      <button id="btn-dismiss" class="btn-secondary">Dismiss</button>
-    </div>
 
-    <!-- Error state -->
-    <div id="state-error" class="state hidden">
-      <div class="error-icon">!</div>
-      <p id="error-message" class="error-text"></p>
-      <button id="btn-signin-error" class="btn-cta hidden">
-        <svg class="btn-icon" width="20" height="20" viewBox="0 0 256 256" fill="currentColor">
-          <path d="M128,40a88,88,0,1,0,88,88A88,88,0,0,0,128,40Zm0,144a56,56,0,1,1,56-56A56,56,0,0,1,128,184Z" opacity="0.2"/>
-          <path d="M141.66,133.66l-40,40a8,8,0,0,1-11.32-11.32L116.69,136H24a8,8,0,0,1,0-16h92.69L90.34,93.66a8,8,0,0,1,11.32-11.32l40,40A8,8,0,0,1,141.66,133.66ZM192,32H136a8,8,0,0,0,0,16h56a8,8,0,0,1,8,8V200a8,8,0,0,1-8,8H136a8,8,0,0,0,0,16h56a24,24,0,0,0,24-24V56A24,24,0,0,0,192,32Z"/>
-        </svg>
-        Sign in
-      </button>
-      <button id="btn-dismiss-error" class="btn-secondary">Dismiss</button>
+      <!-- Drop zone -->
+      <div id="drop-zone" class="drop-zone">
+        <input type="file" id="file-input" hidden multiple accept="image/*,.pdf,.txt,.doc,.docx">
+        <div id="drop-zone-idle" class="drop-zone-content">
+          <p class="drop-zone-text">Drop files, images, or text here</p>
+          <p class="drop-zone-subtext">or click to browse</p>
+        </div>
+        <div id="drop-zone-processing" class="drop-zone-content hidden">
+          <div class="spinner-small"></div>
+          <p class="drop-zone-text">Processing...</p>
+        </div>
+      </div>
+
+      <!-- Button row -->
+      <div class="button-row">
+        <!-- Capture Page -->
+        <button id="btn-capture" class="circle-btn" title="Capture Page">
+          <!-- Phosphor Globe -->
+          <svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor">
+            <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm88,104a87.62,87.62,0,0,1-6.4,32.94l-44.7-27.49a15.92,15.92,0,0,0-6.24-2.23l-22.82-3.08a16.11,16.11,0,0,0-16,7.86h-8.72l-3.8-7.86a16,16,0,0,0-11.09-8.48L74.34,116l12.74-26.29a16,16,0,0,0-1.27-16.06l-3.75-5.51A87.46,87.46,0,0,1,128,56a88.44,88.44,0,0,1,13.8,1.08l-4.26,14.61a16,16,0,0,0,4.06,15.63l10.52,10.52a16,16,0,0,0,9.79,4.68l19.54,1.62L196,118.54A16.07,16.07,0,0,0,216,128ZM40,128A87.44,87.44,0,0,1,67,56.79L71,62.4,58.31,88.68a16,16,0,0,0,1.08,15.78l9.58,14.18a16,16,0,0,0,11.09,6.9l21.91,3.61,3.8,7.86a16.07,16.07,0,0,0,14.37,9h1.83l-4.35,42.08a87.48,87.48,0,0,1-5.81,1.28A88.14,88.14,0,0,1,40,128Zm87.83,87.91,4.67-45.12a16,16,0,0,0-10.44-16.89L109,149.53l14.25-3.56a16,16,0,0,0,8.23-5.49l7.13-8.56,22.81,3.08,44.71,27.5A87.51,87.51,0,0,1,127.83,215.91Z"/>
+          </svg>
+        </button>
+
+        <!-- Paste -->
+        <button id="btn-paste" class="circle-btn" title="Paste from clipboard">
+          <!-- Phosphor ClipboardText -->
+          <svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor">
+            <path d="M168,152a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,152Zm-8-40H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Zm40-64V216a16,16,0,0,1-16,16H72a16,16,0,0,1-16-16V48A16,16,0,0,1,72,32H92.26a47.92,47.92,0,0,1,71.48,0H184a16,16,0,0,1,16,16ZM96,72h64a32,32,0,0,0-64,0Zm88-24H175.12A47.85,47.85,0,0,1,176,64v8a8,8,0,0,1-8,8H88a8,8,0,0,1-8-8V64a47.85,47.85,0,0,1,.88-16H72V216H184Z"/>
+          </svg>
+        </button>
+
+        <!-- Upload file -->
+        <button id="btn-upload" class="circle-btn" title="Upload file">
+          <!-- Phosphor ArrowUp -->
+          <svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor">
+            <path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Results section -->
+      <div id="results-section" class="results-section hidden">
+        <div class="results-header">Recent</div>
+        <div id="results-list" class="results-list"></div>
+      </div>
+
+      <!-- Active processing indicator -->
+      <div id="active-processing" class="active-processing hidden">
+        <div class="spinner-tiny"></div>
+        <span class="processing-label">Processing...</span>
+      </div>
     </div>
   </div>
 

@@ -106,16 +106,14 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  padding-left: calc(26px + var(--brand-logo-gap));
+  padding-left: calc(26px + var(--brand-logo-gap) + 4px);
   height: 26px;
 }
 
-.word-logo {
-  height: 26px;
-  width: auto;
-  object-fit: contain;
-  margin: 0;
-  display: block;
+.word-logo-text {
+  font-size: 1.25rem;
+  line-height: 26px;
+  white-space: nowrap;
 }
 
 .sidebar-toggle {
@@ -414,8 +412,8 @@
     height: var(--brand-mark-size);
   }
 
-  .word-logo {
-    height: var(--brand-mark-size);
+  .word-logo-text {
+    line-height: var(--brand-mark-size);
   }
 
   .sidebar-toggle {

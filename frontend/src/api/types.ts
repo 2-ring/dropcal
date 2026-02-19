@@ -28,6 +28,7 @@ export interface Session {
   input_content: string;
   status: 'pending' | 'processing' | 'processed' | 'error';
   title?: string;
+  icon?: string;
   extracted_events?: any[];
   processed_events?: any[];
   conflicts?: any[];

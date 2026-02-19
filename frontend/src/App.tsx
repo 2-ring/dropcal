@@ -50,6 +50,7 @@ type AppState = 'input' | 'loading' | 'review'
 interface SessionListItem {
   id: string
   title: string
+  icon?: string
   timestamp: Date
   inputType: 'text' | 'image' | 'audio' | 'document' | 'pdf' | 'email'
   status: 'processing' | 'completed'
@@ -417,6 +418,11 @@ function AppContent() {
               s.id === session.id ? { ...s, title } : s
             ))
           },
+          onIcon: (icon) => {
+            setSessionHistory(prev => prev.map(s =>
+              s.id === session.id ? { ...s, icon } : s
+            ))
+          },
           onComplete: () => {
             // 'complete' means events are persisted — refetch session to
             // hydrate local events with DB IDs before dropping loading state.
@@ -524,6 +530,11 @@ function AppContent() {
           onTitle: (title) => {
             setSessionHistory(prev => prev.map(s =>
               s.id === session.id ? { ...s, title } : s
+            ))
+          },
+          onIcon: (icon) => {
+            setSessionHistory(prev => prev.map(s =>
+              s.id === session.id ? { ...s, icon } : s
             ))
           },
           onComplete: () => {
@@ -696,6 +707,7 @@ function AppContent() {
     .map(session => ({
       id: session.id,
       title: session.title || (session.input_content ? session.input_content.substring(0, 50) + (session.input_content.length > 50 ? '...' : '') : 'Untitled'),
+      icon: session.icon,
       timestamp: new Date(session.created_at),
       inputType: session.input_type,
       status: session.status === 'processed' ? 'completed' as const : 'processing' as const,

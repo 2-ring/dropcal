@@ -43,7 +43,7 @@ def stream_session_updates(session_id: str):
             return
 
         # Send initial state
-        yield f"event: init\ndata: {json.dumps({'id': session_id, 'status': session.get('status'), 'title': session.get('title')})}\n\n"
+        yield f"event: init\ndata: {json.dumps({'id': session_id, 'status': session.get('status'), 'title': session.get('title'), 'icon': session.get('icon')})}\n\n"
 
         # If already processed, send events from DB and close
         if session.get('status') == 'processed':
@@ -64,6 +64,7 @@ def stream_session_updates(session_id: str):
 
         last_event_count = 0
         last_title = session.get('title')
+        last_icon = session.get('icon')
         max_wait = 300  # 5 min max
 
         start = time.time()
@@ -74,6 +75,11 @@ def stream_session_updates(session_id: str):
             if stream.title and stream.title != last_title:
                 yield f"event: title\ndata: {json.dumps({'title': stream.title})}\n\n"
                 last_title = stream.title
+
+            # Icon update
+            if stream.icon and stream.icon != last_icon:
+                yield f"event: icon\ndata: {json.dumps({'icon': stream.icon})}\n\n"
+                last_icon = stream.icon
 
             # New events available
             current_count = len(stream.events)
@@ -114,6 +120,7 @@ def stream_session_updates(session_id: str):
 def _poll_db_fallback(session_id, session):
     """Fallback: poll DB for status changes (no in-memory stream available)."""
     last_title = session.get('title')
+    last_icon = session.get('icon')
     last_status = session.get('status')
     from config.database import StreamConfig
     max_polls = StreamConfig.MAX_POLLS
@@ -131,6 +138,11 @@ def _poll_db_fallback(session_id, session):
         if current_title and current_title != last_title:
             yield f"event: title\ndata: {json.dumps({'title': current_title})}\n\n"
             last_title = current_title
+
+        current_icon = session.get('icon')
+        if current_icon and current_icon != last_icon:
+            yield f"event: icon\ndata: {json.dumps({'icon': current_icon})}\n\n"
+            last_icon = current_icon
 
         if current_status != last_status:
             yield f"event: status\ndata: {json.dumps({'status': current_status})}\n\n"
