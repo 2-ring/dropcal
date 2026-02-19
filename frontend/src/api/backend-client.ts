@@ -203,6 +203,16 @@ export function streamSession(
 ): () => void {
   const eventSource = new EventSource(`${API_URL}/sessions/${sessionId}/stream`)
 
+  eventSource.addEventListener('init', (e) => {
+    const data = JSON.parse(e.data)
+    if (data.title && callbacks.onTitle) {
+      callbacks.onTitle(data.title)
+    }
+    if (data.icon && callbacks.onIcon) {
+      callbacks.onIcon(data.icon)
+    }
+  })
+
   eventSource.addEventListener('event', (e) => {
     const data = JSON.parse(e.data)
     callbacks.onEvents(data.events)

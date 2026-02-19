@@ -1,3 +1,11 @@
+/* Chillax Font */
+@font-face {
+  font-family: 'Chillax';
+  src: url('../fonts/Chillax-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
 :root {
   /* Brand */
   --primary: #1170C5;
@@ -80,19 +88,52 @@ body {
 .popup-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 16px;
 }
 
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  text-decoration: none;
+  cursor: pointer;
+}
+
 .header-logo {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: var(--primary);
 }
 
 .header-title {
-  font-size: 16px;
+  font-family: 'Chillax', sans-serif;
+  font-size: 20px;
   font-weight: 700;
-  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  color: var(--primary);
+  flex: 1;
+}
+
+.header-settings {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.header-settings:hover {
+  color: var(--text-secondary);
 }
 
 /* ===== Shared: Spinners ===== */
@@ -390,10 +431,6 @@ body {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
-}
-
-.session-row:hover {
-  background: var(--surface-hover);
 }
 
 .session-row:hover .session-icon {

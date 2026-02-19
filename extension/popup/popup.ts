@@ -27,6 +27,15 @@ function showView(view: View): void {
   currentView = view;
 }
 
+// ===== Header =====
+
+const headerBrand = document.getElementById('header-brand')!;
+
+headerBrand.addEventListener('click', (e) => {
+  e.preventDefault();
+  chrome.tabs.create({ url: 'https://dropcal.ai' });
+});
+
 // ============================================================
 // View: Auth
 // ============================================================
