@@ -4,7 +4,6 @@ export interface Session {
   status: 'pending' | 'processing' | 'processed' | 'error';
   title?: string | null;
   event_ids?: string[];
-  access_token?: string;
   error_message?: string | null;
   created_at: string;
 }
@@ -24,10 +23,16 @@ export interface CalendarEvent {
   location?: string;
 }
 
+// Auth state stored in chrome.storage.local (persists across browser restarts)
+export interface AuthState {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number; // Unix timestamp in seconds
+}
+
 // Extension state stored in chrome.storage.session
 export interface ActiveJob {
   sessionId: string;
-  accessToken: string;
   status: 'polling' | 'processed' | 'error';
   eventCount: number;
   errorMessage?: string;
@@ -36,9 +41,13 @@ export interface ActiveJob {
   createdAt: number;
 }
 
-// Message types between background service worker and popup
+// Message types between background service worker, popup, and content script
 export type ExtensionMessage =
   | { type: 'GET_STATUS' }
   | { type: 'STATUS_UPDATE'; job: ActiveJob | null }
-  | { type: 'OPEN_SESSION'; sessionId: string; accessToken: string }
-  | { type: 'CLEAR_JOB' };
+  | { type: 'OPEN_SESSION'; sessionId: string }
+  | { type: 'CLEAR_JOB' }
+  | { type: 'SIGN_IN' }
+  | { type: 'GET_AUTH' }
+  | { type: 'AUTH_TOKEN'; accessToken: string; refreshToken: string; expiresAt: number }
+  | { type: 'AUTH_SIGNED_OUT' };

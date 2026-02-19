@@ -29,5 +29,15 @@
       "128": "icons/icon128.png"
     },
     "default_title": "DropCal"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://dropcal.ai/*",
+        "https://www.dropcal.ai/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
 }

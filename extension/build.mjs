@@ -23,12 +23,19 @@ async function run() {
     outfile: 'dist/popup/popup.js',
   });
 
+  const contentCtx = await esbuild.context({
+    ...commonOptions,
+    format: 'iife', // Content scripts can't be ES modules
+    entryPoints: ['content.ts'],
+    outfile: 'dist/content.js',
+  });
+
   if (isWatch) {
-    await Promise.all([bgCtx.watch(), popupCtx.watch()]);
+    await Promise.all([bgCtx.watch(), popupCtx.watch(), contentCtx.watch()]);
     console.log('Watching for changes...');
   } else {
-    await Promise.all([bgCtx.rebuild(), popupCtx.rebuild()]);
-    await Promise.all([bgCtx.dispose(), popupCtx.dispose()]);
+    await Promise.all([bgCtx.rebuild(), popupCtx.rebuild(), contentCtx.rebuild()]);
+    await Promise.all([bgCtx.dispose(), popupCtx.dispose(), contentCtx.dispose()]);
     console.log('Build complete.');
   }
 }

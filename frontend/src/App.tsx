@@ -91,6 +91,9 @@ function AppContent() {
 
   // Tracks the session the user is currently viewing (prevents stale processing from hijacking UI)
   const activeViewSessionRef = useRef<string | null>(null)
+  // Tracks the session currently being streamed via SSE (prevents URL-based
+  // useEffect from clearing events before they're persisted to the DB)
+  const streamingSessionRef = useRef<string | null>(null)
 
   // Guest mode state
   const [isGuestMode, setIsGuestMode] = useState(false)
@@ -177,6 +180,10 @@ function AppContent() {
   // Load session from URL on mount or when sessionId changes
   useEffect(() => {
     if (sessionId) {
+      // Skip if we're actively streaming this session via SSE — the events
+      // aren't persisted yet so loading from DB would clear the live view.
+      if (streamingSessionRef.current === sessionId) return
+
       // Wait for auth to finish loading before checking access
       if (authLoading) return
 
@@ -394,6 +401,7 @@ function AppContent() {
       setSessionHistory(prev => [session, ...prev.filter(s => s.id !== session.id)])
 
       // Stream events via SSE (events arrive as they're resolved)
+      streamingSessionRef.current = session.id
       await new Promise<void>((resolve, reject) => {
         const cleanup = streamSession(session.id, {
           onEvents: (events) => {
@@ -410,13 +418,35 @@ function AppContent() {
             ))
           },
           onComplete: () => {
-            setSessionHistory(prev => prev.map(s =>
-              s.id === session.id ? { ...s, status: 'processed' } : s
-            ))
-            setIsProcessing(false)
-            resolve()
+            // 'complete' means events are persisted — refetch session to
+            // hydrate local events with DB IDs before dropping loading state.
+            const fetchSession = user ? getSession(session.id) : getGuestSession(session.id)
+            fetchSession
+              .then(updated => {
+                const eventIds = updated.event_ids || []
+                // Silently assign DB IDs to local events (same pipeline order).
+                // isProcessing is still true so EventsWorkspace syncs from this prop.
+                setCalendarEvents(prev => prev.map((event, i) => ({
+                  ...event,
+                  id: eventIds[i] || event.id,
+                })))
+                setSessionHistory(prev => prev.map(s =>
+                  s.id === session.id ? { ...s, ...updated, status: 'processed' } : s
+                ))
+              })
+              .catch(() => {
+                setSessionHistory(prev => prev.map(s =>
+                  s.id === session.id ? { ...s, status: 'processed' } : s
+                ))
+              })
+              .finally(() => {
+                streamingSessionRef.current = null
+                setIsProcessing(false)
+                resolve()
+              })
           },
           onError: (error) => {
+            streamingSessionRef.current = null
             cleanup()
             reject(new Error(error))
           },
@@ -480,6 +510,7 @@ function AppContent() {
       setLoadingConfig(LOADING_MESSAGES.PROCESSING_FILE)
 
       // Stream events via SSE (events arrive as they're resolved)
+      streamingSessionRef.current = session.id
       await new Promise<void>((resolve, reject) => {
         const cleanup = streamSession(session.id, {
           onEvents: (events) => {
@@ -496,13 +527,33 @@ function AppContent() {
             ))
           },
           onComplete: () => {
-            setSessionHistory(prev => prev.map(s =>
-              s.id === session.id ? { ...s, status: 'processed' } : s
-            ))
-            setIsProcessing(false)
-            resolve()
+            // 'complete' means events are persisted — refetch session to
+            // hydrate local events with DB IDs before dropping loading state.
+            const fetchSession = user ? getSession(session.id) : getGuestSession(session.id)
+            fetchSession
+              .then(updated => {
+                const eventIds = updated.event_ids || []
+                setCalendarEvents(prev => prev.map((event, i) => ({
+                  ...event,
+                  id: eventIds[i] || event.id,
+                })))
+                setSessionHistory(prev => prev.map(s =>
+                  s.id === session.id ? { ...s, ...updated, status: 'processed' } : s
+                ))
+              })
+              .catch(() => {
+                setSessionHistory(prev => prev.map(s =>
+                  s.id === session.id ? { ...s, status: 'processed' } : s
+                ))
+              })
+              .finally(() => {
+                streamingSessionRef.current = null
+                setIsProcessing(false)
+                resolve()
+              })
           },
           onError: (error) => {
+            streamingSessionRef.current = null
             cleanup()
             reject(new Error(error))
           },

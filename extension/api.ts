@@ -1,27 +1,43 @@
-import type { Session, CalendarEvent } from './types';
+import type { Session, CalendarEvent, AuthState } from './types';
 
 const API_URL = 'https://api.dropcal.ai';
 
-export async function createGuestTextSession(text: string): Promise<Session> {
-  const response = await fetch(`${API_URL}/sessions/guest`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      input_type: 'text',
-      input_content: text,
-    }),
-  });
+// Auth state is injected by the background script before each call
+let _authToken: string | null = null;
 
+export function setAuthToken(token: string | null): void {
+  _authToken = token;
+}
+
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (_authToken) {
+    headers['Authorization'] = `Bearer ${_authToken}`;
+  }
+  return headers;
+}
+
+async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const err = await response.json().catch(() => ({ error: response.statusText }));
     throw new Error(err.error || `HTTP ${response.status}`);
   }
+  return response.json();
+}
 
-  const data = await response.json();
+// ===== Authenticated endpoints =====
+
+export async function createTextSession(text: string): Promise<Session> {
+  const response = await fetch(`${API_URL}/sessions`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ text }),
+  });
+  const data = await handleResponse<{ session: Session }>(response);
   return data.session;
 }
 
-export async function uploadGuestImage(imageUrl: string): Promise<Session> {
+export async function uploadImage(imageUrl: string): Promise<Session> {
   const imageResponse = await fetch(imageUrl);
   if (!imageResponse.ok) {
     throw new Error(`Failed to fetch image: ${imageResponse.status}`);
@@ -34,57 +50,35 @@ export async function uploadGuestImage(imageUrl: string): Promise<Session> {
   const formData = new FormData();
   formData.append('file', blob, filename);
 
-  const response = await fetch(`${API_URL}/upload/guest`, {
+  const headers: Record<string, string> = {};
+  if (_authToken) {
+    headers['Authorization'] = `Bearer ${_authToken}`;
+  }
+
+  const response = await fetch(`${API_URL}/upload`, {
     method: 'POST',
+    headers,
     body: formData,
   });
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(err.error || `HTTP ${response.status}`);
-  }
-
-  const data = await response.json();
+  const data = await handleResponse<{ session: Session }>(response);
   return data.session;
 }
 
-export async function getGuestSession(
-  sessionId: string,
-  accessToken: string,
-): Promise<Session> {
-  const response = await fetch(
-    `${API_URL}/sessions/guest/${sessionId}?access_token=${encodeURIComponent(accessToken)}`,
-    {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    },
-  );
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(err.error || `HTTP ${response.status}`);
-  }
-
-  const data = await response.json();
+export async function getSession(sessionId: string): Promise<Session> {
+  const response = await fetch(`${API_URL}/sessions/${sessionId}`, {
+    method: 'GET',
+    headers: authHeaders(),
+  });
+  const data = await handleResponse<{ session: Session }>(response);
   return data.session;
 }
 
-export async function getGuestSessionEvents(
+export async function getSessionEvents(
   sessionId: string,
-  accessToken: string,
 ): Promise<{ events: CalendarEvent[]; count: number }> {
-  const response = await fetch(
-    `${API_URL}/sessions/guest/${sessionId}/events?access_token=${encodeURIComponent(accessToken)}`,
-    {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    },
-  );
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(err.error || `HTTP ${response.status}`);
-  }
-
-  return response.json();
+  const response = await fetch(`${API_URL}/sessions/${sessionId}/events`, {
+    method: 'GET',
+    headers: authHeaders(),
+  });
+  return handleResponse(response);
 }

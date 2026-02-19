@@ -8,8 +8,23 @@
 </head>
 <body>
   <div id="root">
-    <!-- Idle state -->
-    <div id="state-idle" class="state">
+    <!-- Sign in state -->
+    <div id="state-signin" class="state hidden">
+      <img src="../icons/icon48.png" alt="DropCal" class="logo">
+      <p class="signin-heading">Sign in to DropCal</p>
+      <p class="signin-text">Sign in on dropcal.ai to start creating events from any page.</p>
+      <button id="btn-signin" class="btn-cta">
+        <!-- Phosphor SignIn duotone -->
+        <svg class="btn-icon" width="20" height="20" viewBox="0 0 256 256" fill="currentColor">
+          <path d="M128,40a88,88,0,1,0,88,88A88,88,0,0,0,128,40Zm0,144a56,56,0,1,1,56-56A56,56,0,0,1,128,184Z" opacity="0.2"/>
+          <path d="M141.66,133.66l-40,40a8,8,0,0,1-11.32-11.32L116.69,136H24a8,8,0,0,1,0-16h92.69L90.34,93.66a8,8,0,0,1,11.32-11.32l40,40A8,8,0,0,1,141.66,133.66ZM192,32H136a8,8,0,0,0,0,16h56a8,8,0,0,1,8,8V200a8,8,0,0,1-8,8H136a8,8,0,0,0,0,16h56a24,24,0,0,0,24-24V56A24,24,0,0,0,192,32Z"/>
+        </svg>
+        Sign in
+      </button>
+    </div>
+
+    <!-- Idle state (signed in, no active job) -->
+    <div id="state-idle" class="state hidden">
       <img src="../icons/icon48.png" alt="DropCal" class="logo">
       <p class="idle-text">Select text or right-click an image, then choose <strong>"Send to DropCal"</strong> from the context menu.</p>
     </div>
@@ -22,14 +37,23 @@
 
     <!-- Success state -->
     <div id="state-success" class="state hidden">
+      <!-- Phosphor Confetti duotone -->
       <div class="success-icon">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <path d="M4 10.5L8 14.5L16 6.5" stroke="#2e7d32" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <svg width="36" height="36" viewBox="0 0 256 256" fill="#2e7d32">
+          <path d="M169.34,118.6l-58,80.34a8,8,0,0,1-5.65,3.42l-5.42.72L61,58.66l5.41-.72A8,8,0,0,1,72.8,61L120,94.15l6.94-9.61a24,24,0,0,1,39.07-2.63l.43.52A24,24,0,0,1,169.34,118.6Z" opacity="0.2"/>
+          <path d="M112.13,204.52a16,16,0,0,1-13,1.86l-5.42.72a16,16,0,0,1-17.68-19.05L55.92,52.67a16,16,0,0,1,21-14.42l.76.28a16,16,0,0,1,8.83,9.26l37.39,47.89,3-4.11A32,32,0,0,1,178.77,88l.43.52a32,32,0,0,1,3.83,36.43l-58,80.34A16,16,0,0,1,112.13,204.52ZM71.8,53.88l20.12,135.37,58-80.33a16,16,0,0,0-1.92-21.87l-.43-.52a16,16,0,0,0-23.58.29L118,95.43ZM200,40a8,8,0,0,1,0,16,8,8,0,0,0,0,16,8,8,0,0,1,0,16,24,24,0,0,1,0-48Zm40,48a8,8,0,0,1-8,8,8,8,0,0,0,0,16,8,8,0,0,1,0,16,24,24,0,0,1,0-48Zm-24,72a8,8,0,0,1,0,16,8,8,0,0,0,0,16,8,8,0,0,1,0,16,24,24,0,0,1,0-48Z"/>
         </svg>
       </div>
       <p id="event-count" class="event-count"></p>
       <p id="session-title" class="session-title"></p>
-      <button id="btn-open" class="btn-primary">See in DropCal &rarr;</button>
+      <button id="btn-open" class="btn-cta">
+        <!-- Phosphor ArrowSquareOut duotone -->
+        <svg class="btn-icon" width="18" height="18" viewBox="0 0 256 256" fill="currentColor">
+          <path d="M224,104v96a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V56A16,16,0,0,1,48,40h96Z" opacity="0.2"/>
+          <path d="M224,104a8,8,0,0,1-16,0V59.31l-66.34,66.35a8,8,0,0,1-11.32-11.32L196.69,48H152a8,8,0,0,1,0-16h64a8,8,0,0,1,8,8Zm-40,24a8,8,0,0,0-8,8v72H48V80h72a8,8,0,0,0,0-16H48A16,16,0,0,0,32,80V208a16,16,0,0,0,16,16H176a16,16,0,0,0,16-16V136A8,8,0,0,0,184,128Z"/>
+        </svg>
+        See in DropCal
+      </button>
       <button id="btn-dismiss" class="btn-secondary">Dismiss</button>
     </div>
 
@@ -37,6 +61,13 @@
     <div id="state-error" class="state hidden">
       <div class="error-icon">!</div>
       <p id="error-message" class="error-text"></p>
+      <button id="btn-signin-error" class="btn-cta hidden">
+        <svg class="btn-icon" width="20" height="20" viewBox="0 0 256 256" fill="currentColor">
+          <path d="M128,40a88,88,0,1,0,88,88A88,88,0,0,0,128,40Zm0,144a56,56,0,1,1,56-56A56,56,0,0,1,128,184Z" opacity="0.2"/>
+          <path d="M141.66,133.66l-40,40a8,8,0,0,1-11.32-11.32L116.69,136H24a8,8,0,0,1,0-16h92.69L90.34,93.66a8,8,0,0,1,11.32-11.32l40,40A8,8,0,0,1,141.66,133.66ZM192,32H136a8,8,0,0,0,0,16h56a8,8,0,0,1,8,8V200a8,8,0,0,1-8,8H136a8,8,0,0,0,0,16h56a24,24,0,0,0,24-24V56A24,24,0,0,0,192,32Z"/>
+        </svg>
+        Sign in
+      </button>
       <button id="btn-dismiss-error" class="btn-secondary">Dismiss</button>
     </div>
   </div>

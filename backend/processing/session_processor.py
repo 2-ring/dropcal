@@ -480,13 +480,10 @@ class SessionProcessor:
                     for cal_event in calendar_events:
                         stream.push_event(self._calendar_event_to_frontend(cal_event))
 
-            # ── SIGNAL FRONTEND: pipeline complete ───────────────────────
-            # Mark stream done BEFORE saving to DB — frontend already has
-            # the events via SSE, no need to wait for DB writes + embeddings.
-            if stream:
-                stream.mark_done()
-
-            # ── SAVE: write events to DB + embeddings (post-stream) ──────
+            # ── SAVE: write events to DB + embeddings ──────────────────
+            # Frontend already has events via SSE for immediate display.
+            # Save to DB first, then signal completion so the frontend
+            # knows event_ids are available when it refetches.
             t_save = _time.time()
             events_data = []
             for calendar_event in calendar_events:
@@ -516,6 +513,12 @@ class SessionProcessor:
             logger.info(f"[timing] save: {_time.time() - t_save:.2f}s")
 
             DBSession.update_status(session_id, 'processed')
+
+            # ── SIGNAL FRONTEND: pipeline complete ───────────────────────
+            # Mark done AFTER DB save so 'complete' means events are
+            # persisted and event_ids are populated on the session.
+            if stream:
+                stream.mark_done()
 
             logger.info(f"[timing] total_pipeline: {_time.time() - pipeline_start:.2f}s")
             capture_pipeline_trace(
