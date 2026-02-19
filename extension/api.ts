@@ -83,6 +83,16 @@ export async function getSessionEvents(
   return handleResponse(response);
 }
 
+// Fetch the authenticated user's preferences (theme_mode, etc.)
+export async function getUserPreferences(): Promise<{ theme_mode?: string }> {
+  const response = await fetch(`${API_URL}/auth/profile`, {
+    method: 'GET',
+    headers: authHeaders(),
+  });
+  const data = await handleResponse<{ user: { preferences?: { theme_mode?: string } } }>(response);
+  return data.user.preferences || {};
+}
+
 // Upload a file (from drop zone / file picker) as FormData
 export async function uploadFile(
   fileData: Uint8Array,

@@ -66,6 +66,8 @@ export type ExtensionMessage =
   // Auth (content script ↔ background)
   | { type: 'AUTH_TOKEN'; accessToken: string; refreshToken: string; expiresAt: number }
   | { type: 'AUTH_SIGNED_OUT' }
+  // Theme (content script → background)
+  | { type: 'THEME_CHANGED'; themeMode: string }
   // Popup queries
   | { type: 'GET_STATUS' }
   | { type: 'GET_AUTH' }

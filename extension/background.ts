@@ -6,6 +6,7 @@ import {
   uploadFile,
   getSession,
   getSessionEvents,
+  getUserPreferences,
 } from './api';
 
 const POLL_INTERVAL_MS = 2000;
@@ -25,10 +26,21 @@ async function getAuth(): Promise<AuthState | null> {
 async function setAuth(auth: AuthState): Promise<void> {
   await chrome.storage.local.set({ auth });
   setAuthToken(auth.accessToken);
+  fetchAndStoreTheme();
+}
+
+async function fetchAndStoreTheme(): Promise<void> {
+  try {
+    const prefs = await getUserPreferences();
+    const themeMode = prefs.theme_mode || 'auto';
+    await chrome.storage.local.set({ themeMode });
+  } catch {
+    // If preferences fetch fails (e.g. token expired), default to auto
+  }
 }
 
 async function clearAuth(): Promise<void> {
-  await chrome.storage.local.remove('auth');
+  await chrome.storage.local.remove(['auth', 'themeMode']);
   setAuthToken(null);
 }
 
@@ -225,13 +237,29 @@ async function pollSession(sessionId: string): Promise<void> {
 
 // ===== Page Capture =====
 
-async function capturePageText(): Promise<void> {
+async function capturePageText(): Promise<string | null> {
   const hasAuth = await ensureAuth();
-  if (!hasAuth) return;
+  if (!hasAuth) return 'Not authenticated. Please sign in on dropcal.ai.';
 
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) return;
+    // Use lastFocusedWindow — service workers don't have a "current window"
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tab?.id || !tab.url) {
+      return 'No active tab found.';
+    }
+
+    // Check for restricted URLs where executeScript can't run
+    const url = tab.url;
+    if (
+      url.startsWith('chrome://') ||
+      url.startsWith('chrome-extension://') ||
+      url.startsWith('about:') ||
+      url.startsWith('edge://') ||
+      url.startsWith('brave://') ||
+      url.includes('chrome.google.com/webstore')
+    ) {
+      return 'Cannot capture this page. Try on a regular website.';
+    }
 
     setBadgeProcessing();
 
@@ -246,8 +274,7 @@ async function capturePageText(): Promise<void> {
 
     const pageData = results?.[0]?.result;
     if (!pageData || !pageData.text) {
-      setBadgeError();
-      return;
+      return 'Could not read page content.';
     }
 
     let text = `Page: ${pageData.title}\nURL: ${pageData.url}\n\n${pageData.text}`;
@@ -274,9 +301,11 @@ async function capturePageText(): Promise<void> {
     await addSessionRecord(record);
 
     pollSession(session.id);
+    return null; // success
   } catch (error) {
     console.error('DropCal: Page capture failed', error);
-    setBadgeError();
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    return `Page capture failed: ${msg}`;
   }
 }
 
@@ -311,6 +340,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({ ok: true });
     });
     return true;
+  }
+
+  // Content script sends theme mode changes from dropcal.ai
+  if (message.type === 'THEME_CHANGED') {
+    const themeMode = message.themeMode || 'auto';
+    chrome.storage.local.set({ themeMode });
+    sendResponse({ ok: true });
+    return false;
   }
 
   if (message.type === 'AUTH_SIGNED_OUT') {
@@ -359,7 +396,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   // Phase 2 — popup inputs
   if (message.type === 'CAPTURE_PAGE') {
-    capturePageText().then(() => sendResponse({ ok: true }));
+    capturePageText().then((errorMsg) => {
+      if (errorMsg) {
+        setBadgeError();
+        sendResponse({ ok: false, error: errorMsg });
+      } else {
+        sendResponse({ ok: true });
+      }
+    });
     return true;
   }
 
@@ -435,11 +479,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
-  // Phase 2 — sidebar
+  // Phase 2 — sidebar (fallback — popup handles this directly now)
   if (message.type === 'OPEN_SIDEBAR') {
     const { sessionId } = message;
     chrome.storage.session.set({ sidebarSessionId: sessionId });
-    chrome.windows.getCurrent().then((window) => {
+    chrome.windows.getLastFocused().then((window) => {
       if (window.id) {
         (chrome.sidePanel as any).open({ windowId: window.id }).catch(() => {});
       }
@@ -456,9 +500,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 chrome.notifications.onClicked.addListener(async (notificationId) => {
   if (!notificationId.startsWith('dropcal-')) return;
   const sessionId = notificationId.replace('dropcal-', '');
-  chrome.storage.session.set({ sidebarSessionId: sessionId });
-  const window = await chrome.windows.getCurrent();
-  if (window.id) {
-    (chrome.sidePanel as any).open({ windowId: window.id }).catch(() => {});
-  }
+  await chrome.storage.session.set({ sidebarSessionId: sessionId });
+  // Notification click is a user gesture — open session in DropCal instead
+  // (sidePanel.open from service worker without user gesture context is unreliable)
+  const url = `${DROPCAL_URL}/s/${sessionId}`;
+  chrome.tabs.create({ url });
 });

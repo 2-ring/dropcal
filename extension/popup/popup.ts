@@ -1,4 +1,5 @@
 import type { SessionRecord } from '../types';
+import { initTheme } from '../theme';
 
 // ===== DOM Elements =====
 
@@ -10,16 +11,36 @@ const dropZone = document.getElementById('drop-zone')!;
 const dropZoneIdle = document.getElementById('drop-zone-idle')!;
 const dropZoneProcessing = document.getElementById('drop-zone-processing')!;
 const fileInput = document.getElementById('file-input') as HTMLInputElement;
+const imageInput = document.getElementById('image-input') as HTMLInputElement;
+const docInput = document.getElementById('doc-input') as HTMLInputElement;
 
+const btnLink = document.getElementById('btn-link')!;
+const btnImages = document.getElementById('btn-images')!;
+const btnFiles = document.getElementById('btn-files')!;
+const btnCenter = document.getElementById('btn-center')!;
 const btnCapture = document.getElementById('btn-capture')!;
 const btnPaste = document.getElementById('btn-paste')!;
-const btnUpload = document.getElementById('btn-upload')!;
+const btnEmail = document.getElementById('btn-email')!;
+
+const allButtons = [btnLink, btnImages, btnFiles, btnCenter, btnCapture, btnPaste, btnEmail];
 
 const resultsSection = document.getElementById('results-section')!;
 const resultsList = document.getElementById('results-list')!;
 const activeProcessingEl = document.getElementById('active-processing')!;
 
 let isProcessing = false;
+
+// ===== Sidebar =====
+
+async function openSidebar(sessionId: string): Promise<void> {
+  // Store which session the sidebar should show
+  await chrome.storage.session.set({ sidebarSessionId: sessionId });
+  // Open sidebar from popup context (has user gesture + proper window)
+  const window = await chrome.windows.getCurrent();
+  if (window.id) {
+    await (chrome.sidePanel as any).open({ windowId: window.id });
+  }
+}
 
 // ===== Auth Check =====
 
@@ -36,10 +57,10 @@ function setProcessing(processing: boolean): void {
   dropZoneIdle.classList.toggle('hidden', processing);
   dropZoneProcessing.classList.toggle('hidden', !processing);
 
-  // Disable buttons
-  btnCapture.classList.toggle('disabled', processing);
-  btnPaste.classList.toggle('disabled', processing);
-  btnUpload.classList.toggle('disabled', processing);
+  // Disable all buttons
+  for (const btn of allButtons) {
+    btn.classList.toggle('disabled', processing);
+  }
 }
 
 // ===== Results Rendering =====
@@ -64,7 +85,7 @@ function renderHistory(sessions: SessionRecord[]): void {
     const row = document.createElement('div');
     row.className = 'session-row';
     row.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ type: 'OPEN_SIDEBAR', sessionId: session.sessionId });
+      openSidebar(session.sessionId);
     });
 
     const dot = document.createElement('div');
@@ -134,19 +155,24 @@ btnSignin.addEventListener('click', () => {
   window.close();
 });
 
-// ===== Drop Zone — Click to browse =====
-
-dropZone.addEventListener('click', (e) => {
-  if (isProcessing) return;
-  // Don't trigger if click came from the file input itself
-  if (e.target === fileInput) return;
-  fileInput.click();
-});
+// ===== File Input Handlers =====
 
 fileInput.addEventListener('change', () => {
   if (!fileInput.files || fileInput.files.length === 0) return;
   handleFiles(fileInput.files);
-  fileInput.value = ''; // Reset
+  fileInput.value = '';
+});
+
+imageInput.addEventListener('change', () => {
+  if (!imageInput.files || imageInput.files.length === 0) return;
+  handleFiles(imageInput.files);
+  imageInput.value = '';
+});
+
+docInput.addEventListener('change', () => {
+  if (!docInput.files || docInput.files.length === 0) return;
+  handleFiles(docInput.files);
+  docInput.value = '';
 });
 
 // ===== Drop Zone — Drag & Drop =====
@@ -211,12 +237,55 @@ document.addEventListener('paste', (e) => {
 
 // ===== Button Handlers =====
 
-btnCapture.addEventListener('click', () => {
+// Stop button clicks from bubbling to drop zone
+for (const btn of allButtons) {
+  btn.addEventListener('click', (e) => e.stopPropagation());
+}
+
+// Link — paste from clipboard (URL or text)
+btnLink.addEventListener('click', async () => {
   if (isProcessing) return;
-  chrome.runtime.sendMessage({ type: 'CAPTURE_PAGE' });
-  setProcessing(true);
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text && text.trim()) {
+      chrome.runtime.sendMessage({ type: 'SUBMIT_TEXT', text: text.trim() });
+      setProcessing(true);
+    }
+  } catch {
+    // Clipboard access denied
+  }
 });
 
+// Images — open image file picker
+btnImages.addEventListener('click', () => {
+  if (isProcessing) return;
+  imageInput.click();
+});
+
+// Files — open document file picker
+btnFiles.addEventListener('click', () => {
+  if (isProcessing) return;
+  docInput.click();
+});
+
+// Center — open general file picker
+btnCenter.addEventListener('click', () => {
+  if (isProcessing) return;
+  fileInput.click();
+});
+
+// Capture — capture current page
+btnCapture.addEventListener('click', () => {
+  if (isProcessing) return;
+  setProcessing(true);
+  chrome.runtime.sendMessage({ type: 'CAPTURE_PAGE' }, (response) => {
+    if (response && !response.ok) {
+      setProcessing(false);
+    }
+  });
+});
+
+// Paste — paste text from clipboard
 btnPaste.addEventListener('click', async () => {
   if (isProcessing) return;
   try {
@@ -226,13 +295,14 @@ btnPaste.addEventListener('click', async () => {
       setProcessing(true);
     }
   } catch {
-    // Clipboard access denied — ignore
+    // Clipboard access denied
   }
 });
 
-btnUpload.addEventListener('click', () => {
+// Email — placeholder (future: forward email)
+btnEmail.addEventListener('click', () => {
   if (isProcessing) return;
-  fileInput.click();
+  // TODO: email forwarding flow
 });
 
 // ===== File Handling =====
@@ -277,6 +347,9 @@ chrome.storage.session.onChanged.addListener(() => {
 });
 
 // ===== Init =====
+
+// Apply theme
+initTheme();
 
 function loadHistory(): void {
   chrome.storage.local.get('sessionHistory', (result) => {

@@ -2,8 +2,10 @@
 // Reads the Supabase session from localStorage and sends it to the extension
 
 const SUPABASE_STORAGE_KEY = 'sb-bdpiluwfhfmitvrcdrlr-auth-token';
+const THEME_STORAGE_KEY = 'theme-mode';
 
 let lastSentToken: string | null = null;
+let lastSentTheme: string | null = null;
 
 function readAndSendToken(): void {
   try {
@@ -41,14 +43,28 @@ function readAndSendToken(): void {
   }
 }
 
-// Send token on page load
+function readAndSendTheme(): void {
+  try {
+    const theme = localStorage.getItem(THEME_STORAGE_KEY) || 'auto';
+    if (theme !== lastSentTheme) {
+      lastSentTheme = theme;
+      chrome.runtime.sendMessage({ type: 'THEME_CHANGED', themeMode: theme }).catch(() => {});
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// Send token and theme on page load
 readAndSendToken();
+readAndSendTheme();
 
 // Rapid polling for the first 15 seconds to catch post-OAuth token writes
 // (Supabase processes the OAuth hash fragment async after page load)
 let rapidPollCount = 0;
 const rapidPoll = setInterval(() => {
   readAndSendToken();
+  readAndSendTheme();
   rapidPollCount++;
   if (rapidPollCount >= 15) {
     clearInterval(rapidPoll);
@@ -60,7 +76,13 @@ window.addEventListener('storage', (event) => {
   if (event.key === SUPABASE_STORAGE_KEY) {
     readAndSendToken();
   }
+  if (event.key === THEME_STORAGE_KEY) {
+    readAndSendTheme();
+  }
 });
 
-// Steady-state poll every 5s to catch same-tab token refreshes
-setInterval(readAndSendToken, 5000);
+// Steady-state poll every 5s to catch same-tab token refreshes and theme changes
+setInterval(() => {
+  readAndSendToken();
+  readAndSendTheme();
+}, 5000);

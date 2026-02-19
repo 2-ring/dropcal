@@ -1,7 +1,7 @@
 import type { SessionRecord, CalendarEvent } from '../types';
+import { initTheme } from '../theme';
 
 const DROPCAL_URL = 'https://dropcal.ai';
-const EVENT_COLOR = '#1170C5';
 
 // ===== DOM Elements =====
 
@@ -143,8 +143,6 @@ function renderEvents(events: CalendarEvent[]): void {
     for (const event of dateEvents) {
       const card = document.createElement('div');
       card.className = 'event-card';
-      card.style.borderLeft = `8px solid ${EVENT_COLOR}`;
-      card.style.backgroundColor = `${EVENT_COLOR}12`;
 
       const timeRange = formatTimeRange(event.start, event.end);
 
@@ -270,6 +268,9 @@ chrome.storage.local.onChanged.addListener((changes) => {
 });
 
 // ===== Init =====
+
+// Apply theme
+initTheme();
 
 // Read which session to display from session storage
 chrome.storage.session.get('sidebarSessionId', (result) => {

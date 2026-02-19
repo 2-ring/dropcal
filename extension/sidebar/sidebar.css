@@ -13,6 +13,21 @@
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+[data-theme="dark"] {
+  --primary: #4A9EFF;
+  --primary-hover: #6BB1FF;
+  --text-primary: #e8e8e8;
+  --text-secondary: #b8b8b8;
+  --text-tertiary: #888888;
+  --success: #66bb6a;
+  --error: #e57373;
+  --background: #1a1a1a;
+  --border: #3a3a3a;
+  --surface-hover: #2a2a2a;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -185,6 +200,12 @@ body {
   border-radius: 16px;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+  border-left: 8px solid var(--primary);
+  background-color: rgba(17, 112, 197, 0.07);
+}
+
+[data-theme="dark"] .event-card {
+  background-color: rgba(74, 158, 255, 0.1);
 }
 
 .event-card-title-row {
@@ -238,6 +259,11 @@ body {
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 400px 100%;
   animation: shimmer 1.5s ease-in-out infinite;
+}
+
+[data-theme="dark"] .skeleton-card {
+  background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+  background-size: 400px 100%;
 }
 
 /* ===== Error & Empty ===== */
