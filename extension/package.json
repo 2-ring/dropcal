@@ -1,11 +1,11 @@
 {
   "name": "dropcal-extension",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node build.mjs && npm run copy",
-    "copy": "mkdir -p dist/popup dist/icons && cp manifest.json dist/ && cp -r icons/* dist/icons/ && cp popup/popup.html dist/popup/ && cp popup/popup.css dist/popup/",
+    "copy": "mkdir -p dist/popup dist/sidebar dist/icons && cp manifest.json dist/ && cp -r icons/* dist/icons/ && cp popup/popup.html dist/popup/ && cp popup/popup.css dist/popup/ && cp sidebar/sidebar.html dist/sidebar/ && cp sidebar/sidebar.css dist/sidebar/",
     "watch": "node build.mjs --watch",
     "clean": "rm -rf dist"
   },

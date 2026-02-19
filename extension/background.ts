@@ -1,14 +1,17 @@
-import type { ActiveJob, AuthState } from './types';
+import type { ActiveJob, AuthState, SessionRecord, SessionHistory } from './types';
 import {
   setAuthToken,
   createTextSession,
   uploadImage,
+  uploadFile,
   getSession,
   getSessionEvents,
 } from './api';
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLL_DURATION_MS = 5 * 60 * 1000;
+const MAX_HISTORY_SESSIONS = 10;
+const MAX_PAGE_TEXT_LENGTH = 50000;
 const CONTEXT_MENU_ID = 'send-to-dropcal';
 const DROPCAL_URL = 'https://dropcal.ai';
 
@@ -29,20 +32,42 @@ async function clearAuth(): Promise<void> {
   setAuthToken(null);
 }
 
-async function isAuthenticated(): Promise<boolean> {
-  const auth = await getAuth();
-  if (!auth) return false;
-  // Token is considered valid if it expires more than 60 seconds from now
-  return auth.expiresAt > Date.now() / 1000 + 60;
-}
-
 async function ensureAuth(): Promise<boolean> {
   const auth = await getAuth();
   if (!auth) return false;
   setAuthToken(auth.accessToken);
-  // If token is expired, it might still work — the backend validates with Supabase
-  // which may have refreshed it. Let the API call fail and handle 401 there.
   return true;
+}
+
+// ===== Session History Management =====
+
+async function getHistory(): Promise<SessionHistory> {
+  const result = await chrome.storage.local.get('sessionHistory');
+  return result.sessionHistory || { sessions: [] };
+}
+
+async function saveHistory(history: SessionHistory): Promise<void> {
+  history.sessions = history.sessions.slice(0, MAX_HISTORY_SESSIONS);
+  await chrome.storage.local.set({ sessionHistory: history });
+}
+
+async function addSessionRecord(record: SessionRecord): Promise<void> {
+  const history = await getHistory();
+  history.sessions = history.sessions.filter((s) => s.sessionId !== record.sessionId);
+  history.sessions.unshift(record);
+  await saveHistory(history);
+}
+
+async function updateSessionRecord(
+  sessionId: string,
+  updates: Partial<SessionRecord>,
+): Promise<void> {
+  const history = await getHistory();
+  const idx = history.sessions.findIndex((s) => s.sessionId === sessionId);
+  if (idx !== -1) {
+    history.sessions[idx] = { ...history.sessions[idx], ...updates };
+    await saveHistory(history);
+  }
 }
 
 // ===== Context Menu Setup =====
@@ -53,7 +78,30 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'Send to DropCal',
     contexts: ['selection', 'image'],
   });
+
+  // Migrate Phase 1 activeJob → sessionHistory if present
+  migratePhase1Job();
 });
+
+async function migratePhase1Job(): Promise<void> {
+  const result = await chrome.storage.session.get('activeJob');
+  const job = result.activeJob as ActiveJob | undefined;
+  if (job && job.sessionId && job.status === 'processed') {
+    const record: SessionRecord = {
+      sessionId: job.sessionId,
+      status: 'processed',
+      title: job.sessionTitle || null,
+      eventCount: job.eventCount,
+      eventSummaries: (job.events || []).slice(0, 3).map((e) => e.summary),
+      events: job.events || [],
+      createdAt: job.createdAt,
+      inputType: 'text',
+    };
+    await addSessionRecord(record);
+    await chrome.storage.session.remove('activeJob');
+    clearBadge();
+  }
+}
 
 // ===== Context Menu Click Handler =====
 
@@ -62,57 +110,45 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
 
   const hasAuth = await ensureAuth();
   if (!hasAuth) {
-    // Not signed in — set error state so popup shows sign-in prompt
-    const errorJob: ActiveJob = {
-      sessionId: '',
-      status: 'error',
-      eventCount: 0,
-      errorMessage: 'Sign in to DropCal to use this feature.',
-      createdAt: Date.now(),
-    };
-    await chrome.storage.session.set({ activeJob: errorJob });
     setBadgeError();
     return;
   }
 
   try {
     let session;
+    let inputType: SessionRecord['inputType'] = 'text';
 
     if (info.selectionText) {
       setBadgeProcessing();
       session = await createTextSession(info.selectionText);
+      inputType = 'text';
     } else if (info.srcUrl) {
       setBadgeProcessing();
       session = await uploadImage(info.srcUrl);
+      inputType = 'image';
     } else {
       return;
     }
 
-    const job: ActiveJob = {
+    const record: SessionRecord = {
       sessionId: session.id,
       status: 'polling',
+      title: null,
       eventCount: 0,
+      eventSummaries: [],
+      events: [],
       createdAt: Date.now(),
+      inputType,
     };
-    await chrome.storage.session.set({ activeJob: job });
+    await addSessionRecord(record);
 
     pollSession(session.id);
   } catch (error) {
     console.error('DropCal: Failed to create session', error);
     const msg = error instanceof Error ? error.message : 'Unknown error';
+    const isAuthError =
+      msg.includes('401') || msg.includes('403') || msg.includes('authentication');
 
-    // If 401/403, prompt re-authentication
-    const isAuthError = msg.includes('401') || msg.includes('403') || msg.includes('authentication');
-    const errorJob: ActiveJob = {
-      sessionId: '',
-      status: 'error',
-      eventCount: 0,
-      errorMessage: isAuthError
-        ? 'Session expired. Please sign in again on dropcal.ai.'
-        : msg,
-      createdAt: Date.now(),
-    };
-    await chrome.storage.session.set({ activeJob: errorJob });
     setBadgeError();
 
     if (isAuthError) {
@@ -128,13 +164,11 @@ async function pollSession(sessionId: string): Promise<void> {
 
   const poll = async () => {
     if (Date.now() - startTime > MAX_POLL_DURATION_MS) {
-      const job = await getActiveJob();
-      if (job && job.sessionId === sessionId) {
-        job.status = 'error';
-        job.errorMessage = 'Processing timed out. Please try again.';
-        await chrome.storage.session.set({ activeJob: job });
-        setBadgeError();
-      }
+      await updateSessionRecord(sessionId, {
+        status: 'error',
+        errorMessage: 'Processing timed out. Please try again.',
+      });
+      setBadgeError();
       return;
     }
 
@@ -144,44 +178,39 @@ async function pollSession(sessionId: string): Promise<void> {
       if (session.status === 'processed') {
         const { events, count } = await getSessionEvents(sessionId);
 
-        const job: ActiveJob = {
-          sessionId,
+        await updateSessionRecord(sessionId, {
           status: 'processed',
+          title: session.title || null,
           eventCount: count,
-          sessionTitle: session.title,
+          eventSummaries: events.slice(0, 3).map((e) => e.summary),
           events,
-          createdAt: Date.now(),
-        };
-        await chrome.storage.session.set({ activeJob: job });
+        });
+
         setBadgeCount(count);
 
         chrome.notifications.create(`dropcal-${sessionId}`, {
           type: 'basic',
           iconUrl: 'icons/icon128.png',
           title: 'DropCal',
-          message:
-            count === 1
-              ? '1 event scheduled'
-              : `${count} events scheduled`,
+          message: count === 1 ? '1 event scheduled' : `${count} events scheduled`,
         });
 
-        // Auto-open the popup to show the success state
         chrome.action.openPopup().catch(() => {});
-
         return;
       }
 
       if (session.status === 'error') {
-        const job: ActiveJob = {
-          sessionId,
+        await updateSessionRecord(sessionId, {
           status: 'error',
-          eventCount: 0,
           errorMessage: session.error_message || 'Processing failed',
-          createdAt: Date.now(),
-        };
-        await chrome.storage.session.set({ activeJob: job });
+        });
         setBadgeError();
         return;
+      }
+
+      // Update title mid-processing if available
+      if (session.title) {
+        await updateSessionRecord(sessionId, { title: session.title });
       }
 
       setTimeout(poll, POLL_INTERVAL_MS);
@@ -192,6 +221,63 @@ async function pollSession(sessionId: string): Promise<void> {
   };
 
   poll();
+}
+
+// ===== Page Capture =====
+
+async function capturePageText(): Promise<void> {
+  const hasAuth = await ensureAuth();
+  if (!hasAuth) return;
+
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
+
+    setBadgeProcessing();
+
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => ({
+        text: document.body.innerText,
+        title: document.title,
+        url: document.URL,
+      }),
+    });
+
+    const pageData = results?.[0]?.result;
+    if (!pageData || !pageData.text) {
+      setBadgeError();
+      return;
+    }
+
+    let text = `Page: ${pageData.title}\nURL: ${pageData.url}\n\n${pageData.text}`;
+    if (text.length > MAX_PAGE_TEXT_LENGTH) {
+      const fullLength = text.length;
+      text =
+        text.slice(0, MAX_PAGE_TEXT_LENGTH) +
+        `\n\n[Truncated — full page was ${fullLength} characters]`;
+    }
+
+    const session = await createTextSession(text);
+
+    const record: SessionRecord = {
+      sessionId: session.id,
+      status: 'polling',
+      title: pageData.title || null,
+      eventCount: 0,
+      eventSummaries: [],
+      events: [],
+      createdAt: Date.now(),
+      inputType: 'page',
+      pageUrl: pageData.url,
+    };
+    await addSessionRecord(record);
+
+    pollSession(session.id);
+  } catch (error) {
+    console.error('DropCal: Page capture failed', error);
+    setBadgeError();
+  }
 }
 
 // ===== Badge Helpers =====
@@ -215,13 +301,6 @@ function clearBadge(): void {
   chrome.action.setBadgeText({ text: '' });
 }
 
-// ===== Storage Helpers =====
-
-async function getActiveJob(): Promise<ActiveJob | null> {
-  const result = await chrome.storage.session.get('activeJob');
-  return result.activeJob || null;
-}
-
 // ===== Message Handler =====
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -239,10 +318,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
-  // Popup requests
+  // Popup queries
   if (message.type === 'GET_STATUS') {
-    Promise.all([getActiveJob(), getAuth()]).then(([job, auth]) => {
-      sendResponse({ job, isAuthenticated: !!auth });
+    Promise.all([
+      chrome.storage.session.get('activeJob'),
+      getAuth(),
+    ]).then(([jobResult, auth]) => {
+      sendResponse({ job: jobResult.activeJob || null, isAuthenticated: !!auth });
     });
     return true;
   }
@@ -275,6 +357,97 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return false;
   }
 
+  // Phase 2 — popup inputs
+  if (message.type === 'CAPTURE_PAGE') {
+    capturePageText().then(() => sendResponse({ ok: true }));
+    return true;
+  }
+
+  if (message.type === 'SUBMIT_TEXT') {
+    const { text } = message;
+    ensureAuth().then(async (hasAuth) => {
+      if (!hasAuth) {
+        sendResponse({ ok: false, error: 'Not authenticated' });
+        return;
+      }
+      try {
+        setBadgeProcessing();
+        const session = await createTextSession(text);
+        const record: SessionRecord = {
+          sessionId: session.id,
+          status: 'polling',
+          title: null,
+          eventCount: 0,
+          eventSummaries: [],
+          events: [],
+          createdAt: Date.now(),
+          inputType: 'text',
+        };
+        await addSessionRecord(record);
+        pollSession(session.id);
+        sendResponse({ ok: true });
+      } catch (error) {
+        console.error('DropCal: Submit text failed', error);
+        setBadgeError();
+        sendResponse({ ok: false });
+      }
+    });
+    return true;
+  }
+
+  if (message.type === 'SUBMIT_FILE') {
+    const { data, name, mimeType } = message;
+    ensureAuth().then(async (hasAuth) => {
+      if (!hasAuth) {
+        sendResponse({ ok: false, error: 'Not authenticated' });
+        return;
+      }
+      try {
+        setBadgeProcessing();
+        const fileData = new Uint8Array(data);
+        const session = await uploadFile(fileData, name, mimeType);
+        const record: SessionRecord = {
+          sessionId: session.id,
+          status: 'polling',
+          title: null,
+          eventCount: 0,
+          eventSummaries: [],
+          events: [],
+          createdAt: Date.now(),
+          inputType: mimeType.startsWith('image/') ? 'image' : 'file',
+        };
+        await addSessionRecord(record);
+        pollSession(session.id);
+        sendResponse({ ok: true });
+      } catch (error) {
+        console.error('DropCal: File upload failed', error);
+        setBadgeError();
+        sendResponse({ ok: false });
+      }
+    });
+    return true;
+  }
+
+  if (message.type === 'GET_HISTORY') {
+    getHistory().then((history) => {
+      sendResponse({ sessions: history.sessions });
+    });
+    return true;
+  }
+
+  // Phase 2 — sidebar
+  if (message.type === 'OPEN_SIDEBAR') {
+    const { sessionId } = message;
+    chrome.storage.session.set({ sidebarSessionId: sessionId });
+    chrome.windows.getCurrent().then((window) => {
+      if (window.id) {
+        (chrome.sidePanel as any).open({ windowId: window.id }).catch(() => {});
+      }
+    });
+    sendResponse({ ok: true });
+    return false;
+  }
+
   return false;
 });
 
@@ -282,9 +455,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 chrome.notifications.onClicked.addListener(async (notificationId) => {
   if (!notificationId.startsWith('dropcal-')) return;
-  const job = await getActiveJob();
-  if (job && job.status === 'processed') {
-    const url = `${DROPCAL_URL}/s/${job.sessionId}`;
-    chrome.tabs.create({ url });
+  const sessionId = notificationId.replace('dropcal-', '');
+  chrome.storage.session.set({ sidebarSessionId: sessionId });
+  const window = await chrome.windows.getCurrent();
+  if (window.id) {
+    (chrome.sidePanel as any).open({ windowId: window.id }).catch(() => {});
   }
 });

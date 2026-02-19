@@ -436,6 +436,7 @@ function AppContent() {
                   ...event,
                   id: eventIds[i] || event.id,
                 })))
+                setCurrentSession(prev => prev?.id === session.id ? { ...prev, ...updated } : prev)
                 setSessionHistory(prev => prev.map(s =>
                   s.id === session.id ? { ...s, ...updated, status: 'processed' } : s
                 ))
@@ -447,8 +448,12 @@ function AppContent() {
               })
               .finally(() => {
                 streamingSessionRef.current = null
-                setIsProcessing(false)
-                resolve()
+                // Defer so the event ID update above commits while isLoading
+                // is still true — EventsWorkspace syncs IDs into editedEvents.
+                setTimeout(() => {
+                  setIsProcessing(false)
+                  resolve()
+                }, 0)
               })
           },
           onError: (error) => {
@@ -548,6 +553,7 @@ function AppContent() {
                   ...event,
                   id: eventIds[i] || event.id,
                 })))
+                setCurrentSession(prev => prev?.id === session.id ? { ...prev, ...updated } : prev)
                 setSessionHistory(prev => prev.map(s =>
                   s.id === session.id ? { ...s, ...updated, status: 'processed' } : s
                 ))
@@ -559,8 +565,10 @@ function AppContent() {
               })
               .finally(() => {
                 streamingSessionRef.current = null
-                setIsProcessing(false)
-                resolve()
+                setTimeout(() => {
+                  setIsProcessing(false)
+                  resolve()
+                }, 0)
               })
           },
           onError: (error) => {

@@ -106,13 +106,13 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  padding-left: calc(26px + var(--brand-logo-gap) + 4px);
-  height: 26px;
+  padding-left: calc(var(--brand-mark-size) + var(--brand-logo-gap));
+  height: var(--brand-mark-size);
 }
 
 .word-logo-text {
-  font-size: 1.25rem;
-  line-height: 26px;
+  font-size: calc(var(--brand-mark-size) * 0.625);
+  line-height: var(--brand-mark-size);
   white-space: nowrap;
 }
 
@@ -405,15 +405,6 @@
   .sidebar-header {
     padding: 1rem;
     min-height: auto;
-  }
-
-  .sidebar-logo {
-    padding-left: calc(var(--brand-mark-size) + var(--brand-logo-gap));
-    height: var(--brand-mark-size);
-  }
-
-  .word-logo-text {
-    line-height: var(--brand-mark-size);
   }
 
   .sidebar-toggle {

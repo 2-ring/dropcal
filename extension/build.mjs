@@ -30,12 +30,18 @@ async function run() {
     outfile: 'dist/content.js',
   });
 
+  const sidebarCtx = await esbuild.context({
+    ...commonOptions,
+    entryPoints: ['sidebar/sidebar.ts'],
+    outfile: 'dist/sidebar/sidebar.js',
+  });
+
   if (isWatch) {
-    await Promise.all([bgCtx.watch(), popupCtx.watch(), contentCtx.watch()]);
+    await Promise.all([bgCtx.watch(), popupCtx.watch(), contentCtx.watch(), sidebarCtx.watch()]);
     console.log('Watching for changes...');
   } else {
-    await Promise.all([bgCtx.rebuild(), popupCtx.rebuild(), contentCtx.rebuild()]);
-    await Promise.all([bgCtx.dispose(), popupCtx.dispose(), contentCtx.dispose()]);
+    await Promise.all([bgCtx.rebuild(), popupCtx.rebuild(), contentCtx.rebuild(), sidebarCtx.rebuild()]);
+    await Promise.all([bgCtx.dispose(), popupCtx.dispose(), contentCtx.dispose(), sidebarCtx.dispose()]);
     console.log('Build complete.');
   }
 }
