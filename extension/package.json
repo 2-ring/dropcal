@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs && npm run copy",
-    "copy": "mkdir -p dist/popup dist/sidebar dist/icons dist/fonts && cp manifest.json dist/ && cp -r icons/* dist/icons/ && cp -r fonts/* dist/fonts/ && cp popup/popup.html dist/popup/ && cp popup/popup.css dist/popup/ && cp sidebar/sidebar.html dist/sidebar/ && cp sidebar/sidebar.css dist/sidebar/",
+    "copy": "mkdir -p dist/popup dist/sidebar dist/icons dist/fonts dist/phosphor/regular dist/phosphor/bold dist/phosphor/duotone dist/phosphor/fill && cp manifest.json dist/ && cp -r icons/* dist/icons/ && cp -r fonts/* dist/fonts/ && cp popup/popup.html dist/popup/ && cp popup/popup.css dist/popup/ && cp sidebar/sidebar.html dist/sidebar/ && cp sidebar/sidebar.css dist/sidebar/ && cp node_modules/@phosphor-icons/web/src/regular/style.css node_modules/@phosphor-icons/web/src/regular/Phosphor.woff2 node_modules/@phosphor-icons/web/src/regular/Phosphor.woff node_modules/@phosphor-icons/web/src/regular/Phosphor.ttf dist/phosphor/regular/ && cp node_modules/@phosphor-icons/web/src/bold/style.css node_modules/@phosphor-icons/web/src/bold/Phosphor-Bold.woff2 node_modules/@phosphor-icons/web/src/bold/Phosphor-Bold.woff node_modules/@phosphor-icons/web/src/bold/Phosphor-Bold.ttf dist/phosphor/bold/ && cp node_modules/@phosphor-icons/web/src/duotone/style.css node_modules/@phosphor-icons/web/src/duotone/Phosphor-Duotone.woff2 node_modules/@phosphor-icons/web/src/duotone/Phosphor-Duotone.woff node_modules/@phosphor-icons/web/src/duotone/Phosphor-Duotone.ttf dist/phosphor/duotone/ && cp node_modules/@phosphor-icons/web/src/fill/style.css node_modules/@phosphor-icons/web/src/fill/Phosphor-Fill.woff2 node_modules/@phosphor-icons/web/src/fill/Phosphor-Fill.woff node_modules/@phosphor-icons/web/src/fill/Phosphor-Fill.ttf dist/phosphor/fill/",
     "watch": "node build.mjs --watch",
     "clean": "rm -rf dist"
   },
@@ -13,5 +13,8 @@
     "@types/chrome": "^0.0.287",
     "esbuild": "^0.24.2",
     "typescript": "~5.7.0"
+  },
+  "dependencies": {
+    "@phosphor-icons/web": "^2.1.2"
   }
 }

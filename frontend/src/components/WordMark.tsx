@@ -1,11 +1,8 @@
 import { Logo } from './Logo'
-import { useTheme } from '../theme/ThemeProvider'
-import wordImageLight from '../assets/brand/light/word.png'
-import wordImageDark from '../assets/brand/dark/word.png'
 import './WordMark.css'
 
 interface WordMarkProps {
-  /** Size of the mark (logo icon) in pixels. Word height is scaled proportionally. */
+  /** Size of the mark (logo icon) in pixels. Text is scaled proportionally (0.9× mark). */
   size?: number
   /** Optional class name for additional styling */
   className?: string
@@ -15,26 +12,15 @@ interface WordMarkProps {
 
 /**
  * Combined mark + word component that handles theming and scaling.
- * Replaces all instances where Logo and word image are used together.
+ * Uses display-text styling for the "dropcal" text.
  */
 export function WordMark({ size = 32, className = '', themeOverride }: WordMarkProps) {
-  const { resolvedTheme } = useTheme()
-
-  // Determine effective theme
-  const effectiveTheme = themeOverride || resolvedTheme
-
   const isWhite = themeOverride === 'white'
 
-  // Select word image based on theme
-  const wordImage = effectiveTheme === 'dark' ? wordImageDark : wordImageLight
+  // Text font-size is 0.9× mark size (matches greeting row ratio: 48px icon / ~44px text)
+  const fontSize = Math.round(size * 0.9)
 
-  // Calculate proportional word height based on mark size
-  // Default ratio: 32px mark → 32px word, 48px mark → 38px word
-  // This gives us approximately: wordHeight = markSize * 1.1875 - 6
-  // Simplified: wordHeight ≈ markSize + (markSize * 0.1875) - 6
-  const wordHeight = size <= 32 ? size : Math.round(size + (size * 0.1875) - 6)
-
-  // Calculate gap as 25% of mark size (matches --brand-logo-gap)
+  // Gap is 25% of mark size (matches --brand-logo-gap)
   const gap = Math.round(size * 0.25)
 
   return (
@@ -42,7 +28,7 @@ export function WordMark({ size = 32, className = '', themeOverride }: WordMarkP
       className={`wordmark ${className}`}
       style={{
         '--wm-mark': `${size}px`,
-        '--wm-word': `${wordHeight}px`,
+        '--wm-font': `${fontSize}px`,
         '--wm-gap': `${gap}px`,
       } as React.CSSProperties}
     >
@@ -50,11 +36,11 @@ export function WordMark({ size = 32, className = '', themeOverride }: WordMarkP
         size={size}
         color={isWhite ? '#ffffff' : themeOverride === 'dark' ? '#ffffff' : undefined}
       />
-      <img
-        src={wordImage}
-        alt="DropCal"
-        className={`wordmark-word${isWhite ? ' wordmark-word-white' : ''}`}
-      />
+      <span
+        className={`display-text wordmark-word${isWhite ? ' wordmark-word-white' : ''}`}
+      >
+        dropcal
+      </span>
     </div>
   )
 }

@@ -1064,7 +1064,7 @@
 
   .header-center .wordmark {
     --wm-mark: clamp(14px, 4vw, 22px);
-    --wm-word: clamp(14px, 4vw, 22px);
+    --wm-font: clamp(13px, 3.6vw, 20px);
     --wm-gap: clamp(3px, 1vw, 5px);
   }
 

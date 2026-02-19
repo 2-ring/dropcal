@@ -11,12 +11,11 @@
 }
 
 .wordmark-word {
-  height: var(--wm-word, 32px);
-  width: auto;
-  object-fit: contain;
-  display: block;
+  font-size: var(--wm-font, 29px);
+  line-height: var(--wm-mark, 32px);
+  white-space: nowrap;
 }
 
 .wordmark-word-white {
-  filter: brightness(0) invert(1);
+  color: #ffffff;
 }

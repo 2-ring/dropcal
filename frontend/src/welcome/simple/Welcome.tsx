@@ -11,8 +11,6 @@ import { Logo } from '../../components/Logo'
 import { useTheme } from '../../theme/ThemeProvider'
 import { FlowPath } from '../full/components/FlowPath'
 import { CTAButton } from '../full/components/CTAButton'
-import wordImageLight from '../../assets/brand/light/word.png'
-import wordImageDark from '../../assets/brand/dark/word.png'
 import phoneDemoLight from '../../assets/demo/phone-light.png'
 import phoneDemoDark from '../../assets/demo/phone-dark.png'
 import './Welcome.css'
@@ -51,8 +49,6 @@ export function Welcome() {
     const navigate = useNavigate()
     const { resolvedTheme } = useTheme()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-    const wordImage = resolvedTheme === 'dark' ? wordImageDark : wordImageLight
-
     const iconSource = [
         Envelope, ChatCircleText, Camera, FileText, Microphone, LinkIcon,
         WhatsappLogo, SlackLogo, FigmaLogo, NotionLogo,
@@ -72,7 +68,7 @@ export function Welcome() {
                 <div className="nav-container">
                     <div className="nav-logo" onClick={() => navigate('/')}>
                         <Logo size={32} />
-                        <img src={wordImage} alt="DropCal" className="nav-wordmark-text" />
+                        <span className="display-text nav-wordmark-text">dropcal</span>
                     </div>
                     <div className="nav-cta-container">
                         <a href="mailto:lucas@dropcal.ai" className="nav-secondary-link">

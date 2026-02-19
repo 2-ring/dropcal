@@ -437,7 +437,7 @@ body {
   color: var(--text-primary);
 }
 
-/* Input type icon */
+/* Session icon (Phosphor font icon or inline SVG fallback) */
 .session-icon {
   width: 16px;
   height: 16px;
@@ -447,6 +447,8 @@ body {
   align-items: center;
   justify-content: center;
   transition: color 0.15s ease;
+  font-size: 16px;
+  line-height: 1;
 }
 
 .session-icon svg {
@@ -502,26 +504,60 @@ body {
   animation: processingPulse 1.5s ease-in-out infinite;
 }
 
-/* ----- Active Processing Indicator ----- */
+/* ----- Skeleton Loading ----- */
 
-.active-processing {
+@keyframes skeletonShimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+
+.skeleton-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 14px;
-  padding: 0 4px;
+  padding: 10px;
 }
 
-.processing-label {
-  font-size: 13px;
-  color: var(--text-secondary);
+.skeleton-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--border);
+  background-image: linear-gradient(90deg, var(--border) 0px, var(--surface-hover) 40px, var(--border) 80px);
+  background-size: 400px 100%;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
 }
 
-/* ============================================================
-   View: Processing
-   ============================================================ */
+.skeleton-title {
+  height: 14px;
+  border-radius: 4px;
+  background: var(--border);
+  background-image: linear-gradient(90deg, var(--border) 0px, var(--surface-hover) 40px, var(--border) 80px);
+  background-size: 400px 100%;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+  flex: 1;
+}
 
-/* Uses .drop-zone.processing — no extra styles needed */
+.skeleton-row:nth-child(1) .skeleton-title { max-width: 70%; }
+.skeleton-row:nth-child(2) .skeleton-title { max-width: 55%; }
+.skeleton-row:nth-child(3) .skeleton-title { max-width: 65%; }
+.skeleton-row:nth-child(n+4) { opacity: 0.5; }
+.skeleton-row:nth-child(n+6) { opacity: 0.25; }
+
+/* ----- Typing Animation ----- */
+
+@keyframes typingBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.typing-cursor::after {
+  content: '|';
+  animation: typingBlink 0.8s step-end infinite;
+  color: var(--primary);
+  font-weight: 300;
+}
 
 /* ============================================================
    View: Feedback

@@ -203,6 +203,7 @@ async function pollSession(sessionId: string): Promise<void> {
         await updateSessionRecord(sessionId, {
           status: 'processed',
           title: session.title || null,
+          icon: session.icon || null,
           eventCount: count,
           eventSummaries: events.slice(0, 3).map((e) => e.summary),
           events,
@@ -230,9 +231,12 @@ async function pollSession(sessionId: string): Promise<void> {
         return;
       }
 
-      // Update title mid-processing if available
-      if (session.title) {
-        await updateSessionRecord(sessionId, { title: session.title });
+      // Update title and icon mid-processing if available
+      const midUpdates: Partial<import('./types').SessionRecord> = {};
+      if (session.title) midUpdates.title = session.title;
+      if (session.icon) midUpdates.icon = session.icon;
+      if (Object.keys(midUpdates).length > 0) {
+        await updateSessionRecord(sessionId, midUpdates);
       }
 
       setTimeout(poll, POLL_INTERVAL_MS);

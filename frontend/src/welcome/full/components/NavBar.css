@@ -63,11 +63,9 @@
 }
 
 .nav-wordmark-text {
-    height: 32px;
-    width: auto;
-    max-width: 110px;
-    object-fit: contain;
-    display: block;
+    font-size: calc(32px * 0.9);
+    line-height: 32px;
+    white-space: nowrap;
     margin-left: 8px;
     opacity: 1;
     overflow: hidden;

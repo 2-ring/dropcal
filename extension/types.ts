@@ -3,6 +3,7 @@ export interface Session {
   id: string;
   status: 'pending' | 'processing' | 'processed' | 'error';
   title?: string | null;
+  icon?: string | null;
   event_ids?: string[];
   error_message?: string | null;
   created_at: string;
@@ -48,6 +49,7 @@ export interface SessionRecord {
   sessionId: string;
   status: 'polling' | 'processed' | 'error';
   title: string | null;
+  icon?: string | null;
   eventCount: number;
   eventSummaries: string[]; // First 3 event titles for popup subtitle
   events: CalendarEvent[]; // Full events for sidebar rendering

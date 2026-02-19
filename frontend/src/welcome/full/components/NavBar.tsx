@@ -3,18 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { List, X, Mailbox, FingerprintSimple, Flask } from '@phosphor-icons/react'
 import { Logo } from '../../../components/Logo'
 import { CTAButton } from './CTAButton'
-import { useTheme } from '../../../theme/ThemeProvider'
-import wordImageLight from '../../../assets/brand/light/word.png'
-import wordImageDark from '../../../assets/brand/dark/word.png'
 import './NavBar.css'
 
 export function NavBar() {
     const navigate = useNavigate()
-    const { resolvedTheme } = useTheme()
     const [isDocked, setIsDocked] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-
-    const wordImage = resolvedTheme === 'dark' ? wordImageDark : wordImageLight
 
     useEffect(() => {
         const handleScroll = () => {
@@ -30,11 +24,7 @@ export function NavBar() {
                 <div className="nav-container">
                     <div className="nav-logo" onClick={() => navigate('/')}>
                         <Logo size={32} />
-                        <img
-                            src={wordImage}
-                            alt="DropCal"
-                            className="nav-wordmark-text"
-                        />
+                        <span className="display-text nav-wordmark-text">dropcal</span>
                     </div>
 
                     <div className="nav-cta-container">
