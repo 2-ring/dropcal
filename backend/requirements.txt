@@ -20,7 +20,7 @@ supabase==2.27.3
 gunicorn==21.2.0
 sentence-transformers==4.1.0
 faiss-cpu==1.13.2
-keybert==0.9.0
+
 # Microsoft Calendar (Graph API)
 msal==1.24.0
 # Apple Calendar (CalDAV)

@@ -51,8 +51,8 @@ export function Event({
   // No event
   if (!event) return null
 
-  // Actual event card
-  const calendarColor = getCalendarColor(event.calendar)
+  // Actual event card — prefer inline color from backend, fall back to calendars lookup
+  const calendarColor = event.calendarColor || getCalendarColor(event.calendar)
 
   return (
     <div
@@ -115,12 +115,13 @@ export function Event({
             style={{ backgroundColor: calendarColor }}
           />
           <span className="calendar-badge-text">
-            {event.calendar
-              ? (calendars.find(cal =>
-                  cal.id === event.calendar ||
-                  cal.summary.toLowerCase() === event.calendar?.toLowerCase()
-                )?.summary || event.calendar)
-              : (calendars.find(cal => cal.primary)?.summary || 'Primary')}
+            {event.calendarName
+              || (event.calendar
+                ? (calendars.find(cal =>
+                    cal.id === event.calendar ||
+                    cal.summary.toLowerCase() === event.calendar?.toLowerCase()
+                  )?.summary || event.calendar)
+                : (calendars.find(cal => cal.primary)?.summary || 'Primary'))}
           </span>
         </div>
       </div>

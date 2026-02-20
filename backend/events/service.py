@@ -490,7 +490,7 @@ class EventService:
         return Event.confirm_draft(event_id, user_edits)
 
     @staticmethod
-    def event_row_to_calendar_event(event_row: Dict[str, Any]) -> Dict[str, Any]:
+    def event_row_to_calendar_event(event_row: Dict[str, Any], calendars_lookup: Optional[Dict] = None, primary_calendar: Optional[Dict] = None) -> Dict[str, Any]:
         """
         Convert an events table row to frontend CalendarEvent format.
 
@@ -499,6 +499,8 @@ class EventService:
 
         Args:
             event_row: Dict from events table
+            calendars_lookup: Optional dict mapping provider_cal_id → {name, color}
+            primary_calendar: Optional dict {name, color} for the primary calendar
 
         Returns:
             Dict in CalendarEvent format with metadata fields
@@ -528,6 +530,15 @@ class EventService:
             result['description'] = event_row['description']
         if event_row.get('calendar_name'):
             result['calendar'] = event_row['calendar_name']  # DB column stores provider calendar ID
+            if calendars_lookup:
+                cal_info = calendars_lookup.get(event_row['calendar_name'])
+                if cal_info:
+                    result['calendarName'] = cal_info['name']
+                    result['calendarColor'] = cal_info['color']
+        else:
+            if primary_calendar:
+                result['calendarName'] = primary_calendar['name']
+                result['calendarColor'] = primary_calendar['color']
 
         # Recurrence and attendees: read from top-level columns first,
         # fall back to system_suggestion for events created before migration
@@ -563,7 +574,33 @@ class EventService:
             return []
 
         event_rows = Event.get_by_ids(event_ids)
-        events = [EventService.event_row_to_calendar_event(row) for row in event_rows]
+
+        # Build calendar lookup for enrichment (one query for all events)
+        calendars_lookup = {}
+        primary_calendar = None
+        if event_rows:
+            user_id = event_rows[0].get('user_id')
+            if user_id:
+                try:
+                    from database.models import Calendar
+                    cals = Calendar.get_by_user(user_id)
+                    for cal in cals:
+                        cal_id = cal.get('provider_cal_id')
+                        if cal_id:
+                            info = {
+                                'name': cal.get('name', cal_id),
+                                'color': cal.get('color', '#1170C5'),
+                            }
+                            calendars_lookup[cal_id] = info
+                            if cal.get('is_primary'):
+                                primary_calendar = info
+                except Exception:
+                    pass  # Non-critical — events still render with frontend fallback
+
+        events = [
+            EventService.event_row_to_calendar_event(row, calendars_lookup, primary_calendar)
+            for row in event_rows
+        ]
 
         # Sort by start dateTime or date
         def sort_key(e):

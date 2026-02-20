@@ -9,8 +9,8 @@ Usage:
     from extraction.extract import UnifiedExtractor
 
     extractor = UnifiedExtractor(llm, llm_vision=llm_vision)
-    events = extractor.execute(text, input_type='text')
-    # Returns List[ExtractedEvent] with NL temporal expressions
+    result = extractor.execute(text, input_type='text')
+    # Returns ExtractedEventBatch with session_title and events
 """
 
 import logging
@@ -51,7 +51,7 @@ class UnifiedExtractor(BaseAgent):
         text: str,
         input_type: str = 'text',
         metadata: Optional[Dict] = None,
-    ) -> List[ExtractedEvent]:
+    ) -> ExtractedEventBatch:
         """
         Extract all calendar events from raw input in a single LLM call.
 
@@ -61,7 +61,7 @@ class UnifiedExtractor(BaseAgent):
             metadata: Optional metadata (image_data + media_type for vision path)
 
         Returns:
-            List[ExtractedEvent] with NL temporal expressions
+            ExtractedEventBatch with session_title and events
         """
         is_vision = metadata and metadata.get('requires_vision')
 
@@ -70,7 +70,7 @@ class UnifiedExtractor(BaseAgent):
         else:
             return self._execute_text(text, input_type)
 
-    def _execute_text(self, text: str, input_type: str) -> List[ExtractedEvent]:
+    def _execute_text(self, text: str, input_type: str) -> ExtractedEventBatch:
         """Text path: single structured output call."""
         system_prompt = load_prompt("extraction/prompts/unified_extract.txt")
 
@@ -92,12 +92,12 @@ class UnifiedExtractor(BaseAgent):
         result = raw_result['parsed']
 
         if not result or not result.events:
-            return []
+            return ExtractedEventBatch(session_title="Untitled", events=[])
 
         logger.info(f"Extracted {len(result.events)} events from {input_type} input")
-        return result.events
+        return result
 
-    def _execute_vision(self, text: str, metadata: Dict) -> List[ExtractedEvent]:
+    def _execute_vision(self, text: str, metadata: Dict) -> ExtractedEventBatch:
         """Vision path: multimodal message with image."""
         system_prompt = load_prompt("extraction/prompts/unified_extract.txt")
 
@@ -134,7 +134,7 @@ class UnifiedExtractor(BaseAgent):
         result = raw_result['parsed']
 
         if not result or not result.events:
-            return []
+            return ExtractedEventBatch(session_title="Untitled", events=[])
 
         logger.info(f"Extracted {len(result.events)} events from image input")
-        return result.events
+        return result

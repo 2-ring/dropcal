@@ -132,6 +132,9 @@ class ConsolidationResult(BaseModel):
 
 class ExtractedEventBatch(BaseModel):
     """Batch output — one ExtractedEvent per real-world event found in input."""
+    session_title: str = Field(
+        description="Short ~3 word descriptive title for this session (e.g. '[MATH180] Syllabus', 'Weekend Chores', 'Dinner with Ben')"
+    )
     events: List[ExtractedEvent] = Field(
         description="One ExtractedEvent per real-world event. Deduplicated."
     )

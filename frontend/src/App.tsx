@@ -320,12 +320,15 @@ function AppContent() {
           // Silent fail - don't interrupt user experience if sync fails
           console.error('Calendar sync failed:', error)
         })
-    } else if (!user) {
+    } else if (!user && !authLoading) {
+      // Only clear on actual logout, not during initial auth loading.
+      // During loading, keep the localStorage-seeded calendars so events
+      // render with correct colors immediately.
       lastSyncedUserId.current = null
       setSyncedCalendars([])
       try { localStorage.removeItem('dropcal_calendars') } catch {}
     }
-  }, [user, calendarReady])
+  }, [user, calendarReady, authLoading])
 
   // Auto-refresh session list when there are processing sessions (e.g. from a previous visit)
   useEffect(() => {

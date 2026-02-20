@@ -40,9 +40,6 @@ class TextLimits:
     # Hard cap on event title length
     EVENT_TITLE_MAX_LENGTH: int = 100
 
-    # Max words for auto-generated session title
-    SESSION_TITLE_MAX_WORDS: int = 3
-
     # Min text length for PDF text extraction to be considered successful
     PDF_MIN_TEXT_LENGTH: int = 50
 

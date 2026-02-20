@@ -50,6 +50,8 @@ export interface CalendarEvent {
   recurrence?: string[] | null
   attendees?: string[]
   calendar?: string
+  calendarColor?: string
+  calendarName?: string
   version?: number
   provider_syncs?: ProviderSync[]
 }
