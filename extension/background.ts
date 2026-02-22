@@ -73,7 +73,7 @@ async function getHistory(): Promise<SessionHistory> {
 async function saveHistory(history: SessionHistory): Promise<void> {
   history.sessions = history.sessions.slice(0, MAX_HISTORY_SESSIONS);
   await chrome.storage.local.set({ sessionHistory: history });
-  syncBadge(history.sessions);
+  syncBadge();
 }
 
 async function addSessionRecord(record: SessionRecord): Promise<void> {
@@ -93,6 +93,32 @@ async function updateSessionRecord(
     history.sessions[idx] = { ...history.sessions[idx], ...updates };
     await saveHistory(history);
   }
+}
+
+// ===== Notification Queue =====
+// Tracks session IDs that need the user's attention (completion order).
+
+async function getNotificationQueue(): Promise<string[]> {
+  const result = await chrome.storage.local.get('notificationQueue');
+  return result.notificationQueue || [];
+}
+
+async function saveNotificationQueue(queue: string[]): Promise<void> {
+  await chrome.storage.local.set({ notificationQueue: queue });
+  syncBadge();
+}
+
+async function pushNotification(sessionId: string): Promise<void> {
+  const queue = await getNotificationQueue();
+  if (!queue.includes(sessionId)) {
+    queue.push(sessionId);
+    await saveNotificationQueue(queue);
+  }
+}
+
+async function removeNotification(sessionId: string): Promise<void> {
+  const queue = await getNotificationQueue();
+  await saveNotificationQueue(queue.filter((id) => id !== sessionId));
 }
 
 // ===== Context Menu Setup =====
@@ -215,6 +241,7 @@ async function pollSession(sessionId: string): Promise<void> {
           eventSummaries: events.slice(0, 3).map((e) => e.summary),
           events,
         });
+        await pushNotification(sessionId);
 
         chrome.notifications.create(`dropcal-${sessionId}`, {
           type: 'basic',
@@ -368,23 +395,33 @@ function clearBadge(): void {
   chrome.action.setBadgeText({ text: '' });
 }
 
-// Derives badge state from session history — single source of truth shared with popup
-function syncBadge(sessions: SessionRecord[]): void {
+// Derives badge state from notification queue + session history.
+async function syncBadge(): Promise<void> {
+  const [history, queue] = await Promise.all([getHistory(), getNotificationQueue()]);
+  const sessions = history.sessions;
+
   // Any session still polling → spinner
   if (sessions.some((s) => s.status === 'polling')) {
     setBadgeProcessing();
     return;
   }
 
-  // Newest processed + not dismissed + not expired → green count
-  const newest = sessions[0];
-  if (
-    newest &&
-    newest.status === 'processed' &&
-    !newest.dismissedAt &&
-    Date.now() - newest.createdAt <= FEEDBACK_EXPIRY_MS
-  ) {
-    setBadgeCount(newest.eventCount);
+  // Count events across all valid pending notifications
+  let totalEvents = 0;
+  for (const id of queue) {
+    const s = sessions.find((r) => r.sessionId === id);
+    if (
+      s &&
+      s.status === 'processed' &&
+      !s.dismissedAt &&
+      Date.now() - s.createdAt <= FEEDBACK_EXPIRY_MS
+    ) {
+      totalEvents += s.eventCount;
+    }
+  }
+
+  if (totalEvents > 0) {
+    setBadgeCount(totalEvents);
     return;
   }
 
@@ -643,7 +680,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // Popup — dismiss session feedback
   if (message.type === 'DISMISS_SESSION') {
     const { sessionId } = message;
-    updateSessionRecord(sessionId, { dismissedAt: Date.now() }).then(() => {
+    Promise.all([
+      removeNotification(sessionId),
+      updateSessionRecord(sessionId, { dismissedAt: Date.now() }),
+    ]).then(() => {
       sendResponse({ ok: true });
     });
     return true;

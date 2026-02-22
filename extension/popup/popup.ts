@@ -379,6 +379,15 @@ function shouldShowFeedback(session: SessionRecord): boolean {
   return true;
 }
 
+// Walk the notification queue newest-first and return the first valid session.
+function findPendingNotification(sessions: SessionRecord[], queue: string[]): SessionRecord | null {
+  for (let i = queue.length - 1; i >= 0; i--) {
+    const session = sessions.find((s) => s.sessionId === queue[i]);
+    if (session && shouldShowFeedback(session)) return session;
+  }
+  return null;
+}
+
 function showFeedbackSuccess(session: SessionRecord): void {
   feedbackSessionId = session.sessionId;
 
@@ -455,12 +464,12 @@ btnDismissSuccess.addEventListener('click', (e) => {
   }
   feedbackSessionId = null;
   showView('input');
-  loadHistory();
+  refresh();
 });
 
 btnDismissError.addEventListener('click', () => {
   showView('input');
-  loadHistory();
+  refresh();
 });
 
 // ============================================================
@@ -679,7 +688,7 @@ settingsBackBtn.addEventListener('click', () => {
     showSettingsSubView('main');
   } else {
     showView(previousView);
-    if (previousView === 'input') loadHistory();
+    if (previousView === 'input') refresh();
   }
 });
 
@@ -797,51 +806,65 @@ async function openSidebar(sessionId: string): Promise<void> {
 }
 
 // ============================================================
-// Storage Listeners
+// Notification State (controls drop zone feedback, independent of session list)
 // ============================================================
 
-function onHistoryUpdate(sessions: SessionRecord[]): void {
+function syncNotifications(sessions: SessionRecord[], queue: string[]): void {
   if (currentView === 'processing') {
-    // Watch for the newest session to complete
-    const newest = sessions[0];
-    if (newest) {
-      if (newest.status === 'processed') {
-        showFeedbackSuccess(newest);
-        renderHistory(sessions);
-        return;
-      }
-      if (newest.status === 'error') {
+    // A notification arrived while we were waiting — show it
+    const pending = findPendingNotification(sessions, queue);
+    if (pending) {
+      showFeedbackSuccess(pending);
+      return;
+    }
+    // Nothing polling anymore — check for errors on newest session
+    if (!sessions.some((s) => s.status === 'polling')) {
+      const newest = sessions[0];
+      if (newest && newest.status === 'error') {
         showFeedbackError(newest.errorMessage || 'Processing failed');
-        renderHistory(sessions);
-        return;
+      } else {
+        showView('input');
       }
     }
-    // Still polling — stay in processing view
-    renderHistory(sessions);
     return;
   }
 
   if (currentView === 'input') {
-    // Show persistent feedback for undismissed results (don't re-show if already showing)
-    const newest = sessions[0];
-    if (newest && shouldShowFeedback(newest) && feedbackSessionId !== newest.sessionId) {
-      showFeedbackSuccess(newest);
+    // Show next pending notification (don't re-show if already showing for this session)
+    const pending = findPendingNotification(sessions, queue);
+    if (pending && feedbackSessionId !== pending.sessionId) {
+      showFeedbackSuccess(pending);
     }
-    renderHistory(sessions);
   }
 }
 
-chrome.storage.local.onChanged.addListener((changes) => {
-  if (changes.sessionHistory) {
+// ============================================================
+// Refresh — reads storage once, updates session list + notifications independently
+// ============================================================
+
+function refresh(): void {
+  chrome.storage.local.get(['sessionHistory', 'notificationQueue'], (result) => {
     const sessions =
-      (changes.sessionHistory.newValue as { sessions: SessionRecord[] } | undefined)?.sessions || [];
-    onHistoryUpdate(sessions);
+      (result.sessionHistory as { sessions: SessionRecord[] } | undefined)?.sessions || [];
+    const queue: string[] = result.notificationQueue || [];
+    renderHistory(sessions);
+    syncNotifications(sessions, queue);
+  });
+}
+
+// ============================================================
+// Storage Listeners
+// ============================================================
+
+chrome.storage.local.onChanged.addListener((changes) => {
+  if (changes.sessionHistory || changes.notificationQueue) {
+    refresh();
   }
   if (changes.auth) {
     chrome.runtime.sendMessage({ type: 'GET_AUTH' }, (response) => {
       if (response?.isAuthenticated) {
         showView('input');
-        loadHistory();
+        refresh();
       } else {
         showView('auth');
       }
@@ -850,7 +873,7 @@ chrome.storage.local.onChanged.addListener((changes) => {
 });
 
 chrome.storage.session.onChanged.addListener(() => {
-  loadHistory();
+  refresh();
 });
 
 // ============================================================
@@ -858,14 +881,6 @@ chrome.storage.session.onChanged.addListener(() => {
 // ============================================================
 
 initTheme();
-
-function loadHistory(): void {
-  chrome.storage.local.get('sessionHistory', (result) => {
-    const sessions =
-      (result.sessionHistory as { sessions: SessionRecord[] } | undefined)?.sessions || [];
-    onHistoryUpdate(sessions);
-  });
-}
 
 chrome.runtime.sendMessage({ type: 'GET_AUTH' }, (response) => {
   const isAuth = response?.isAuthenticated ?? false;
@@ -878,10 +893,10 @@ chrome.runtime.sendMessage({ type: 'GET_AUTH' }, (response) => {
   showView('input');
   renderSkeletons();
 
-  // Check if there's a polling session → reopen in processing view
-  chrome.storage.local.get('sessionHistory', (result) => {
+  chrome.storage.local.get(['sessionHistory', 'notificationQueue'], (result) => {
     const sessions =
       (result.sessionHistory as { sessions: SessionRecord[] } | undefined)?.sessions || [];
+    const queue: string[] = result.notificationQueue || [];
 
     // Seed prevTitles so existing titles don't animate on first load
     for (const s of sessions) {
@@ -889,16 +904,20 @@ chrome.runtime.sendMessage({ type: 'GET_AUTH' }, (response) => {
       if (s.title) animatedTitles.add(s.sessionId);
     }
 
-    const newest = sessions[0];
-    if (newest && newest.status === 'polling') {
+    // Set initial view: polling → processing, pending notification → feedback, else → input
+    if (sessions.some((s) => s.status === 'polling')) {
       showView('processing');
-    } else if (newest && shouldShowFeedback(newest)) {
-      // Show persistent feedback for undismissed results
-      for (const v of allViews) v.classList.add('hidden');
-      showFeedbackSuccess(newest);
     } else {
-      showView('input');
+      const pending = findPendingNotification(sessions, queue);
+      if (pending) {
+        for (const v of allViews) v.classList.add('hidden');
+        showFeedbackSuccess(pending);
+      } else {
+        showView('input');
+      }
     }
-    onHistoryUpdate(sessions);
+
+    // Render session list (independent of notification state above)
+    renderHistory(sessions);
   });
 });

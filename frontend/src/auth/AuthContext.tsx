@@ -124,8 +124,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (newSession) {
         const currentUser = await getCurrentUser();
 
-        // Always set user immediately — never block on token storage
-        setUser(currentUser);
+        // Always set user immediately — never block on token storage.
+        // Preserve reference stability when the same user's token refreshes
+        // (e.g. tab switch) to avoid triggering downstream useEffect refetches.
+        setUser(prev => (prev?.id === currentUser?.id ? prev : currentUser));
 
         if (currentUser) {
           posthog.identify(currentUser.id, {
