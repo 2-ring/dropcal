@@ -66,26 +66,33 @@ def stream_session_updates(session_id: str):
         last_title = session.get('title')
         last_icon = session.get('icon')
         max_wait = 300  # 5 min max
+        heartbeat_interval = 15  # Send keepalive every 15s
+        last_heartbeat = time.time()
 
         start = time.time()
         while time.time() - start < max_wait:
             stream.wait_for_update(timeout=0.5)
 
+            sent_data = False
+
             # Title update
             if stream.title and stream.title != last_title:
                 yield f"event: title\ndata: {json.dumps({'title': stream.title})}\n\n"
                 last_title = stream.title
+                sent_data = True
 
             # Icon update
             if stream.icon and stream.icon != last_icon:
                 yield f"event: icon\ndata: {json.dumps({'icon': stream.icon})}\n\n"
                 last_icon = stream.icon
+                sent_data = True
 
             # New events available
             current_count = len(stream.events)
             if current_count > last_event_count:
                 yield f"event: event\ndata: {json.dumps({'events': list(stream.events)})}\n\n"
                 last_event_count = current_count
+                sent_data = True
 
             # Error
             if stream.error:
@@ -102,6 +109,12 @@ def stream_session_updates(session_id: str):
                 cleanup_stream(session_id)
                 return
 
+            # Heartbeat to keep connection alive through ALB/Nginx
+            now = time.time()
+            if not sent_data and now - last_heartbeat >= heartbeat_interval:
+                yield ":heartbeat\n\n"
+                last_heartbeat = now
+
         # Timeout
         yield f"event: timeout\ndata: {json.dumps({'message': 'Stream timeout'})}\n\n"
         cleanup_stream(session_id)
@@ -112,7 +125,6 @@ def stream_session_updates(session_id: str):
         headers={
             'Cache-Control': 'no-cache',
             'X-Accel-Buffering': 'no',
-            'Connection': 'keep-alive'
         }
     )
 
@@ -124,6 +136,8 @@ def _poll_db_fallback(session_id, session):
     last_status = session.get('status')
     from config.database import StreamConfig
     max_polls = StreamConfig.MAX_POLLS
+    heartbeat_interval = 15
+    last_heartbeat = time.time()
 
     for _ in range(max_polls):
         time.sleep(StreamConfig.POLL_INTERVAL_SECONDS)
@@ -132,21 +146,25 @@ def _poll_db_fallback(session_id, session):
         if not session:
             break
 
+        sent_data = False
         current_title = session.get('title')
         current_status = session.get('status')
 
         if current_title and current_title != last_title:
             yield f"event: title\ndata: {json.dumps({'title': current_title})}\n\n"
             last_title = current_title
+            sent_data = True
 
         current_icon = session.get('icon')
         if current_icon and current_icon != last_icon:
             yield f"event: icon\ndata: {json.dumps({'icon': current_icon})}\n\n"
             last_icon = current_icon
+            sent_data = True
 
         if current_status != last_status:
             yield f"event: status\ndata: {json.dumps({'status': current_status})}\n\n"
             last_status = current_status
+            sent_data = True
 
             if current_status in ['processed', 'error']:
                 if current_status == 'processed':
@@ -154,6 +172,12 @@ def _poll_db_fallback(session_id, session):
                     yield f"event: event\ndata: {json.dumps({'events': events})}\n\n"
                 yield f"event: complete\ndata: {json.dumps({'status': current_status})}\n\n"
                 return
+
+        # Heartbeat to keep connection alive through ALB/Nginx
+        now = time.time()
+        if not sent_data and now - last_heartbeat >= heartbeat_interval:
+            yield ":heartbeat\n\n"
+            last_heartbeat = now
 
     yield f"event: timeout\ndata: {json.dumps({'message': 'Stream timeout'})}\n\n"
 

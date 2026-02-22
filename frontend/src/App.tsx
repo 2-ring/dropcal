@@ -153,6 +153,16 @@ function AppContent() {
     }
   }, [user])
 
+  // Open auth modal from ?auth= query param (used by Chrome extension)
+  useEffect(() => {
+    const authParam = searchParams.get('auth')
+    if (authParam && !user) {
+      setAuthModalHeading(decodeURIComponent(authParam))
+      searchParams.delete('auth')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, user])
+
   // Migrate guest sessions after sign-in
   useEffect(() => {
     if (user && isGuestMode) {

@@ -3,7 +3,6 @@ import {
   setAuthToken,
   createTextSession,
   uploadImage,
-  uploadFile,
   getSession,
   getSessionEvents,
   getUserPreferences,
@@ -397,7 +396,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message.type === 'SIGN_IN') {
-    chrome.tabs.create({ url: DROPCAL_URL });
+    const heading = encodeURIComponent('Sign in to start creating events.');
+    chrome.tabs.create({ url: `${DROPCAL_URL}/?auth=${heading}` });
     sendResponse({ ok: true });
     return false;
   }
@@ -463,36 +463,24 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
-  if (message.type === 'SUBMIT_FILE') {
-    const { data, name, mimeType } = message;
-    ensureAuth().then(async (hasAuth) => {
-      if (!hasAuth) {
-        sendResponse({ ok: false, error: 'Not authenticated' });
-        return;
-      }
-      try {
-        setBadgeProcessing();
-        const fileData = new Uint8Array(data);
-        const session = await uploadFile(fileData, name, mimeType);
-        const record: SessionRecord = {
-          sessionId: session.id,
-          status: 'polling',
-          title: null,
-          eventCount: 0,
-          addedToCalendar: false,
-          eventSummaries: [],
-          events: [],
-          createdAt: Date.now(),
-          inputType: mimeType.startsWith('image/') ? 'image' : 'file',
-        };
-        await addSessionRecord(record);
-        pollSession(session.id);
-        sendResponse({ ok: true });
-      } catch (error) {
-        console.error('DropCal: File upload failed', error);
-        setBadgeError();
-        sendResponse({ ok: false });
-      }
+  // Popup uploads files directly via fetch, then sends this to start polling
+  if (message.type === 'TRACK_SESSION') {
+    const { sessionId, inputType } = message;
+    setBadgeProcessing();
+    const record: SessionRecord = {
+      sessionId,
+      status: 'polling',
+      title: null,
+      eventCount: 0,
+      addedToCalendar: false,
+      eventSummaries: [],
+      events: [],
+      createdAt: Date.now(),
+      inputType: inputType || 'file',
+    };
+    addSessionRecord(record).then(() => {
+      pollSession(sessionId);
+      sendResponse({ ok: true });
     });
     return true;
   }

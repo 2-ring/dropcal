@@ -142,6 +142,10 @@ function renderEvents(events: CalendarEvent[]): void {
       const card = document.createElement('div');
       card.className = 'event-card';
 
+      const calendarColor = event.calendarColor || '#1170C5';
+      card.style.borderLeftColor = calendarColor;
+      card.style.backgroundColor = `${calendarColor}12`;
+
       const timeRange = formatTimeRange(event.start, event.end);
 
       let html = `
@@ -165,6 +169,15 @@ function renderEvents(events: CalendarEvent[]): void {
           <div class="event-card-meta event-card-description">
             ${EQUALS_ICON}
             <span>${escapeHtml(event.description)}</span>
+          </div>
+        `;
+      }
+
+      if (event.calendarName) {
+        html += `
+          <div class="event-calendar-badge">
+            <span class="calendar-badge-dot" style="background-color: ${calendarColor}"></span>
+            <span class="calendar-badge-text">${escapeHtml(event.calendarName)}</span>
           </div>
         `;
       }

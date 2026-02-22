@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { DesktopButtonMenu } from './DesktopButtonMenu'
 import { useInputHandlers } from '../shared/hooks'
@@ -18,6 +18,7 @@ export function DesktopDropArea({
   const [isTextInput, setIsTextInput] = useState(false)
   const [isLinkInput, setIsLinkInput] = useState(false)
   const [isEmailInput, setIsEmailInput] = useState(false)
+  const dragCounterRef = useRef(0)
 
   const { handleImageClick, handleDocumentClick, handleAudioFileUpload } = useInputHandlers({
     onFileUpload
@@ -56,40 +57,65 @@ export function DesktopDropArea({
     return () => document.removeEventListener('paste', handlePaste)
   }, [isProcessing, onFileUpload, onTextSubmit])
 
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!isProcessing) {
-      setIsDragging(true)
+  // Global drag listeners on the document so dragging a file ANYWHERE on screen
+  // immediately transitions to the drop UI. A counter tracks nested dragenter/
+  // dragleave pairs (fired when crossing child element boundaries) so the state
+  // stays stable instead of flickering.
+  useEffect(() => {
+    const onDragEnter = (e: DragEvent) => {
+      e.preventDefault()
+      if (isProcessing) return
+      // Only react to file drags, not internal element drags
+      if (e.dataTransfer?.types.includes('Files')) {
+        dragCounterRef.current++
+        if (dragCounterRef.current === 1) {
+          setIsDragging(true)
+        }
+      }
     }
-  }, [isProcessing])
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!isProcessing) {
+    const onDragOver = (e: DragEvent) => {
+      e.preventDefault()
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'copy'
+      }
+    }
+
+    const onDragLeave = (e: DragEvent) => {
+      e.preventDefault()
+      if (isProcessing) return
+      dragCounterRef.current--
+      if (dragCounterRef.current <= 0) {
+        dragCounterRef.current = 0
+        setIsDragging(false)
+      }
+    }
+
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault()
+      dragCounterRef.current = 0
       setIsDragging(false)
+
+      if (isProcessing) return
+
+      const files = e.dataTransfer?.files
+      if (files && files.length > 0) {
+        onFileUpload(files[0])
+      }
     }
-  }, [isProcessing])
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-  }, [])
+    document.addEventListener('dragenter', onDragEnter)
+    document.addEventListener('dragover', onDragOver)
+    document.addEventListener('dragleave', onDragLeave)
+    document.addEventListener('drop', onDrop)
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    if (isProcessing) return
-
-    setIsDragging(false)
-
-    const files = e.dataTransfer.files
-    if (files && files.length > 0) {
-      onFileUpload(files[0])
+    return () => {
+      document.removeEventListener('dragenter', onDragEnter)
+      document.removeEventListener('dragover', onDragOver)
+      document.removeEventListener('dragleave', onDragLeave)
+      document.removeEventListener('drop', onDrop)
     }
-  }, [onFileUpload, isProcessing])
+  }, [isProcessing, onFileUpload])
 
   const handleAudioClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -151,10 +177,6 @@ export function DesktopDropArea({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      onDragEnter={!isProcessing ? handleDragEnter : undefined}
-      onDragLeave={!isProcessing ? handleDragLeave : undefined}
-      onDragOver={!isProcessing ? handleDragOver : undefined}
-      onDrop={!isProcessing ? handleDrop : undefined}
       onClick={!isProcessing ? handleDropAreaClick : undefined}
       style={{ pointerEvents: isProcessing ? 'none' : 'auto' }}
     >

@@ -1,6 +1,8 @@
 import type { SessionRecord } from '../types';
 import { initTheme } from '../theme';
 
+const API_URL = 'https://api.dropcal.ai';
+
 // ===== View State Machine =====
 // 'processing' reuses the input view with the animated drop zone border.
 // Success/error feedback is shown inline in the drop zone (green/red border).
@@ -731,28 +733,48 @@ function submitText(text: string): void {
   });
 }
 
-function handleFiles(files: FileList): void {
+async function handleFiles(files: FileList): Promise<void> {
   showView('processing');
-  for (const file of Array.from(files)) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const arrayBuffer = reader.result as ArrayBuffer;
-      const data = Array.from(new Uint8Array(arrayBuffer));
-      chrome.runtime.sendMessage({
-        type: 'SUBMIT_FILE',
-        data,
-        name: file.name,
-        mimeType: file.type || 'application/octet-stream',
-      }, (response) => {
-        if (response && !response.ok) {
-          showFeedbackError(response.error || 'Failed to upload file');
-        } else {
-          window.close();
-        }
-      });
-    };
-    reader.readAsArrayBuffer(file);
+
+  const authResult = await chrome.storage.local.get('auth');
+  const token = authResult.auth?.accessToken;
+  if (!token) {
+    showFeedbackError('Not authenticated. Please sign in.');
+    return;
   }
+
+  for (const file of Array.from(files)) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${API_URL}/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Upload failed' }));
+        showFeedbackError(err.error || `Upload failed (${response.status})`);
+        return;
+      }
+
+      const { session } = await response.json();
+
+      // Tell background to track and poll this session (lightweight message, no file data)
+      chrome.runtime.sendMessage({
+        type: 'TRACK_SESSION',
+        sessionId: session.id,
+        inputType: file.type.startsWith('image/') ? 'image' : 'file',
+      });
+    } catch {
+      showFeedbackError('Failed to upload file');
+      return;
+    }
+  }
+
+  window.close();
 }
 
 async function openSidebar(sessionId: string): Promise<void> {
@@ -830,6 +852,9 @@ function loadHistory(): void {
 }
 
 chrome.runtime.sendMessage({ type: 'GET_AUTH' }, (response) => {
+  // TODO: TEMPORARY — always show auth screen for UI testing
+  showView('auth');
+  return;
   const isAuth = response?.isAuthenticated ?? false;
   if (!isAuth) {
     showView('auth');

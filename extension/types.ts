@@ -25,6 +25,8 @@ export interface CalendarEvent {
   location?: string;
   description?: string;
   recurrence?: string[];
+  calendarName?: string;
+  calendarColor?: string;
 }
 
 // Auth state stored in chrome.storage.local (persists across browser restarts)
