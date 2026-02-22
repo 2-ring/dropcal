@@ -19,6 +19,7 @@ const MAX_HISTORY_SESSIONS = 10;
 const MAX_PAGE_TEXT_LENGTH = 50000;
 const CONTEXT_MENU_ID = 'send-to-dropcal';
 const DROPCAL_URL = 'https://dropcal.ai';
+const FEEDBACK_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 // ===== Auth State Management =====
 
@@ -72,6 +73,7 @@ async function getHistory(): Promise<SessionHistory> {
 async function saveHistory(history: SessionHistory): Promise<void> {
   history.sessions = history.sessions.slice(0, MAX_HISTORY_SESSIONS);
   await chrome.storage.local.set({ sessionHistory: history });
+  syncBadge(history.sessions);
 }
 
 async function addSessionRecord(record: SessionRecord): Promise<void> {
@@ -123,7 +125,6 @@ async function migratePhase1Job(): Promise<void> {
     };
     await addSessionRecord(record);
     await chrome.storage.session.remove('activeJob');
-    clearBadge();
   }
 }
 
@@ -196,7 +197,6 @@ async function pollSession(sessionId: string): Promise<void> {
         status: 'error',
         errorMessage: 'Processing timed out. Please try again.',
       });
-      setBadgeError();
       return;
     }
 
@@ -216,8 +216,6 @@ async function pollSession(sessionId: string): Promise<void> {
           events,
         });
 
-        setBadgeCount(count);
-
         chrome.notifications.create(`dropcal-${sessionId}`, {
           type: 'basic',
           iconUrl: 'icons/icon128.png',
@@ -234,7 +232,6 @@ async function pollSession(sessionId: string): Promise<void> {
           status: 'error',
           errorMessage: session.error_message || 'Processing failed',
         });
-        setBadgeError();
         return;
       }
 
@@ -336,7 +333,7 @@ async function capturePageText(): Promise<string | null> {
 let badgeSpinnerInterval: ReturnType<typeof setInterval> | null = null;
 
 function setBadgeProcessing(): void {
-  clearBadgeSpinner();
+  if (badgeSpinnerInterval !== null) return; // already spinning
   const frames = ['◐', '◓', '◑', '◒'];
   let i = 0;
   chrome.action.setBadgeBackgroundColor({ color: '#1170C5' });
@@ -369,6 +366,30 @@ function setBadgeError(): void {
 function clearBadge(): void {
   clearBadgeSpinner();
   chrome.action.setBadgeText({ text: '' });
+}
+
+// Derives badge state from session history — single source of truth shared with popup
+function syncBadge(sessions: SessionRecord[]): void {
+  // Any session still polling → spinner
+  if (sessions.some((s) => s.status === 'polling')) {
+    setBadgeProcessing();
+    return;
+  }
+
+  // Newest processed + not dismissed + not expired → green count
+  const newest = sessions[0];
+  if (
+    newest &&
+    newest.status === 'processed' &&
+    !newest.dismissedAt &&
+    Date.now() - newest.createdAt <= FEEDBACK_EXPIRY_MS
+  ) {
+    setBadgeCount(newest.eventCount);
+    return;
+  }
+
+  // Default: clear
+  clearBadge();
 }
 
 // ===== Message Handler =====
@@ -615,6 +636,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         console.error('DropCal: Failed to disconnect', error);
         sendResponse({ ok: false, error: 'Failed to disconnect provider' });
       }
+    });
+    return true;
+  }
+
+  // Popup — dismiss session feedback
+  if (message.type === 'DISMISS_SESSION') {
+    const { sessionId } = message;
+    updateSessionRecord(sessionId, { dismissedAt: Date.now() }).then(() => {
+      sendResponse({ ok: true });
     });
     return true;
   }

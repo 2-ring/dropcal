@@ -470,6 +470,8 @@
   transition: background-color 0.2s ease;
   cursor: pointer;
   max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .editable-content-wrapper:hover {
@@ -488,6 +490,8 @@
   line-height: 1.4;
   flex: 1;
   min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .event-confirmation-card-time-inline {
@@ -531,6 +535,8 @@
 .event-confirmation-card-description span {
   flex: 1;
   min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .event-confirmation-card-meta-inline {
@@ -555,6 +561,8 @@
 .event-confirmation-card-meta span {
   flex: 1;
   min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .description-icon {

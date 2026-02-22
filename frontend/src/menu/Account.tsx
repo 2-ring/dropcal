@@ -4,7 +4,7 @@
  * Opens settings popup when clicked (when logged in).
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { User as UserIcon } from '@phosphor-icons/react';
 import { useAuth } from '../auth/AuthContext';
 import { SettingsPopup } from './SettingsPopup';
@@ -16,7 +16,24 @@ import './Account.css';
 export function Account() {
   const { user, loading, signIn } = useAuth();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsInitialView, setSettingsInitialView] = useState<'main' | 'integrations'>('main');
   const accountButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-open settings from ?settings=integrations query param
+  useEffect(() => {
+    if (!user || loading) return;
+    const params = new URLSearchParams(window.location.search);
+    const settingsParam = params.get('settings');
+    if (settingsParam === 'integrations') {
+      setSettingsInitialView('integrations');
+      setIsSettingsOpen(true);
+      params.delete('settings');
+      const newUrl = params.toString()
+        ? `${window.location.pathname}?${params}`
+        : window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [user, loading]);
 
   if (loading) {
     return (
@@ -117,11 +134,12 @@ export function Account() {
 
       {isSettingsOpen && (
         <SettingsPopup
-          onClose={() => setIsSettingsOpen(false)}
+          onClose={() => { setIsSettingsOpen(false); setSettingsInitialView('main'); }}
           userEmail={user.email || ''}
           userName={user.user_metadata?.name || user.email?.split('@')[0] || 'User'}
           userAvatar={user.user_metadata?.avatar_url}
           triggerRef={accountButtonRef}
+          initialView={settingsInitialView}
         />
       )}
     </>

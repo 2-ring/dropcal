@@ -43,6 +43,7 @@ interface SettingsPopupProps {
   userAvatar?: string;
   isLoading?: boolean;
   triggerRef?: React.RefObject<HTMLElement>;
+  initialView?: ViewMode;
 }
 
 interface CalendarIntegration {
@@ -56,7 +57,7 @@ interface CalendarIntegration {
 
 type ViewMode = 'main' | 'integrations' | 'apple-connect' | 'account' | 'timezone';
 
-export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoading = false, triggerRef }: SettingsPopupProps) {
+export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoading = false, triggerRef, initialView = 'main' }: SettingsPopupProps) {
   const navigate = useNavigate();
   const { signOut, signIn, user, plan, preferences, setPreferences, setPrimaryCalendarProviderLocal } = useAuth();
 
@@ -67,7 +68,7 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
   const { themeMode, toggleTheme } = useTheme();
 
   // View state
-  const [viewMode, setViewMode] = useState<ViewMode>('main');
+  const [viewMode, setViewMode] = useState<ViewMode>(initialView);
 
   // Settings state - initialized from backend preferences
   const [useInternationalDate, setUseInternationalDate] = useState(

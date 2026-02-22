@@ -19,6 +19,8 @@
   cursor: pointer;
   max-width: 100%;
   position: relative;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .event-edit-overlay .editable-content-wrapper:hover {
@@ -98,6 +100,8 @@
   font-family: inherit;
   flex: 1;
   min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .event-edit-title-input::placeholder {
@@ -313,6 +317,8 @@
   font-family: inherit;
   padding: 0;
   min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Input element should expand */
@@ -348,6 +354,8 @@ input.row-input {
   padding: 0;
   line-height: 1.5;
   min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Textarea element should expand */

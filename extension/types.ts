@@ -58,6 +58,7 @@ export interface SessionRecord {
   eventSummaries: string[]; // First 3 event titles for popup subtitle
   events: CalendarEvent[]; // Full events for sidebar rendering
   errorMessage?: string;
+  dismissedAt?: number; // When user explicitly dismissed the result feedback
   createdAt: number;
   inputType: 'text' | 'image' | 'page' | 'file';
   pageUrl?: string;
@@ -116,4 +117,5 @@ export type ExtensionMessage =
   | { type: 'GET_CALENDAR_PROVIDERS' }
   | { type: 'SET_PRIMARY_PROVIDER'; provider: string }
   | { type: 'DISCONNECT_PROVIDER'; provider: string }
-  | { type: 'SIGN_OUT' };
+  | { type: 'SIGN_OUT' }
+  | { type: 'DISMISS_SESSION'; sessionId: string };

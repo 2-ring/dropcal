@@ -71,13 +71,13 @@ function AppContent() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
   const [loadingConfig, setLoadingConfig] = useState<LoadingStateConfig>(LOADING_MESSAGES.READING_FILE)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem('dropcal_sidebar') !== 'closed')
   const [feedbackMessage, setFeedbackMessage] = useState<string>('')
 
   // Session state (from backend)
   const [currentSession, setCurrentSession] = useState<BackendSession | null>(null)
   const [sessionHistory, setSessionHistory] = useState<BackendSession[]>([])
-  const [isLoadingSessions, setIsLoadingSessions] = useState(false)
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true)
 
   // Calendars from sync response (passed to EventsWorkspace)
   // Seed from localStorage so events render with correct colors/names immediately on refresh
@@ -106,6 +106,7 @@ function AppContent() {
     debugLog('guestSessions', 'loadGuestSessionHistory called, localStorage has', guestSessions.length, 'sessions:', guestSessions.map(gs => gs.id))
     if (guestSessions.length === 0) {
       setSessionHistory([])
+      setIsLoadingSessions(false)
       return
     }
     setIsLoadingSessions(true)
@@ -372,7 +373,10 @@ function AppContent() {
   }, [sessionHistory, user])
 
   const handleSidebarToggle = useCallback(() => {
-    setSidebarOpen(prev => !prev)
+    setSidebarOpen(prev => {
+      localStorage.setItem('dropcal_sidebar', prev ? 'closed' : 'open')
+      return !prev
+    })
   }, [])
 
   // Process text input
@@ -633,7 +637,8 @@ function AppContent() {
   const handleSessionClick = useCallback((sessionId: string) => {
     activeViewSessionRef.current = sessionId
     navigate(`/s/${sessionId}`)
-    setSidebarOpen(false)
+    // On mobile (full-screen overlay), auto-close sidebar on navigation
+    if (window.innerWidth <= 768) setSidebarOpen(false)
   }, [navigate])
 
   // Handle new session
@@ -644,7 +649,7 @@ function AppContent() {
     setCalendarEvents([])
     setIsProcessing(false)
     navigate('/')
-    setSidebarOpen(false)
+    if (window.innerWidth <= 768) setSidebarOpen(false)
   }, [navigate])
 
   // Handle adding events to Google Calendar

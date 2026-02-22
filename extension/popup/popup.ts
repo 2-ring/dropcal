@@ -360,11 +360,24 @@ const feedbackIcon = document.getElementById('feedback-icon')!;
 const feedbackTitle = document.getElementById('feedback-title')!;
 const feedbackSubtitle = document.getElementById('feedback-subtitle')!;
 const feedbackErrorText = document.getElementById('feedback-error-text')!;
-const btnOpenSession = document.getElementById('btn-open-session')!;
 const btnDismissSuccess = document.getElementById('btn-dismiss-success')!;
 const btnDismissError = document.getElementById('btn-dismiss-error')!;
 
 let feedbackSessionId: string | null = null;
+
+// Sessions dismissed in this popup lifetime (guards against async race with storage)
+const locallyDismissed = new Set<string>();
+
+// Feedback auto-expires after 24 hours even if not dismissed
+const FEEDBACK_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+function shouldShowFeedback(session: SessionRecord): boolean {
+  if (session.status !== 'processed') return false;
+  if (session.dismissedAt) return false;
+  if (locallyDismissed.has(session.sessionId)) return false;
+  if (Date.now() - session.createdAt > FEEDBACK_EXPIRY_MS) return false;
+  return true;
+}
 
 function showFeedbackSuccess(session: SessionRecord): void {
   feedbackSessionId = session.sessionId;
@@ -389,7 +402,6 @@ function showFeedbackSuccess(session: SessionRecord): void {
   dropZoneSuccess.classList.remove('hidden');
 
   // Show action buttons below drop zone
-  btnOpenSession.classList.remove('hidden');
   btnDismissSuccess.classList.remove('hidden');
   btnDismissError.classList.add('hidden');
   feedbackActions.classList.remove('hidden');
@@ -412,7 +424,6 @@ function showFeedbackError(message: string): void {
   dropZoneError.classList.remove('hidden');
 
   // Show action buttons below drop zone
-  btnOpenSession.classList.add('hidden');
   btnDismissSuccess.classList.add('hidden');
   btnDismissError.classList.remove('hidden');
   feedbackActions.classList.remove('hidden');
@@ -423,11 +434,26 @@ function showFeedbackError(message: string): void {
   currentView = 'input';
 }
 
-btnOpenSession.addEventListener('click', () => {
-  if (feedbackSessionId) openSidebar(feedbackSessionId);
+dropZone.addEventListener('click', async () => {
+  if (dropZone.classList.contains('success') && feedbackSessionId) {
+    const sid = feedbackSessionId;
+    feedbackSessionId = null;
+    locallyDismissed.add(sid);
+    await openSidebar(sid);
+    await new Promise<void>((resolve) => {
+      chrome.runtime.sendMessage({ type: 'DISMISS_SESSION', sessionId: sid }, () => resolve());
+    });
+    window.close();
+  }
 });
 
-btnDismissSuccess.addEventListener('click', () => {
+btnDismissSuccess.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (feedbackSessionId) {
+    locallyDismissed.add(feedbackSessionId);
+    chrome.runtime.sendMessage({ type: 'DISMISS_SESSION', sessionId: feedbackSessionId });
+  }
+  feedbackSessionId = null;
   showView('input');
   loadHistory();
 });
@@ -683,8 +709,8 @@ settingsThemeBtn.addEventListener('click', () => {
 });
 
 settingsIntegrationsBtn.addEventListener('click', () => {
-  showSettingsSubView('integrations');
-  loadCalendarProviders();
+  chrome.tabs.create({ url: 'https://dropcal.ai/?settings=integrations' });
+  window.close();
 });
 
 settingsLogout.addEventListener('click', () => {
@@ -796,6 +822,11 @@ function onHistoryUpdate(sessions: SessionRecord[]): void {
   }
 
   if (currentView === 'input') {
+    // Show persistent feedback for undismissed results (don't re-show if already showing)
+    const newest = sessions[0];
+    if (newest && shouldShowFeedback(newest) && feedbackSessionId !== newest.sessionId) {
+      showFeedbackSuccess(newest);
+    }
     renderHistory(sessions);
   }
 }
@@ -861,6 +892,10 @@ chrome.runtime.sendMessage({ type: 'GET_AUTH' }, (response) => {
     const newest = sessions[0];
     if (newest && newest.status === 'polling') {
       showView('processing');
+    } else if (newest && shouldShowFeedback(newest)) {
+      // Show persistent feedback for undismissed results
+      for (const v of allViews) v.classList.add('hidden');
+      showFeedbackSuccess(newest);
     } else {
       showView('input');
     }
