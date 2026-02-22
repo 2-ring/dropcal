@@ -8,11 +8,9 @@ import {
     EyesIcon, ArrowSquareOut,
 } from '@phosphor-icons/react'
 import { Logo } from '../../components/Logo'
-import { useTheme } from '../../theme/ThemeProvider'
 import { FlowPath } from '../full/components/FlowPath'
 import { CTAButton } from '../full/components/CTAButton'
 import phoneDemoLight from '../../assets/demo/phone-light.png'
-import phoneDemoDark from '../../assets/demo/phone-dark.png'
 import './Welcome.css'
 
 function GoogleLogo({ className }: { className?: string }) {
@@ -47,7 +45,6 @@ function MicrosoftLogo({ className }: { className?: string }) {
 
 export function Welcome() {
     const navigate = useNavigate()
-    const { resolvedTheme } = useTheme()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const iconSource = [
         Envelope, ChatCircleText, Camera, FileText, Microphone, LinkIcon,
@@ -163,7 +160,7 @@ export function Welcome() {
                             <div className="phone-notch"></div>
                             <div className="phone-screen">
                                 <img
-                                    src={resolvedTheme === 'dark' ? phoneDemoLight : phoneDemoDark}
+                                    src={phoneDemoLight}
                                     alt="DropCal app demo"
                                     className="phone-demo-img"
                                 />

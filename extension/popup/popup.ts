@@ -86,10 +86,6 @@ btnSignin.addEventListener('click', () => {
 
 // ----- DOM refs -----
 
-const fileInput = document.getElementById('file-input') as HTMLInputElement;
-const imageInput = document.getElementById('image-input') as HTMLInputElement;
-const docInput = document.getElementById('doc-input') as HTMLInputElement;
-
 const btnLink = document.getElementById('btn-link')!;
 const btnImages = document.getElementById('btn-images')!;
 const btnFiles = document.getElementById('btn-files')!;
@@ -119,9 +115,12 @@ btnLink.addEventListener('click', async () => {
   }
 });
 
-btnImages.addEventListener('click', () => imageInput.click());
-btnFiles.addEventListener('click', () => docInput.click());
-btnCenter.addEventListener('click', () => fileInput.click());
+// Disabled: <input type="file">.click() from an extension popup crashes all of
+// Chrome due to a known Chromium bug (https://issues.chromium.org/issues/364825891).
+// These buttons are no-ops until a workaround is implemented.
+btnImages.addEventListener('click', () => {});
+btnFiles.addEventListener('click', () => {});
+btnCenter.addEventListener('click', () => {});
 
 btnCapture.addEventListener('click', () => {
   showView('processing');
@@ -145,20 +144,6 @@ btnPaste.addEventListener('click', async () => {
 
 btnEmail.addEventListener('click', () => {
   // TODO: email forwarding flow
-});
-
-// ----- File inputs -----
-
-fileInput.addEventListener('change', () => {
-  if (fileInput.files?.length) { handleFiles(fileInput.files); fileInput.value = ''; }
-});
-
-imageInput.addEventListener('change', () => {
-  if (imageInput.files?.length) { handleFiles(imageInput.files); imageInput.value = ''; }
-});
-
-docInput.addEventListener('change', () => {
-  if (docInput.files?.length) { handleFiles(docInput.files); docInput.value = ''; }
 });
 
 // ----- Drag & drop -----
@@ -852,9 +837,6 @@ function loadHistory(): void {
 }
 
 chrome.runtime.sendMessage({ type: 'GET_AUTH' }, (response) => {
-  // TODO: TEMPORARY — always show auth screen for UI testing
-  showView('auth');
-  return;
   const isAuth = response?.isAuthenticated ?? false;
   if (!isAuth) {
     showView('auth');

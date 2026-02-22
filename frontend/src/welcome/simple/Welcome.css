@@ -1,10 +1,38 @@
-/* ===== Page wrapper ===== */
+/* ===== Page wrapper — always dark ===== */
 .welcome-simple {
   position: relative;
   width: 100%;
   height: 100dvh;
   overflow: hidden;
   background-color: var(--background);
+
+  /* Hardcode dark theme variables scoped to this page */
+  --primary: #4A9EFF;
+  --primary-hover: #6BB1FF;
+  --primary-active: #3A8EEF;
+  --primary-light: #5AA5FF;
+  --primary-faint: rgba(74, 158, 255, 0.12);
+  --background: #1a1a1a;
+  --background-secondary: #2a2a2a;
+  --background-hover: #333333;
+  --background-active: #3a3a3a;
+  --background-elevated: #242424;
+  --text-primary: #e8e8e8;
+  --text-secondary: #b8b8b8;
+  --text-tertiary: #888888;
+  --text-disabled: #666666;
+  --border: #3a3a3a;
+  --border-hover: #4a4a4a;
+  --border-active: #5a5a5a;
+  --border-light: rgba(255, 255, 255, 0.1);
+  --shadow-light: rgba(0, 0, 0, 0.3);
+  --shadow-medium: rgba(0, 0, 0, 0.5);
+  --overlay: rgba(0, 0, 0, 0.2);
+  --gradient-fade0: rgba(26, 26, 26, 0);
+  --gradient-fade40: rgba(26, 26, 26, 0.5);
+  --gradient-fade65: rgba(26, 26, 26, 0.8);
+  --gradient-fade85: rgba(26, 26, 26, 0.95);
+  --gradient-fade100: rgba(26, 26, 26, 1);
 }
 
 /* ===== Nav — always docked, absolute over content ===== */
@@ -30,18 +58,10 @@
   justify-content: space-between;
   position: relative;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(26, 26, 26, 0.78);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.03),
-    0 4px 20px rgba(0, 0, 0, 0.06);
-}
-
-[data-theme="dark"] .nav-container {
-  background: rgba(26, 26, 26, 0.78);
-  border-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.08),
     0 4px 20px rgba(0, 0, 0, 0.2);
@@ -377,10 +397,6 @@
   object-fit: contain;
 }
 
-[data-theme="dark"] .phone-screen {
-  background: #ffffff;
-}
-
 
 /* ===== Desktop overrides ===== */
 @media (min-width: 1025px) {
@@ -510,7 +526,7 @@
     gap: clamp(8px, 2vw, 12px);
   }
 
-  [data-theme="dark"] .see-how-cta-mobile.cta-button {
+  .see-how-cta-mobile.cta-button {
     background-color: #1A1A1A !important;
     color: #ffffff !important;
   }
