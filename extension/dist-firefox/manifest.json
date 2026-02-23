@@ -46,7 +46,8 @@
   },
   "sidebar_action": {
     "default_panel": "sidebar/sidebar.html",
-    "default_title": "DropCal"
+    "default_title": "DropCal",
+    "open_at_install": false
   },
   "browser_specific_settings": {
     "gecko": {

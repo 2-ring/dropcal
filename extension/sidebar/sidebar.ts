@@ -295,22 +295,14 @@ storage.local.onChanged.addListener((changes) => {
 initTheme();
 
 // Read which session to display from session storage
-// Also support ?session= query param (popup window fallback on Safari)
-const urlParams = new URLSearchParams(window.location.search);
-const querySessionId = urlParams.get('session');
-
-if (querySessionId) {
-  loadSession(querySessionId);
-} else {
-  storage.session.get('sidebarSessionId', (result) => {
-    const sessionId = result.sidebarSessionId as string | undefined;
-    if (sessionId) {
-      loadSession(sessionId);
-    } else {
-      showState('empty');
-    }
-  });
-}
+storage.session.get('sidebarSessionId', (result) => {
+  const sessionId = result.sidebarSessionId as string | undefined;
+  if (sessionId) {
+    loadSession(sessionId);
+  } else {
+    showState('empty');
+  }
+});
 
 // Also listen for session changes (if popup opens a different session)
 storage.session.onChanged.addListener((changes) => {

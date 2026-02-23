@@ -36,6 +36,7 @@ function buildManifest(browser: Browser): Record<string, any> {
         sidebar_action: {
           default_panel: 'sidebar/sidebar.html',
           default_title: 'DropCal',
+          open_at_install: false,
         },
         browser_specific_settings: {
           gecko: {
@@ -52,7 +53,7 @@ function buildManifest(browser: Browser): Record<string, any> {
         background: {
           service_worker: 'background.js',
         },
-        // No side_panel or sidebar_action — uses popup window fallback
+        // Safari lacks chrome.notifications — omit from permissions
       };
   }
 }

@@ -1,7 +1,7 @@
 // Unified side panel adapter.
-// Chrome → chrome.sidePanel (true side panel).
-// Firefox → browser.sidebarAction (native sidebar), falls back to popup window.
-// Safari → detached popup window.
+// Chrome → chrome.sidePanel.
+// Firefox → browser.sidebarAction.
+// Safari → browser.sidebarAction (Safari supports it in MV3).
 
 import { api, hasSidePanel, hasSidebarAction } from './detect';
 import { storage } from './storage';
@@ -33,36 +33,16 @@ function firefoxSidebar(): PanelAdapter {
   return {
     isSupported: true,
     async open({ sessionId }) {
+      // sidebarAction.open() MUST be called before any await — Firefox loses
+      // the user-action context after an async gap (Bugzilla #1800401).
+      await (browser as any).sidebarAction.open();
       if (sessionId) {
-        await new Promise<void>((resolve) => {
-          storage.session.set({ sidebarSessionId: sessionId }, resolve);
-        });
+        storage.session.set({ sidebarSessionId: sessionId });
       }
-      try {
-        await (browser as any).sidebarAction.open();
-      } catch {
-        // Fall back to popup window if sidebarAction.open() fails
-        const params = sessionId ? `?session=${sessionId}` : '';
-        const url = api.runtime.getURL(`sidebar/sidebar.html${params}`);
-        await api.windows.create({ url, type: 'popup', width: 380, height: 600 });
-      }
-    },
-  };
-}
-
-function popupWindowFallback(): PanelAdapter {
-  return {
-    isSupported: true,
-    async open({ sessionId }) {
-      const params = sessionId ? `?session=${sessionId}` : '';
-      const url = api.runtime.getURL(`sidebar/sidebar.html${params}`);
-      await api.windows.create({ url, type: 'popup', width: 380, height: 600 });
     },
   };
 }
 
 export const panel: PanelAdapter = hasSidePanel
   ? chromeSidePanel()
-  : hasSidebarAction
-    ? firefoxSidebar()
-    : popupWindowFallback();
+  : firefoxSidebar();

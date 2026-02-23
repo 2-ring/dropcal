@@ -1,6 +1,8 @@
 import type { SessionRecord } from '../types';
 import { initTheme } from '../theme';
-import { api, storage, panel } from '../compat';
+import { api, storage, panel, hasSidebarAction } from '../compat';
+
+declare const browser: typeof chrome | undefined;
 
 const API_URL = 'https://api.dropcal.ai';
 
@@ -814,6 +816,14 @@ async function handleFiles(files: FileList): Promise<void> {
 }
 
 async function openSidebar(sessionId: string): Promise<void> {
+  // Firefox sidebarAction.open() requires a user-action context and loses it
+  // after any await (Bugzilla #1800401). Call it FIRST, synchronously.
+  if (hasSidebarAction) {
+    (browser as any).sidebarAction.open();
+    storage.session.set({ sidebarSessionId: sessionId });
+    return;
+  }
+  // Chrome sidePanel needs windowId — awaits are fine here.
   await new Promise<void>((resolve) => {
     storage.session.set({ sidebarSessionId: sessionId }, resolve);
   });

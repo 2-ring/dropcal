@@ -40,6 +40,7 @@ function buildManifest() {
         sidebar_action: {
           default_panel: 'sidebar/sidebar.html',
           default_title: 'DropCal',
+          open_at_install: false,
         },
         browser_specific_settings: {
           gecko: { id: 'dropcal@dropcal.ai', strict_min_version: '121.0' },
