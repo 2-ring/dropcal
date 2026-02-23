@@ -107,11 +107,11 @@ class EventService:
         events_data: List[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
         """
-        Create multiple DropCal events without embeddings, then batch-compute
-        embeddings and update all events in one pass.
+        Create multiple DropCal events in a single batch INSERT, then link
+        all event IDs to the session in one UPDATE.
 
-        Saves events to DB immediately (so the frontend can display them),
-        then computes embeddings efficiently via a single model.encode() call.
+        Embeddings are NOT computed here — call compute_embeddings_background()
+        separately (e.g., in a daemon thread) after signaling frontend completion.
 
         Args:
             user_id: User's UUID
@@ -124,20 +124,42 @@ class EventService:
         if not events_data:
             return []
 
-        # 1. Save all events without embeddings
-        created_events = []
+        # 1. Build rows for batch INSERT (single DB query)
+        rows = []
         for data in events_data:
-            event = Event.create(
-                user_id=user_id,
-                provider="dropcal",
-                is_draft=True,
-                event_embedding=None,
-                **data,
-            )
-            Session.add_event(session_id, event['id'])
-            created_events.append(event)
+            row = {
+                "user_id": user_id,
+                "provider": "dropcal",
+                "is_draft": True,
+            }
+            for key in (
+                'summary', 'start_time', 'end_time', 'start_date', 'end_date',
+                'is_all_day', 'description', 'location', 'calendar_name',
+                'color_id', 'original_input', 'extracted_facts',
+                'system_suggestion', 'recurrence', 'attendees',
+            ):
+                if data.get(key) is not None:
+                    row[key] = data[key]
+            rows.append(row)
 
-        # 2. Batch-compute embeddings in a single model.encode() call
+        created_events = Event.create_batch(rows)
+
+        # 2. Link all event IDs to session (single SELECT + UPDATE instead of 2N)
+        event_ids = [e['id'] for e in created_events]
+        Session.add_events_batch(session_id, event_ids)
+
+        return created_events
+
+    @staticmethod
+    def compute_embeddings_background(created_events: List[Dict[str, Any]], events_data: List[Dict[str, Any]]) -> None:
+        """
+        Compute embeddings for events and update in DB. Designed to run in a
+        background thread after the pipeline has signaled completion.
+
+        Args:
+            created_events: Event dicts returned from create_dropcal_events_batch
+            events_data: Original events_data (for summary/description text)
+        """
         texts = []
         for data in events_data:
             text = data.get('summary', '')
@@ -147,14 +169,13 @@ class EventService:
 
         try:
             embeddings = compute_embeddings_batch(texts)
-            for event, embedding in zip(created_events, embeddings):
-                Event.update(event['id'], {
-                    "event_embedding": embedding.tolist()
-                })
+            updates = [
+                {"id": event['id'], "event_embedding": embedding.tolist()}
+                for event, embedding in zip(created_events, embeddings)
+            ]
+            Event.update_embeddings_batch(updates)
         except Exception as e:
-            logger.warning(f"Batch embedding failed, events saved without embeddings: {e}")
-
-        return created_events
+            logger.warning(f"Background embedding failed: {e}")
 
     @staticmethod
     def create_provider_event(

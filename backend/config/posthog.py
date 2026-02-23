@@ -91,7 +91,6 @@ _AUTO_INCLUDE_ATTRS = (
     'num_events',           # total events identified in session
     'has_personalization',  # whether PERSONALIZE stage ran
     'event_index',          # which event in the batch (0-indexed)
-    'chunk_index',          # which chunk for chunked identification
     'calendar_name',        # calendar being analyzed (pattern discovery)
 )
 
@@ -115,12 +114,8 @@ def set_tracking_context(
     has_personalization=None,
     event_index=None,
     event_description=None,
-    chunk_index=None,
     calendar_name=None,
     parent_id=None,
-    group_index=None,
-    num_groups=None,
-    group_category=None,
 ):
     """
     Set the tracking context for the current thread.
@@ -152,12 +147,8 @@ def set_tracking_context(
     _set('has_personalization', has_personalization)
     _set('event_index', event_index)
     _set('event_description', event_description)
-    _set('chunk_index', chunk_index)
     _set('calendar_name', calendar_name)
     _set('parent_id', parent_id)
-    _set('group_index', group_index)
-    _set('num_groups', num_groups)
-    _set('group_category', group_category)
 
 
 def get_tracking_property(name, default=None):
@@ -176,7 +167,9 @@ def _get_session_id():
 # Human-readable labels for each pipeline stage / component.
 _AGENT_LABELS = {
     'extraction': 'Extract',
+    'resolution': 'Resolve',
     'personalization': 'Personalize',
+    'save': 'Save',
     'modification': 'Modify',
     'pattern_discovery': 'Pattern Discovery',
     'pattern_analysis': 'Pattern Analysis',
@@ -228,16 +221,7 @@ def _build_span_name(agent_name):
     """
     label = _AGENT_LABELS.get(agent_name, agent_name)
 
-    # Group context (batch Structure)
-    group_index = getattr(_local, 'group_index', None)
-    num_groups = getattr(_local, 'num_groups', None)
-    group_category = getattr(_local, 'group_category', None)
-
-    if group_index is not None and num_groups:
-        desc = f'"{_truncate(group_category)}" ' if group_category else ''
-        return f'{label}: {desc}(Group {group_index + 1}/{num_groups})'
-
-    # Event context (per-event Structure, Personalize)
+    # Event context (per-event Personalize)
     event_index = getattr(_local, 'event_index', None)
     num_events = getattr(_local, 'num_events', None)
     event_description = getattr(_local, 'event_description', None)
@@ -536,7 +520,7 @@ def capture_agent_error(agent_name: str, error: Exception, extra: dict = None):
     Shows up alongside LLM generation events for full pipeline visibility.
 
     Args:
-        agent_name: Which agent failed (e.g., "identification", "extraction")
+        agent_name: Which agent failed (e.g., "extraction", "personalization")
         error: The exception that occurred
         extra: Optional dict of additional properties (session_id, event_index, etc.)
     """

@@ -30,11 +30,17 @@ _CALENDAR_DIMS = ["time", "duration"]
 
 
 class DucklingClient:
-    """HTTP client for the Duckling temporal parsing service."""
+    """HTTP client for the Duckling temporal parsing service.
+
+    Uses requests.Session for TCP connection keep-alive, reducing overhead
+    when making many sequential or concurrent calls (e.g., resolving 10+
+    events in a session).
+    """
 
     def __init__(self, base_url: Optional[str] = None):
         self.base_url = (base_url or DUCKLING_URL).rstrip("/")
         self._parse_url = f"{self.base_url}/parse"
+        self._session = requests.Session()
 
     def parse(
         self,
@@ -82,7 +88,7 @@ class DucklingClient:
         }
 
         try:
-            response = requests.post(
+            response = self._session.post(
                 self._parse_url,
                 data=payload,
                 timeout=_REQUEST_TIMEOUT,
@@ -138,7 +144,7 @@ class DucklingClient:
     def is_available(self) -> bool:
         """Check if the Duckling service is reachable."""
         try:
-            response = requests.post(
+            response = self._session.post(
                 self._parse_url,
                 data={"text": "today", "locale": "en_US", "tz": "UTC", "dims": '["time"]'},
                 timeout=2,

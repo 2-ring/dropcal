@@ -7,10 +7,10 @@ loading function that handles Jinja2 variable substitution.
     from core.prompt_loader import load_prompt
 
     # No variables
-    prompt = load_prompt("extraction/prompts/identification.txt")
+    prompt = load_prompt("extraction/prompts/unified_extract.txt")
 
     # With variables
-    prompt = load_prompt("extraction/prompts/extraction.txt", timezone="America/New_York")
+    prompt = load_prompt("modification/prompts/modification.txt", current_date="2026-02-22")
 """
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined

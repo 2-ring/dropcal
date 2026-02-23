@@ -1113,6 +1113,36 @@ class Session:
         return response.data[0]
 
     @staticmethod
+    def add_events_batch(session_id: str, event_ids_to_add: List[str]) -> Dict[str, Any]:
+        """
+        Add multiple event IDs to session's event_ids array in a single DB round-trip.
+
+        Args:
+            session_id: Session's UUID
+            event_ids_to_add: List of event UUIDs to add
+
+        Returns:
+            Dict containing updated session data
+        """
+        if not event_ids_to_add:
+            return Session.get_by_id(session_id)
+
+        supabase = get_supabase()
+
+        session = Session.get_by_id(session_id)
+        if not session:
+            raise ValueError(f"Session {session_id} not found")
+
+        existing = session.get('event_ids', []) or []
+        existing_set = set(existing)
+        merged = existing + [eid for eid in event_ids_to_add if eid not in existing_set]
+
+        response = supabase.table("sessions").update({
+            "event_ids": merged
+        }).eq("id", session_id).execute()
+        return response.data[0]
+
+    @staticmethod
     def remove_event(session_id: str, event_id: str) -> Dict[str, Any]:
         """
         Remove an event ID from session's event_ids array.
@@ -1244,6 +1274,38 @@ class Event:
 
         response = supabase.table("events").insert(data).execute()
         return response.data[0]
+
+    @staticmethod
+    def create_batch(events_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Create multiple events in a single INSERT query.
+
+        Args:
+            events_data: List of dicts, each containing event fields.
+                         Must include at least user_id, provider, summary.
+
+        Returns:
+            List of created event dicts (with generated IDs).
+        """
+        if not events_data:
+            return []
+        supabase = get_supabase()
+        response = supabase.table("events").insert(events_data).execute()
+        return response.data
+
+    @staticmethod
+    def update_embeddings_batch(updates: List[Dict[str, Any]]) -> None:
+        """
+        Update embeddings for multiple events. Each dict must have 'id' and
+        'event_embedding'. Uses upsert to update in a single query.
+
+        Args:
+            updates: List of dicts with 'id' and 'event_embedding' keys.
+        """
+        if not updates:
+            return
+        supabase = get_supabase()
+        supabase.table("events").upsert(updates, on_conflict="id").execute()
 
     @staticmethod
     def get_by_id(event_id: str) -> Optional[Dict[str, Any]]:
