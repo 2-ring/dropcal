@@ -6,5 +6,5 @@ If the event has an extracted location: consider whether the user's history sugg
 
 If the event has NO location: only infer one when the connection is near-certain — every instance of a specific recurring activity happens at the same place. Mixed locations across similar events = leave null.
 
-For virtual locations ("Zoom", "Google Meet") or personal ones ("my room", "home"), keep what was extracted. Never remove a location — only improve it or keep it as-is.
+For virtual locations ("Zoom", "Google Meet") or personal ones ("my room", "home"), keep what was extracted. Never remove a location — only improve it or return null to keep as-is.
 </task>

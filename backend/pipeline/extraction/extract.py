@@ -35,11 +35,8 @@ _INPUT_TYPE_LABELS = {
     'document': 'Document',
 }
 
-# LangChain message type → OpenAI-style role
-_ROLE_MAP = {"system": "system", "human": "user", "ai": "assistant"}
 
-
-def _capture_generation(agent_name, messages, raw_ai_message, duration_ms):
+def _capture_generation(input_content, raw_ai_message, duration_ms):
     """Capture a manual $ai_generation event with full LLM I/O for PostHog."""
     try:
         from config.text import get_text_provider, get_model_specs
@@ -50,12 +47,6 @@ def _capture_generation(agent_name, messages, raw_ai_message, duration_ms):
         specs = get_model_specs(provider)
         model_name = specs['model_name']
         posthog_provider = _PROVIDER_TO_POSTHOG.get(provider, provider)
-
-        # Serialize input messages
-        input_messages = [
-            {"role": _ROLE_MAP.get(m.type, m.type), "content": m.content}
-            for m in messages
-        ]
 
         # Serialize output — content for JSON mode, tool_calls for tool-calling mode
         output = None
@@ -76,7 +67,7 @@ def _capture_generation(agent_name, messages, raw_ai_message, duration_ms):
             duration_ms=duration_ms,
             input_tokens=usage.get('input_tokens'),
             output_tokens=usage.get('output_tokens'),
-            input_content=input_messages,
+            input_content=input_content,
             output_content=output,
         )
     except Exception as e:
@@ -143,8 +134,16 @@ class UnifiedExtractor(BaseAgent):
         result = raw_result['parsed']
         raw_ai_message = raw_result.get('raw')
 
-        # Manual PostHog generation capture with full I/O
-        _capture_generation('extraction', messages, raw_ai_message, duration_ms)
+        # Manual PostHog generation capture — pass string content directly
+        # (not from message objects, which may be mutated by with_structured_output)
+        _capture_generation(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            raw_ai_message,
+            duration_ms,
+        )
 
         if not result or not result.events:
             return ExtractedEventBatch(session_title="Untitled", input_summary="", events=[]), messages, raw_ai_message
@@ -160,6 +159,7 @@ class UnifiedExtractor(BaseAgent):
         media_type = metadata.get('media_type', 'image/jpeg')
 
         # Build multimodal message content
+        user_text = "[SOURCE TYPE: Image (screenshot, photo)]\n\nExtract all calendar events from this image."
         content = [
             {
                 "type": "image_url",
@@ -169,8 +169,7 @@ class UnifiedExtractor(BaseAgent):
             },
             {
                 "type": "text",
-                "text": "[SOURCE TYPE: Image (screenshot, photo)]\n\n"
-                        "Extract all calendar events from this image."
+                "text": user_text,
             },
         ]
 
@@ -190,8 +189,15 @@ class UnifiedExtractor(BaseAgent):
         result = raw_result['parsed']
         raw_ai_message = raw_result.get('raw')
 
-        # Manual PostHog generation capture with full I/O
-        _capture_generation('extraction', messages, raw_ai_message, duration_ms)
+        # Manual PostHog generation capture — use text content only (strip base64 image data)
+        _capture_generation(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"[image: {media_type}]\n\n{user_text}"},
+            ],
+            raw_ai_message,
+            duration_ms,
+        )
 
         if not result or not result.events:
             return ExtractedEventBatch(session_title="Untitled", input_summary="", events=[]), messages, raw_ai_message

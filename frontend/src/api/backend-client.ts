@@ -198,6 +198,7 @@ export function streamSession(
     onTitle?: (title: string) => void
     onIcon?: (icon: string) => void
     onCount?: (count: number) => void
+    onStage?: (stage: string) => void
     onComplete: () => void
     onError: (error: string) => void
   }
@@ -237,6 +238,13 @@ export function streamSession(
     const data = JSON.parse(e.data)
     if (callbacks.onIcon) {
       callbacks.onIcon(data.icon)
+    }
+  })
+
+  eventSource.addEventListener('stage', (e) => {
+    const data = JSON.parse(e.data)
+    if (callbacks.onStage) {
+      callbacks.onStage(data.stage)
     }
   })
 

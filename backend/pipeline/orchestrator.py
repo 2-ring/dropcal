@@ -389,10 +389,15 @@ class SessionProcessor:
                 context_thread.start()
 
             # ── EXTRACT: single LLM call ────────────────────────────────
+            stream = get_stream(session_id)
+            if stream:
+                stream.set_stage('extracting')
+
             t_extract = _time.time()
-            extraction_result, _, _ = self.extractor.execute(
-                text, input_type=input_type, metadata=metadata
-            )
+            with stage_span("extraction"):
+                extraction_result, _, _ = self.extractor.execute(
+                    text, input_type=input_type, metadata=metadata
+                )
             extracted_events = extraction_result.events
             logger.info(f"[timing] extract: {_time.time() - t_extract:.2f}s")
 
@@ -426,6 +431,10 @@ class SessionProcessor:
             set_tracking_context(num_events=len(extracted_events))
 
             # ── RESOLVE: parallel Duckling calls ────────────────────────
+            stream = get_stream(session_id)
+            if stream:
+                stream.set_stage('resolving')
+
             # Wait for timezone (should be ready by now, extract takes ~6s)
             if context_thread is not None:
                 context_thread.join()
@@ -481,6 +490,9 @@ class SessionProcessor:
             set_tracking_context(has_personalization=use_personalization)
 
             if use_personalization:
+                stream = get_stream(session_id)
+                if stream:
+                    stream.set_stage('personalizing')
                 logger.info(f"Session {session_id}: Personalizing {len(calendar_events)} events (batch)")
 
                 t_personalize = _time.time()
@@ -492,13 +504,14 @@ class SessionProcessor:
 
                 input_summary = getattr(extraction_result, 'input_summary', '') or ''
 
-                calendar_events, _, _, _ = self.personalize_agent.execute_batch(
-                    events=calendar_events,
-                    discovered_patterns=patterns,
-                    historical_events=historical_events,
-                    user_id=user_id,
-                    input_summary=input_summary,
-                )
+                with stage_span("personalization"):
+                    calendar_events, _, _, _ = self.personalize_agent.execute_batch(
+                        events=calendar_events,
+                        discovered_patterns=patterns,
+                        historical_events=historical_events,
+                        user_id=user_id,
+                        input_summary=input_summary,
+                    )
 
                 logger.info(f"[timing] personalize: {_time.time() - t_personalize:.2f}s")
 
@@ -514,6 +527,9 @@ class SessionProcessor:
             # ── SAVE: write events to DB (batch insert) ─────────────────
             # Frontend already has events via SSE. Save to DB, signal
             # completion, then compute embeddings in background.
+            stream = get_stream(session_id)
+            if stream:
+                stream.set_stage('saving')
             t_save = _time.time()
             events_data = []
             for calendar_event in calendar_events:

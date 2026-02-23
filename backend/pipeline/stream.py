@@ -17,6 +17,7 @@ class SessionStream:
         self.title: Optional[str] = None
         self.icon: Optional[str] = None
         self.event_count: Optional[int] = None  # Known count before resolution
+        self.stage: Optional[str] = None  # Current pipeline stage
         self.done = False
         self.error: Optional[str] = None
         self._revision = 0  # Bumped on any event list change
@@ -44,6 +45,12 @@ class SessionStream:
     def set_title(self, title: str):
         with self._condition:
             self.title = title
+            self._condition.notify_all()
+
+    def set_stage(self, stage: str):
+        """Set the current pipeline stage (extracting, resolving, personalizing, saving)."""
+        with self._condition:
+            self.stage = stage
             self._condition.notify_all()
 
     def set_icon(self, icon: str):

@@ -80,4 +80,5 @@ These are real events from the user's calendar. Use them to understand the user'
 <output_format>
 Output an array of exactly {{ num_events }} objects in the same order as the events above.
 Each object contains only the assigned task fields for that event.
+For any task where you would keep the existing value unchanged, return null — do not regenerate the same value. Only output a value when you are making a change.
 </output_format>

@@ -66,6 +66,7 @@ def stream_session_updates(session_id: str):
         last_title = session.get('title')
         last_icon = session.get('icon')
         last_event_count = None  # Track event_count (from extraction)
+        last_stage = None  # Track pipeline stage
         max_wait = 300  # 5 min max
         heartbeat_interval = 15  # Send keepalive every 15s
         last_heartbeat = time.time()
@@ -75,6 +76,12 @@ def stream_session_updates(session_id: str):
             stream.wait_for_update(timeout=0.5)
 
             sent_data = False
+
+            # Stage update
+            if stream.stage and stream.stage != last_stage:
+                yield f"event: stage\ndata: {json.dumps({'stage': stream.stage})}\n\n"
+                last_stage = stream.stage
+                sent_data = True
 
             # Title update
             if stream.title and stream.title != last_title:

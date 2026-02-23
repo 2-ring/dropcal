@@ -67,7 +67,6 @@
 
 body {
   width: 380px;
-  height: 600px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   font-size: 14px;
@@ -77,12 +76,29 @@ body {
   overflow: hidden;
 }
 
+body.view-locked {
+  height: 600px;
+}
+
 #root {
   padding: 20px;
   display: flex;
   flex-direction: column;
-  height: 100%;
   overflow: hidden;
+}
+
+body.view-locked #root {
+  height: 100%;
+}
+
+body.view-locked #view-input {
+  flex: 1;
+  min-height: 0;
+}
+
+body.view-locked .results-section {
+  flex: 1;
+  min-height: 0;
 }
 
 .hidden {
@@ -269,7 +285,6 @@ body {
   justify-content: center;
   gap: 4px;
   text-align: center;
-  flex: 1;
 }
 
 .auth-brand {
@@ -306,8 +321,6 @@ body {
 #view-input {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
 }
 
 /* ----- Drop Zone ----- */
@@ -521,9 +534,7 @@ body {
 
 .results-section {
   margin-top: 16px;
-  flex: 1;
   overflow-y: auto;
-  min-height: 0;
 }
 
 .results-list {

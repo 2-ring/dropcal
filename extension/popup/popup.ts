@@ -34,6 +34,9 @@ function showView(view: View): void {
   for (const v of allViews) v.classList.add('hidden');
   popupHeader.classList.toggle('hidden', view === 'auth' || view === 'settings');
 
+  // Lock body to fixed height for views with scrollable content
+  document.body.classList.toggle('view-locked', view === 'input' || view === 'processing');
+
   if (view === 'auth') {
     viewAuth.classList.remove('hidden');
   } else if (view === 'input') {

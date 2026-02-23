@@ -25,6 +25,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from typing import List, Dict, Optional
 from datetime import datetime
 
+import numpy as np
 from pydantic import BaseModel, create_model, Field as PydanticField
 
 from pipeline.base_agent import BaseAgent
@@ -244,21 +245,24 @@ class PersonalizationAgent(BaseAgent):
         self._capture_posthog_generation(messages, raw_ai_message, duration_ms)
 
         # --- Merge results back into events ---
+        # None = "no change" — only overwrite when the LLM returns a value.
         for event_output, event, tasks in zip(result.events, events, per_event_tasks):
             for task_name in tasks:
                 task_def = TASK_DEFINITIONS[task_name]
                 merge_field = task_def['merge_field']
                 value = getattr(event_output, task_name, None)
 
-                # Treat empty strings as null for optional fields
+                # Treat empty strings as null (no change)
                 if isinstance(value, str) and not value.strip():
                     value = None
 
-                if task_name == 'calendar' and value is not None:
+                if value is None:
+                    continue
+
+                if task_name == 'calendar':
                     value = self._resolve_calendar_id(value, category_patterns)
 
-                if value is not None or task_name != 'title':
-                    setattr(event, merge_field, value)
+                setattr(event, merge_field, value)
 
         return events, task_output, messages, raw_ai_message
 
@@ -286,12 +290,15 @@ class PersonalizationAgent(BaseAgent):
         # Scale down k per event as batch grows
         k_per_event = max(2, 7 - len(events) // 5)
 
+        # Batch-fetch corrections: 1 DB query + 1 batch encode instead of N of each
+        per_event_corrections = self._batch_query_corrections(events, user_id)
+
         def _fetch_context(i, event):
             similar = self._find_similar_events(event, historical_events, k=k_per_event)
             duration_stats = self._compute_duration_stats(similar)
             surrounding = self._fetch_surrounding_events(event, user_id)
             location_matches = self._fetch_location_history(event, user_id)
-            corrections = self._query_corrections(event, user_id)
+            corrections = per_event_corrections[i]
             location_corrections = self._extract_location_corrections(corrections)
             return i, {
                 'similar_events': similar,
@@ -700,25 +707,88 @@ class PersonalizationAgent(BaseAgent):
     # Corrections
     # =========================================================================
 
-    def _query_corrections(
+    def _batch_query_corrections(
         self,
-        event: CalendarEvent,
-        user_id: Optional[str]
-    ) -> List[Dict]:
-        """Query past user corrections similar to this event."""
-        if not user_id:
-            return []
+        events: List[CalendarEvent],
+        user_id: Optional[str],
+        k: int = 5,
+    ) -> List[List[Dict]]:
+        """
+        Fetch corrections once, batch-embed all events, rank per-event.
 
+        Single DB fetch + single batched encode instead of N individual
+        instantiations, queries, and encode calls.
+        """
+        empty = [[] for _ in events]
+        if not user_id:
+            return empty
+
+        # 1. Single DB fetch for all user corrections
         try:
-            from pipeline.personalization.corrections.query_service import CorrectionQueryService
-            query_service = CorrectionQueryService()
-            return query_service.query_for_preference_application(
-                user_id=user_id,
-                facts=event.model_dump(),
-                k=5
-            ) or []
-        except Exception:
-            return []
+            from database.supabase_client import get_supabase
+            supabase = get_supabase()
+            result = supabase.table('event_corrections').select('*').eq('user_id', user_id).execute()
+            corrections = result.data
+        except Exception as e:
+            logger.warning(f"Failed to fetch corrections: {e}")
+            return empty
+
+        if not corrections:
+            return empty
+
+        # 2. Filter corrections that have stored embeddings
+        valid_corrections = []
+        stored_embeddings = []
+        for c in corrections:
+            emb = c.get('facts_embedding', [])
+            if emb:
+                valid_corrections.append(c)
+                stored_embeddings.append(emb)
+
+        if not valid_corrections:
+            return empty
+
+        stored_matrix = np.array(stored_embeddings)  # (num_corrections, dim)
+
+        # 3. Batch-embed all events using the global singleton model
+        from pipeline.personalization.similarity.service import get_embedding_model
+        model = get_embedding_model()
+
+        event_texts = [self._event_to_correction_text(e) for e in events]
+        event_embeddings = model.encode(
+            event_texts,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+        )  # (num_events, dim)
+
+        # 4. Similarity matrix + per-event top-k ranking
+        similarity_matrix = event_embeddings @ stored_matrix.T  # (num_events, num_corrections)
+
+        per_event_results = []
+        for i in range(len(events)):
+            top_indices = np.argsort(similarity_matrix[i])[::-1][:k]
+            per_event_results.append([valid_corrections[idx] for idx in top_indices])
+
+        return per_event_results
+
+    @staticmethod
+    def _event_to_correction_text(event: CalendarEvent) -> str:
+        """Convert CalendarEvent to text for correction embedding matching."""
+        parts = []
+        if event.summary:
+            parts.append(event.summary)
+        if event.start:
+            if event.start.date:
+                parts.append(event.start.date)
+            elif event.start.dateTime:
+                parts.append(event.start.dateTime)
+        if event.location:
+            parts.append(event.location)
+        if event.description:
+            parts.append(event.description)
+        if event.calendar:
+            parts.append(f"calendar:{event.calendar}")
+        return ' '.join(parts) if parts else ''
 
     def _format_correction_context(self, corrections: List[Dict]) -> str:
         """Format corrections as a learning context string for the prompt."""

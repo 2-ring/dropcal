@@ -443,6 +443,17 @@ function AppContent() {
               s.id === session.id ? { ...s, extracted_events: new Array(count) } : s
             ))
           },
+          onStage: (stage) => {
+            const stageMessages: Record<string, LoadingStateConfig> = {
+              extracting: LOADING_MESSAGES.EXTRACTING_EVENTS,
+              resolving: LOADING_MESSAGES.EXTRACTING_FACTS,
+              personalizing: LOADING_MESSAGES.FORMATTING_CALENDAR,
+              saving: LOADING_MESSAGES.ADDING_TO_CALENDAR,
+            }
+            if (stageMessages[stage]) {
+              setLoadingConfig(stageMessages[stage])
+            }
+          },
           onTitle: (title) => {
             setSessionHistory(prev => prev.map(s =>
               s.id === session.id ? { ...s, title } : s
@@ -569,6 +580,17 @@ function AppContent() {
             setSessionHistory(prev => prev.map(s =>
               s.id === session.id ? { ...s, extracted_events: new Array(count) } : s
             ))
+          },
+          onStage: (stage) => {
+            const stageMessages: Record<string, LoadingStateConfig> = {
+              extracting: LOADING_MESSAGES.EXTRACTING_EVENTS,
+              resolving: LOADING_MESSAGES.EXTRACTING_FACTS,
+              personalizing: LOADING_MESSAGES.FORMATTING_CALENDAR,
+              saving: LOADING_MESSAGES.ADDING_TO_CALENDAR,
+            }
+            if (stageMessages[stage]) {
+              setLoadingConfig(stageMessages[stage])
+            }
           },
           onTitle: (title) => {
             setSessionHistory(prev => prev.map(s =>
