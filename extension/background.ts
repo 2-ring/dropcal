@@ -16,7 +16,6 @@ import {
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLL_DURATION_MS = 5 * 60 * 1000;
 const MAX_HISTORY_SESSIONS = 10;
-const MAX_PAGE_TEXT_LENGTH = 50000;
 const CONTEXT_MENU_ID = 'send-to-dropcal';
 const DROPCAL_URL = 'https://dropcal.ai';
 const FEEDBACK_EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -160,10 +159,7 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
   if (info.menuItemId !== CONTEXT_MENU_ID) return;
 
   const hasAuth = await ensureAuth();
-  if (!hasAuth) {
-    setBadgeError();
-    return;
-  }
+  if (!hasAuth) return;
 
   try {
     let session;
@@ -205,6 +201,7 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
       msgLower.includes('token') || msgLower.includes('expired');
 
     setBadgeError();
+    setTimeout(() => syncBadge(), 5000);
 
     if (isAuthError) {
       await clearAuth();
@@ -223,6 +220,7 @@ async function pollSession(sessionId: string): Promise<void> {
         status: 'error',
         errorMessage: 'Processing timed out. Please try again.',
       });
+      await pushNotification(sessionId);
       return;
     }
 
@@ -259,6 +257,7 @@ async function pollSession(sessionId: string): Promise<void> {
           status: 'error',
           errorMessage: session.error_message || 'Processing failed',
         });
+        await pushNotification(sessionId);
         return;
       }
 
@@ -280,88 +279,13 @@ async function pollSession(sessionId: string): Promise<void> {
   poll();
 }
 
-// ===== Page Capture =====
-
-async function capturePageText(): Promise<string | null> {
-  const hasAuth = await ensureAuth();
-  if (!hasAuth) return 'Not authenticated. Please sign in on dropcal.ai.';
-
-  try {
-    // Use lastFocusedWindow — service workers don't have a "current window"
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    if (!tab?.id || !tab.url) {
-      return 'No active tab found.';
-    }
-
-    // Check for restricted URLs where executeScript can't run
-    const url = tab.url;
-    if (
-      url.startsWith('chrome://') ||
-      url.startsWith('chrome-extension://') ||
-      url.startsWith('about:') ||
-      url.startsWith('edge://') ||
-      url.startsWith('brave://') ||
-      url.includes('chrome.google.com/webstore')
-    ) {
-      return 'Cannot capture this page. Try on a regular website.';
-    }
-
-    setBadgeProcessing();
-
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => ({
-        text: document.body.innerText,
-        title: document.title,
-        url: document.URL,
-      }),
-    });
-
-    const pageData = results?.[0]?.result;
-    if (!pageData || !pageData.text) {
-      return 'Could not read page content.';
-    }
-
-    let text = `Page: ${pageData.title}\nURL: ${pageData.url}\n\n${pageData.text}`;
-    if (text.length > MAX_PAGE_TEXT_LENGTH) {
-      const fullLength = text.length;
-      text =
-        text.slice(0, MAX_PAGE_TEXT_LENGTH) +
-        `\n\n[Truncated — full page was ${fullLength} characters]`;
-    }
-
-    const session = await createTextSession(text);
-
-    const record: SessionRecord = {
-      sessionId: session.id,
-      status: 'polling',
-      title: pageData.title || null,
-      eventCount: 0,
-      addedToCalendar: false,
-      eventSummaries: [],
-      events: [],
-      createdAt: Date.now(),
-      inputType: 'page',
-      pageUrl: pageData.url,
-    };
-    await addSessionRecord(record);
-
-    pollSession(session.id);
-    return null; // success
-  } catch (error) {
-    console.error('DropCal: Page capture failed', error);
-    const msg = error instanceof Error ? error.message : 'Unknown error';
-    return `Page capture failed: ${msg}`;
-  }
-}
-
 // ===== Badge Helpers =====
 
 let badgeSpinnerInterval: ReturnType<typeof setInterval> | null = null;
 
 function setBadgeProcessing(): void {
   if (badgeSpinnerInterval !== null) return; // already spinning
-  const frames = ['◐', '◓', '◑', '◒'];
+  const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
   let i = 0;
   chrome.action.setBadgeBackgroundColor({ color: '#1170C5' });
   chrome.action.setBadgeText({ text: frames[0] });
@@ -406,18 +330,23 @@ async function syncBadge(): Promise<void> {
     return;
   }
 
-  // Count events across all valid pending notifications
+  // Check pending notifications for errors and event counts
   let totalEvents = 0;
+  let hasError = false;
   for (const id of queue) {
     const s = sessions.find((r) => r.sessionId === id);
-    if (
-      s &&
-      s.status === 'processed' &&
-      !s.dismissedAt &&
-      Date.now() - s.createdAt <= FEEDBACK_EXPIRY_MS
-    ) {
+    if (!s || s.dismissedAt || Date.now() - s.createdAt > FEEDBACK_EXPIRY_MS) continue;
+
+    if (s.status === 'error' || (s.status === 'processed' && s.eventCount === 0)) {
+      hasError = true;
+    } else if (s.status === 'processed') {
       totalEvents += s.eventCount;
     }
+  }
+
+  if (hasError) {
+    setBadgeError();
+    return;
   }
 
   if (totalEvents > 0) {
@@ -494,19 +423,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return false;
   }
 
-  // Phase 2 — popup inputs
-  if (message.type === 'CAPTURE_PAGE') {
-    capturePageText().then((errorMsg) => {
-      if (errorMsg) {
-        setBadgeError();
-        sendResponse({ ok: false, error: errorMsg });
-      } else {
-        sendResponse({ ok: true });
-      }
-    });
-    return true;
-  }
-
   if (message.type === 'SUBMIT_TEXT') {
     const { text } = message;
     ensureAuth().then(async (hasAuth) => {
@@ -533,7 +449,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         sendResponse({ ok: true });
       } catch (error) {
         console.error('DropCal: Submit text failed', error);
-        setBadgeError();
+        clearBadge();
         sendResponse({ ok: false });
       }
     });

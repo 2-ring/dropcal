@@ -12,9 +12,7 @@
     "contextMenus",
     "storage",
     "notifications",
-    "activeTab",
-    "sidePanel",
-    "scripting"
+    "sidePanel"
   ],
   "host_permissions": [
     "https://api.dropcal.ai/*"

@@ -23,7 +23,6 @@ from config.posthog import (
     capture_pipeline_trace, stage_span,
     get_tracking_property, CLEAR,
 )
-from core.prompt_loader import load_prompt
 import time as _time
 
 logger = logging.getLogger(__name__)
@@ -384,25 +383,11 @@ class SessionProcessor:
 
             # ── EXTRACT: single LLM call ────────────────────────────────
             t_extract = _time.time()
-            with stage_span("extraction") as span:
-                # Capture the full prompt the LLM sees (mirrors extract.py)
-                system_prompt = load_prompt("extraction/prompts/unified_extract.txt")
-                source_label = {
-                    'text': 'Plain text', 'image': 'Image (screenshot, photo)',
-                    'pdf': 'PDF document', 'audio': 'Audio transcription',
-                    'email': 'Email', 'document': 'Document',
-                }.get(input_type, input_type or 'text')
-                span.input = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"[SOURCE TYPE: {source_label}]\n\n{text}"},
-                ]
+            with stage_span("extraction"):
                 extraction_result = self.extractor.execute(
                     text, input_type=input_type, metadata=metadata
                 )
                 extracted_events = extraction_result.events
-                span.output = [
-                    e.model_dump() for e in extracted_events
-                ] if extracted_events else []
             logger.info(f"[timing] extract: {_time.time() - t_extract:.2f}s")
 
             # Update session title from extraction result
@@ -495,19 +480,14 @@ class SessionProcessor:
 
                 input_summary = getattr(extraction_result, 'input_summary', '') or ''
 
-                with stage_span("personalization") as span:
-                    span.input = [e.model_dump() for e in calendar_events]
-                    calendar_events, task_output = self.personalize_agent.execute_batch(
+                with stage_span("personalization"):
+                    calendar_events, _ = self.personalize_agent.execute_batch(
                         events=calendar_events,
                         discovered_patterns=patterns,
                         historical_events=historical_events,
                         user_id=user_id,
                         input_summary=input_summary,
                     )
-                    span.output = {
-                        'task_output': task_output,
-                        'merged': [e.model_dump() for e in calendar_events],
-                    }
 
                 logger.info(f"[timing] personalize: {_time.time() - t_personalize:.2f}s")
 

@@ -122,16 +122,7 @@ btnImages.addEventListener('click', () => {});
 btnFiles.addEventListener('click', () => {});
 btnCenter.addEventListener('click', () => {});
 
-btnCapture.addEventListener('click', () => {
-  showView('processing');
-  chrome.runtime.sendMessage({ type: 'CAPTURE_PAGE' }, (response) => {
-    if (response && !response.ok) {
-      showFeedbackError(response.error || 'Capture failed');
-    } else {
-      window.close();
-    }
-  });
-});
+btnCapture.addEventListener('click', () => {});
 
 btnPaste.addEventListener('click', async () => {
   try {
@@ -359,7 +350,9 @@ function renderHistory(sessions: SessionRecord[]): void {
 const feedbackIcon = document.getElementById('feedback-icon')!;
 const feedbackTitle = document.getElementById('feedback-title')!;
 const feedbackSubtitle = document.getElementById('feedback-subtitle')!;
-const feedbackErrorText = document.getElementById('feedback-error-text')!;
+const feedbackErrorIcon = document.getElementById('feedback-error-icon')!;
+const feedbackErrorTitle = document.getElementById('feedback-error-title')!;
+const feedbackErrorSubtitle = document.getElementById('feedback-error-subtitle')!;
 const btnDismissSuccess = document.getElementById('btn-dismiss-success')!;
 const btnDismissError = document.getElementById('btn-dismiss-error')!;
 
@@ -372,7 +365,7 @@ const locallyDismissed = new Set<string>();
 const FEEDBACK_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 function shouldShowFeedback(session: SessionRecord): boolean {
-  if (session.status !== 'processed') return false;
+  if (session.status !== 'processed' && session.status !== 'error') return false;
   if (session.dismissedAt) return false;
   if (locallyDismissed.has(session.sessionId)) return false;
   if (Date.now() - session.createdAt > FEEDBACK_EXPIRY_MS) return false;
@@ -421,26 +414,53 @@ function showFeedbackSuccess(session: SessionRecord): void {
   currentView = 'input';
 }
 
-function showFeedbackError(message: string): void {
-  feedbackSessionId = null;
-  feedbackErrorText.textContent = message;
-
-  // Swap drop zone to error state
+function showErrorState(): void {
   dropZone.classList.remove('processing', 'success');
   dropZone.classList.add('error');
   dropZoneContent.classList.add('hidden');
   dropZoneSuccess.classList.add('hidden');
   dropZoneError.classList.remove('hidden');
 
-  // Show action buttons below drop zone
   btnDismissSuccess.classList.add('hidden');
   btnDismissError.classList.remove('hidden');
   feedbackActions.classList.remove('hidden');
 
-  // Ensure input view is visible
   viewInput.classList.remove('hidden');
   popupHeader.classList.remove('hidden');
   currentView = 'input';
+}
+
+function showFeedbackError(message: string): void {
+  feedbackSessionId = null;
+  feedbackErrorIcon.className = 'ph-duotone ph-warning-circle feedback-icon feedback-icon-error';
+  feedbackErrorTitle.textContent = message;
+  feedbackErrorSubtitle.textContent = '';
+  feedbackErrorSubtitle.classList.add('hidden');
+  showErrorState();
+}
+
+function showSessionError(session: SessionRecord): void {
+  feedbackSessionId = session.sessionId;
+
+  if (session.status === 'processed' && session.eventCount === 0) {
+    feedbackErrorIcon.className = 'ph-duotone ph-calendar-blank feedback-icon feedback-icon-error';
+    feedbackErrorTitle.textContent = 'No Events Found';
+    feedbackErrorSubtitle.textContent = session.title || 'No calendar events were detected.';
+  } else {
+    feedbackErrorIcon.className = 'ph-duotone ph-warning-circle feedback-icon feedback-icon-error';
+    feedbackErrorTitle.textContent = 'Processing Failed';
+    feedbackErrorSubtitle.textContent = session.errorMessage || '';
+  }
+  feedbackErrorSubtitle.classList.toggle('hidden', !feedbackErrorSubtitle.textContent);
+  showErrorState();
+}
+
+function showPendingFeedback(session: SessionRecord): void {
+  if (session.status === 'error' || session.eventCount === 0) {
+    showSessionError(session);
+  } else {
+    showFeedbackSuccess(session);
+  }
 }
 
 dropZone.addEventListener('click', async () => {
@@ -453,6 +473,12 @@ dropZone.addEventListener('click', async () => {
       chrome.runtime.sendMessage({ type: 'DISMISS_SESSION', sessionId: sid }, () => resolve());
     });
     window.close();
+  } else if (dropZone.classList.contains('error') && feedbackSessionId) {
+    locallyDismissed.add(feedbackSessionId);
+    chrome.runtime.sendMessage({ type: 'DISMISS_SESSION', sessionId: feedbackSessionId });
+    feedbackSessionId = null;
+    showView('input');
+    refresh();
   }
 });
 
@@ -468,6 +494,11 @@ btnDismissSuccess.addEventListener('click', (e) => {
 });
 
 btnDismissError.addEventListener('click', () => {
+  if (feedbackSessionId) {
+    locallyDismissed.add(feedbackSessionId);
+    chrome.runtime.sendMessage({ type: 'DISMISS_SESSION', sessionId: feedbackSessionId });
+    feedbackSessionId = null;
+  }
   showView('input');
   refresh();
 });
@@ -811,17 +842,15 @@ async function openSidebar(sessionId: string): Promise<void> {
 
 function syncNotifications(sessions: SessionRecord[], queue: string[]): void {
   if (currentView === 'processing') {
-    // A notification arrived while we were waiting — show it
     const pending = findPendingNotification(sessions, queue);
     if (pending) {
-      showFeedbackSuccess(pending);
+      showPendingFeedback(pending);
       return;
     }
-    // Nothing polling anymore — check for errors on newest session
     if (!sessions.some((s) => s.status === 'polling')) {
       const newest = sessions[0];
-      if (newest && newest.status === 'error') {
-        showFeedbackError(newest.errorMessage || 'Processing failed');
+      if (newest && (newest.status === 'error' || (newest.status === 'processed' && newest.eventCount === 0))) {
+        showSessionError(newest);
       } else {
         showView('input');
       }
@@ -830,10 +859,9 @@ function syncNotifications(sessions: SessionRecord[], queue: string[]): void {
   }
 
   if (currentView === 'input') {
-    // Show next pending notification (don't re-show if already showing for this session)
     const pending = findPendingNotification(sessions, queue);
     if (pending && feedbackSessionId !== pending.sessionId) {
-      showFeedbackSuccess(pending);
+      showPendingFeedback(pending);
     }
   }
 }
@@ -911,7 +939,7 @@ chrome.runtime.sendMessage({ type: 'GET_AUTH' }, (response) => {
       const pending = findPendingNotification(sessions, queue);
       if (pending) {
         for (const v of allViews) v.classList.add('hidden');
-        showFeedbackSuccess(pending);
+        showPendingFeedback(pending);
       } else {
         showView('input');
       }

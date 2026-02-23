@@ -23,10 +23,16 @@ class ExtractedEvent(BaseModel):
     summary: str = Field(
         description="Event title — clean, descriptive, Title Case. 2-5 words."
     )
-    date: Optional[str] = Field(
+    start_date: Optional[str] = Field(
         default=None,
-        description="Date as natural language for Duckling: 'tomorrow', 'next Tuesday', "
-                    "'October 20, 2025', 'this Saturday'. None if no date mentioned."
+        description="When the event starts, as natural language: 'tomorrow', 'next Tuesday', "
+                    "'October 20, 2025'. For recurring events, the first occurrence. "
+                    "None if no date mentioned."
+    )
+    end_date: Optional[str] = Field(
+        default=None,
+        description="When the event ends, as natural language. Multi-day events: the last day. "
+                    "Recurring events: when they stop. None for single-day or open-ended events."
     )
     start_time: Optional[str] = Field(
         default=None,
@@ -55,14 +61,16 @@ class ExtractedEvent(BaseModel):
     )
     recurrence: Optional[List[str]] = Field(
         default=None,
-        description="RRULE strings if repeating: ['RRULE:FREQ=WEEKLY;BYDAY=MO,WE']. "
+        description="RRULE pattern strings WITHOUT UNTIL: ['RRULE:FREQ=WEEKLY;BYDAY=MO,WE']. "
+                    "Use end_date for the recurrence end, not UNTIL in the RRULE. "
                     "None for one-time events."
     )
     excluded_dates: Optional[List[str]] = Field(
         default=None,
-        description="Dates when a recurring event does NOT occur (holidays, breaks, cancellations): "
-                    "['March 23, 2026', 'March 25, 2026']. "
-                    "Only for recurring events. Null if no exclusions or one-time event."
+        description="Dates when a recurring event does NOT occur (holidays, breaks, cancellations). "
+                    "Each entry must be a single date: ['March 23, 2026', 'March 25, 2026']. "
+                    "For date ranges, list each date individually. "
+                    "None for one-time events or if no exclusions."
     )
 
     @field_validator('summary')
