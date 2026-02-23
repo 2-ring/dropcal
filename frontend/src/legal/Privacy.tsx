@@ -7,7 +7,7 @@ export function Privacy() {
       <PageHeader />
       <div className="legal-content">
         <h1>Privacy Policy</h1>
-        <p className="legal-updated">Last updated: February 14, 2026</p>
+        <p className="legal-updated">Last updated: February 23, 2026</p>
 
         <p>
           DropCal ("we", "our", "us") operates the dropcal.ai website and
@@ -180,6 +180,36 @@ export function Privacy() {
             time
           </li>
         </ul>
+
+        <h2>Browser Extension</h2>
+        <p>
+          The DropCal browser extension provides an alternative way to submit
+          content to DropCal. The extension:
+        </p>
+        <ul>
+          <li>
+            Reads your authentication token from dropcal.ai to keep you signed
+            in — the extension's content script runs only on dropcal.ai and
+            www.dropcal.ai
+          </li>
+          <li>
+            Stores your authentication token, recent session history, and
+            display preferences (theme, date format) locally in your browser
+            using Chrome's storage API
+          </li>
+          <li>
+            Sends text, images, and files you submit to api.dropcal.ai for
+            processing — the same backend described in this policy
+          </li>
+          <li>
+            Does not collect browsing history, track activity on other websites,
+            or inject content into any page other than dropcal.ai
+          </li>
+        </ul>
+        <p>
+          All locally stored extension data is cleared when you sign out.
+          Uninstalling the extension removes all locally stored data.
+        </p>
 
         <h2>Data Security</h2>
         <p>

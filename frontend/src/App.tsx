@@ -96,6 +96,9 @@ function AppContent() {
   // Tracks the session currently being streamed via SSE (prevents URL-based
   // useEffect from clearing events before they're persisted to the DB)
   const streamingSessionRef = useRef<string | null>(null)
+  // Tracks appState without triggering re-renders (used as a guard in the session-loading effect)
+  const appStateRef = useRef<AppState>(appState)
+  appStateRef.current = appState
 
   // Guest mode state
   const [isGuestMode, setIsGuestMode] = useState(false)
@@ -190,12 +193,20 @@ function AppContent() {
     }
   }, [user, isGuestMode])
 
+  // Derive the viewed session's status from sessionHistory so the effect below
+  // re-runs when the auto-refresh detects a processing session has completed
+  const viewedSessionStatus = sessionHistory.find(s => s.id === sessionId)?.status
+
   // Load session from URL on mount or when sessionId changes
   useEffect(() => {
     if (sessionId) {
       // Skip if we're actively streaming this session via SSE — the events
       // aren't persisted yet so loading from DB would clear the live view.
       if (streamingSessionRef.current === sessionId) return
+
+      // Skip if we're already showing events for this session (prevents flash
+      // when SSE completes and sessionHistory status change re-triggers this effect)
+      if (appStateRef.current === 'review' && activeViewSessionRef.current === sessionId) return
 
       // Wait for auth to finish loading before checking access
       if (authLoading) return
@@ -278,7 +289,7 @@ function AppContent() {
           setIsProcessing(false)
         })
     }
-  }, [sessionId, navigate, user, authLoading])
+  }, [sessionId, navigate, user, authLoading, viewedSessionStatus])
 
   // Load session history when user logs in
   // Use ref to avoid re-fetching when user object reference changes but ID is the same
