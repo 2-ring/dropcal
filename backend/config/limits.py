@@ -21,7 +21,7 @@ class FileLimits:
 class EventLimits:
     """Caps on event counts."""
 
-    # Max events IDENTIFY stage can return per request
+    # Max events EXTRACT stage can return per request
     MAX_EVENTS_PER_REQUEST: int = 25
 
     # Max events for pattern discovery endpoint

@@ -9,8 +9,6 @@ from datetime import datetime
 import pytz
 
 
-
-
 # ============================================================================
 # EXTRACT Stage: Lean event extraction model
 # ============================================================================
@@ -86,66 +84,6 @@ class ExtractedEvent(BaseModel):
         return v
 
 
-# ============================================================================
-# IDENTIFY Stage: Event Identification
-# ============================================================================
-
-class IdentifiedEvent(BaseModel):
-    """A single identified event with raw text and description"""
-    raw_text: List[str] = Field(
-        description="List of complete text chunks relevant to this event. Keep sentences/phrases intact. Can include multiple chunks if event info is spread across text. Chunks can repeat across events if shared context. Example: ['Team meeting tomorrow at 2pm in Conference Room B.', 'Bring the report.'] or ['Homework due Tuesdays at 9pm ET']"
-    )
-    description: str = Field(
-        description="Uniquely identifying description using ONLY explicit facts from raw_text. Must distinguish this event from others. Examples: 'Team meeting with Sarah (tomorrow 2pm, Conference Room B)' or 'MATH 0180 first midterm exam (90 minutes, February 25, 6:30pm)' or 'Weekly homework deadline for ENGN 0520 (Tuesdays 9pm ET)'. NOT just 'Meeting' or 'Exam' - be specific and comprehensive."
-    )
-    confidence: str = Field(
-        description="'definite' if certain this will happen, 'tentative' if uncertain (contains words like: maybe, possibly, might, perhaps, etc.)"
-    )
-
-    # Context fields — populated post-identification (not by LLM).
-    # Carry document-level and local context to STRUCTURE stage for richer extraction.
-    document_context: Optional[str] = None
-    surrounding_context: Optional[str] = None
-    input_type: Optional[str] = None
-
-
-class IdentificationResult(BaseModel):
-    """Result of event identification"""
-    events: List[IdentifiedEvent] = Field(
-        description="Every calendar event identified in the input. Count carefully - missing events is the biggest risk!"
-    )
-    num_events: int = Field(
-        description="Total count of events found. Must match length of events list."
-    )
-    has_events: bool = Field(
-        description="True if any events were found, False if no events at all"
-    )
-
-
-# ============================================================================
-# CONSOLIDATE Stage: Grouping + Dedup
-# ============================================================================
-
-class EventGroupAssignment(BaseModel):
-    """Assignment of an event to a group, with optional removal."""
-    event_index: int = Field(description="0-based index of the event in the input list")
-    category: str = Field(description="Free-form group name (e.g. 'lectures', 'homework', 'exams'). LLM decides what groups make sense for the input.")
-    keep: bool = Field(default=True, description="False if this event is a duplicate and should be removed")
-    removal_reason: Optional[str] = Field(default=None, description="Why the event was removed (e.g. 'Duplicate of event 3'). Only set when keep=False.")
-
-
-class ConsolidationResult(BaseModel):
-    """Output of the CONSOLIDATE stage — grouping, dedup, and cross-event context."""
-    assignments: List[EventGroupAssignment] = Field(
-        description="One assignment per input event. Every event must appear exactly once."
-    )
-    cross_event_context: str = Field(
-        description="Short blurb highlighting inter-event dependencies, conflicts, and cancellations. "
-                    "E.g. 'Long weekend Feb 16 cancels MWF lecture. Midterm Feb 27 uses lecture slot.'"
-    )
-    notes: Optional[str] = Field(default=None, description="Any observations about the event set")
-
-
 class ExtractedEventBatch(BaseModel):
     """Batch output — one ExtractedEvent per real-world event found in input."""
     session_title: str = Field(
@@ -163,109 +101,6 @@ class ExtractedEventBatch(BaseModel):
     events: List[ExtractedEvent] = Field(
         description="One ExtractedEvent per real-world event. Deduplicated."
     )
-
-
-# ============================================================================
-# STRUCTURE Stage: Semantic Fact Extraction
-# ============================================================================
-
-class RecurrenceInfo(BaseModel):
-    """Recurrence pattern information"""
-    is_recurring: bool = Field(description="True if this event repeats")
-    pattern: Optional[str] = Field(default=None, description="Recurrence pattern: 'daily', 'weekly', 'monthly', 'yearly'")
-    days: Optional[List[str]] = Field(default=None, description="Days of week for recurring events: ['Monday', 'Wednesday']")
-    frequency: Optional[str] = Field(default=None, description="Frequency modifier: 'every', 'every other', 'twice'")
-
-
-class ExtractedFacts(BaseModel):
-    """Semantic facts extracted and normalized from event text"""
-    title: str = Field(description="Event title/name extracted from the text")
-    date: Optional[str] = Field(default=None, description="Normalized date in YYYY-MM-DD format: '2026-02-05', '2026-12-25', etc.")
-    time: Optional[str] = Field(default=None, description="Normalized start time in HH:MM:SS 24-hour format: '14:00:00', '09:30:00', etc.")
-    end_time: Optional[str] = Field(default=None, description="Normalized end time in HH:MM:SS 24-hour format if explicitly mentioned")
-    duration: Optional[str] = Field(default=None, description="Duration if mentioned: '90 minutes', '2 hours', '30 min', etc.")
-    location: Optional[str] = Field(default=None, description="PHYSICAL location only: 'Conference Room B', 'Starbucks', 'Puerto Rico', 'Smith Hall 201'. NOT virtual meeting links.")
-    meeting_url: Optional[str] = Field(default=None, description="Virtual meeting link: 'https://zoom.us/j/123...', 'https://teams.microsoft.com/...'. Full URL for online meetings.")
-    notes: Optional[str] = Field(default=None, description="Additional notes or context: 'bring laptop', 'closed-book', etc.")
-    people: Optional[List[str]] = Field(default=None, description="People mentioned by name: ['Sarah', 'John'], etc.")
-    attendees: Optional[List[str]] = Field(default=None, description="Email addresses to invite: ['sarah@example.com', 'john@company.com']. Only if explicitly mentioned.")
-    instructions: Optional[str] = Field(default=None, description="User's explicit requests/instructions: 'invite Sarah', 'remind me 1 hour before', 'high priority', 'add to work calendar'")
-    recurrence: RecurrenceInfo = Field(description="Recurrence pattern information")
-    calendar: Optional[str] = Field(
-        default=None,
-        description="Calendar display name from user's instructions (e.g. 'Classes', 'Work'). PERSONALIZE stage resolves this to a provider calendar ID. If None, primary calendar is used."
-    )
-
-    @field_validator('title')
-    @classmethod
-    def validate_title(cls, v: str) -> str:
-        """
-        Validate title length and truncate if necessary.
-        Hard limit from TextLimits.EVENT_TITLE_MAX_LENGTH (for consistency with Google Calendar)
-        Soft warning: >8 words (logged in pipeline but not blocked here)
-        """
-        from config.limits import TextLimits
-        max_len = TextLimits.EVENT_TITLE_MAX_LENGTH
-
-        if not v or not v.strip():
-            raise ValueError("Title cannot be empty")
-
-        v = v.strip()
-
-        if len(v) > max_len:
-            v = v[:max_len - 3] + "..."
-
-        return v
-
-    @field_validator('date')
-    @classmethod
-    def validate_date(cls, v: Optional[str]) -> Optional[str]:
-        """
-        Validate date is in YYYY-MM-DD format.
-        Allows None for optional field.
-        """
-        if v is None:
-            return v
-
-        if not isinstance(v, str):
-            raise ValueError(f"Date must be a string, got {type(v).__name__}")
-
-        # Regex for YYYY-MM-DD
-        date_pattern = r'^\d{4}-\d{2}-\d{2}$'
-        if not re.match(date_pattern, v):
-            raise ValueError(
-                f"Date must be in YYYY-MM-DD format (e.g., '2026-02-05'), got '{v}'"
-            )
-
-        # Validate it's a real date
-        try:
-            datetime.strptime(v, '%Y-%m-%d')
-        except ValueError as e:
-            raise ValueError(f"Invalid date '{v}': {str(e)}")
-
-        return v
-
-    @field_validator('time', 'end_time')
-    @classmethod
-    def validate_time(cls, v: Optional[str]) -> Optional[str]:
-        """
-        Validate time is in HH:MM:SS 24-hour format.
-        Allows None for optional fields.
-        """
-        if v is None:
-            return v
-
-        if not isinstance(v, str):
-            raise ValueError(f"Time must be a string, got {type(v).__name__}")
-
-        # Regex for HH:MM:SS (24-hour)
-        time_pattern = r'^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$'
-        if not re.match(time_pattern, v):
-            raise ValueError(
-                f"Time must be in HH:MM:SS 24-hour format (e.g., '14:00:00', '09:30:00'), got '{v}'"
-            )
-
-        return v
 
 
 # ============================================================================
@@ -358,7 +193,7 @@ class CalendarEvent(BaseModel):
     """
     Unified calendar event model — the standard output for the extraction pipeline.
 
-    Produced by STRUCTURE, optionally enhanced by PERSONALIZE, consumed by MODIFY
+    Produced by RESOLVE, optionally enhanced by PERSONALIZE, consumed by MODIFY
     and the calendar write layer.
     """
     summary: str = Field(description="Event title — clean, descriptive, and scannable")
@@ -374,7 +209,7 @@ class CalendarEvent(BaseModel):
     people: Optional[List[str]] = Field(default=None, description="People mentioned by name")
     instructions: Optional[str] = Field(default=None, description="User's explicit requests: 'remind me 1 hour before', 'high priority'")
 
-    # Set by STRUCTURE (if explicit) or PERSONALIZE stage
+    # Set by EXTRACT (if explicit) or PERSONALIZE stage
     calendar: Optional[str] = Field(default=None, description="Target calendar ID (provider calendar ID). None = primary calendar.")
     colorId: Optional[str] = Field(default=None, description="Calendar color ID. Set by PERSONALIZE stage.")
 

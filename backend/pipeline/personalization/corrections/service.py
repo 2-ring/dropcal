@@ -17,7 +17,7 @@ class CorrectionStorageService:
     """
     Manages event corrections storage and retrieval.
 
-    Key decision: Embeds extracted_facts (STRUCTURE output) for similarity search,
+    Key decision: Embeds extracted_facts (EXTRACT output) for similarity search,
     as this is what PERSONALIZE sees when making formatting decisions.
     """
 
@@ -45,7 +45,7 @@ class CorrectionStorageService:
             user_id: User UUID
             session_id: Session UUID
             original_input: Original messy input text (for context)
-            extracted_facts: STRUCTURE output (ExtractedFacts as dict)
+            extracted_facts: EXTRACT output (ExtractedEvent as dict)
             system_suggestion: PERSONALIZE output (formatted CalendarEvent)
             user_final: User's edited event
 
@@ -112,7 +112,7 @@ class CorrectionStorageService:
             user_id: User UUID
             session_id: Session UUID
             user_submitted_events: List of events user actually submitted (edited)
-            extracted_facts_list: Optional list of ExtractedFacts from STRUCTURE
+            extracted_facts_list: Optional list of extracted event dicts from EXTRACT
                                   If not provided, will attempt to reconstruct from system_suggestion
 
         Returns:
@@ -161,7 +161,7 @@ class CorrectionStorageService:
         """
         Generate embedding for extracted facts.
 
-        Converts ExtractedFacts dict to a text representation that captures
+        Converts extracted event dict to a text representation that captures
         the semantic content that PERSONALIZE sees.
         """
         # Convert facts to searchable text
@@ -178,7 +178,7 @@ class CorrectionStorageService:
 
     def _facts_to_text(self, facts: Dict) -> str:
         """
-        Convert ExtractedFacts dict to text for embedding.
+        Convert extracted event dict to text for embedding.
 
         Example:
         {
@@ -219,9 +219,9 @@ class CorrectionStorageService:
 
     def _reconstruct_facts_from_suggestion(self, system_suggestion: Dict) -> Dict:
         """
-        Reconstruct ExtractedFacts from system_suggestion.
+        Reconstruct extracted facts from system_suggestion.
 
-        This is a fallback when we don't have the original STRUCTURE output.
+        This is a fallback when we don't have the original EXTRACT output.
         Not perfect, but allows the system to work without storing intermediate facts.
         """
         facts = {}

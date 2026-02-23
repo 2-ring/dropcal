@@ -256,7 +256,7 @@ export function Menu({
                             <Skeleton width="70%" height={14} borderRadius={4} />
                           )}
                         </span>
-                        {session.status === 'processing' ? (
+                        {session.status === 'processing' && session.eventCount === 0 ? (
                           <span className="processing-indicator" />
                         ) : session.eventCount > 0 ? (
                           <span className={`event-count-badge ${session.addedToCalendar ? '' : 'unsynced'}`}>{session.eventCount}</span>

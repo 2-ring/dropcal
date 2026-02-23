@@ -234,6 +234,7 @@ class PersonalizationAgent(BaseAgent):
             messages, config=get_invoke_config("personalization")
         )
         result = raw_result['parsed']
+        raw_ai_message = raw_result.get('raw')
         task_output = [e.model_dump() for e in result.events]
 
         # --- Merge results back into events ---
@@ -253,7 +254,7 @@ class PersonalizationAgent(BaseAgent):
                 if value is not None or task_name != 'title':
                     setattr(event, merge_field, value)
 
-        return events, task_output
+        return events, task_output, messages, raw_ai_message
 
     @staticmethod
     def _assign_tasks(event: CalendarEvent, show_calendar: bool) -> List[str]:

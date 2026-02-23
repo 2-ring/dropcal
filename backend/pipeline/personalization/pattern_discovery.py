@@ -51,7 +51,7 @@ class PatternDiscoveryService:
         Main entry point: Discover all patterns from calendar history.
 
         Args:
-            comprehensive_data: From DataCollectionService with keys:
+            comprehensive_data: Calendar history data with keys:
                 - events: List[Dict]
                 - settings: Dict
                 - colors: Dict

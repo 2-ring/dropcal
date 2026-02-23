@@ -1,7 +1,7 @@
 """
 MODIFY — applies user edit instructions across a set of calendar events.
 Returns only the events that need to change (edit or delete).
-Separate from the main pipeline (IDENTIFY → CONSOLIDATE → STRUCTURE → RESOLVE → PERSONALIZE).
+Separate from the main pipeline (EXTRACT → RESOLVE → PERSONALIZE).
 """
 
 from typing import Dict, Any, List, Optional

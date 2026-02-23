@@ -51,7 +51,7 @@ class UnifiedExtractor(BaseAgent):
         text: str,
         input_type: str = 'text',
         metadata: Optional[Dict] = None,
-    ) -> ExtractedEventBatch:
+    ) -> tuple:
         """
         Extract all calendar events from raw input in a single LLM call.
 
@@ -61,7 +61,9 @@ class UnifiedExtractor(BaseAgent):
             metadata: Optional metadata (image_data + media_type for vision path)
 
         Returns:
-            ExtractedEventBatch with session_title and events
+            (ExtractedEventBatch, messages, raw_ai_message) — parsed result,
+            the exact LangChain messages sent to the model, and the raw
+            AIMessage response (for PostHog observability).
         """
         is_vision = metadata and metadata.get('requires_vision')
 
@@ -70,7 +72,7 @@ class UnifiedExtractor(BaseAgent):
         else:
             return self._execute_text(text, input_type)
 
-    def _execute_text(self, text: str, input_type: str) -> ExtractedEventBatch:
+    def _execute_text(self, text: str, input_type: str) -> tuple:
         """Text path: single structured output call."""
         system_prompt = load_prompt("pipeline/extraction/prompts/unified_extract.txt")
 
@@ -90,14 +92,15 @@ class UnifiedExtractor(BaseAgent):
             messages, config=get_invoke_config("extraction")
         )
         result = raw_result['parsed']
+        raw_ai_message = raw_result.get('raw')
 
         if not result or not result.events:
-            return ExtractedEventBatch(session_title="Untitled", input_summary="", events=[])
+            return ExtractedEventBatch(session_title="Untitled", input_summary="", events=[]), messages, raw_ai_message
 
         logger.info(f"Extracted {len(result.events)} events from {input_type} input")
-        return result
+        return result, messages, raw_ai_message
 
-    def _execute_vision(self, text: str, metadata: Dict) -> ExtractedEventBatch:
+    def _execute_vision(self, text: str, metadata: Dict) -> tuple:
         """Vision path: multimodal message with image."""
         system_prompt = load_prompt("pipeline/extraction/prompts/unified_extract.txt")
 
@@ -132,9 +135,10 @@ class UnifiedExtractor(BaseAgent):
             messages, config=get_invoke_config("extraction")
         )
         result = raw_result['parsed']
+        raw_ai_message = raw_result.get('raw')
 
         if not result or not result.events:
-            return ExtractedEventBatch(session_title="Untitled", input_summary="", events=[])
+            return ExtractedEventBatch(session_title="Untitled", input_summary="", events=[]), messages, raw_ai_message
 
         logger.info(f"Extracted {len(result.events)} events from image input")
-        return result
+        return result, messages, raw_ai_message

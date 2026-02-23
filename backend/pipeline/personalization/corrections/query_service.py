@@ -37,7 +37,7 @@ class CorrectionQueryService:
 
         Args:
             user_id: User UUID
-            facts: ExtractedFacts dict to search with
+            facts: extracted event dict to search with
             k: Number of results to return
 
         Returns:
@@ -96,7 +96,7 @@ class CorrectionQueryService:
 
         Args:
             user_id: User UUID
-            facts: ExtractedFacts dict (what PERSONALIZE is currently looking at)
+            facts: extracted event dict (what PERSONALIZE is currently looking at)
             k: Number of results to return
 
         Returns:
@@ -233,7 +233,7 @@ class CorrectionQueryService:
 
     def _facts_to_text(self, facts: Dict) -> str:
         """
-        Convert ExtractedFacts dict to text (same logic as storage service).
+        Convert extracted event dict to text (same logic as storage service).
         """
         parts = []
 

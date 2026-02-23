@@ -22,11 +22,9 @@ from pipeline.input.audio import AudioProcessor
 from pipeline.input.image import ImageProcessor
 from pipeline.input.text import TextFileProcessor
 from pipeline.input.pdf import PDFProcessor
-from calendars.service import CalendarService
 from pipeline.personalization.service import PersonalizationService
 
 from pipeline.personalization.pattern_discovery import PatternDiscoveryService
-from calendars.data_collection import DataCollectionService
 
 # Database and Storage imports
 from database.models import User, Session as DBSession, Event
@@ -152,17 +150,11 @@ print_audio_config()
 
 # ============================================================================
 
-# Initialize Google Calendar service
-calendar_service = CalendarService()
-
 # Initialize Personalization service
 personalization_service = PersonalizationService()
 
 # Initialize Pattern Discovery service
 pattern_discovery_service = PatternDiscoveryService(llm_pattern_discovery)
-
-# Initialize Data Collection service
-data_collection_service = DataCollectionService(calendar_service)
 
 # Initialize agents
 extractor = UnifiedExtractor(llm_extract, llm_vision=llm_vision)
@@ -306,7 +298,7 @@ def process_input():
 
     # Step 3: EXTRACT → RESOLVE
     try:
-        extracted_events = extractor.execute(
+        extracted_events, _, _ = extractor.execute(
             raw_input, input_type=input_type, metadata=metadata
         )
 
@@ -670,7 +662,7 @@ def apply_preferences_endpoint():
 
     Expects JSON body:
     {
-        "event": {...}  # CalendarEvent from STRUCTURE stage
+        "event": {...}  # CalendarEvent from RESOLVE stage
     }
 
     Returns personalized event with user preferences applied.
@@ -719,7 +711,7 @@ def apply_preferences_endpoint():
         except Exception as e:
             logger.warning(f"Could not fetch historical events: {e}")
 
-        personalized_events, _ = personalize_agent.execute_batch(
+        personalized_events, _, _, _ = personalize_agent.execute_batch(
             events=[event],
             discovered_patterns=patterns,
             historical_events=historical_events,

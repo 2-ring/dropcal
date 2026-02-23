@@ -1189,7 +1189,7 @@ class Event:
             calendar_name: Provider calendar ID (DB column named 'calendar_name' for legacy reasons)
             color_id: Color ID
             original_input: Original raw input (for dropcal events)
-            extracted_facts: STRUCTURE output (for dropcal events)
+            extracted_facts: EXTRACT output (for dropcal events)
             system_suggestion: PERSONALIZE output (for dropcal events)
             event_embedding: 384-dim embedding vector
 

@@ -57,7 +57,7 @@ class EventService:
             calendar_name: Provider calendar ID (stored in DB column 'calendar_name')
             color_id: Color ID
             original_input: Original raw text input
-            extracted_facts: STRUCTURE output
+            extracted_facts: EXTRACT output
             system_suggestion: PERSONALIZE output
 
         Returns:

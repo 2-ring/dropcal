@@ -27,6 +27,27 @@ import time as _time
 
 logger = logging.getLogger(__name__)
 
+# LangChain message type → OpenAI-style role
+_ROLE_MAP = {"system": "system", "human": "user", "ai": "assistant"}
+
+
+def _serialize_messages(messages):
+    """Serialize LangChain messages to role/content dicts for PostHog spans."""
+    return [
+        {"role": _ROLE_MAP.get(m.type, m.type), "content": m.content}
+        for m in messages
+    ]
+
+
+def _serialize_raw_output(raw_msg):
+    """Extract raw model output from a LangChain AIMessage for PostHog spans."""
+    if raw_msg is None:
+        return None
+    output = {"role": "assistant", "content": raw_msg.content}
+    if hasattr(raw_msg, 'tool_calls') and raw_msg.tool_calls:
+        output["tool_calls"] = raw_msg.tool_calls
+    return output
+
 
 class SessionProcessor:
     """Processes sessions through the EXTRACT → RESOLVE → PERSONALIZE pipeline."""
@@ -383,11 +404,13 @@ class SessionProcessor:
 
             # ── EXTRACT: single LLM call ────────────────────────────────
             t_extract = _time.time()
-            with stage_span("extraction"):
-                extraction_result = self.extractor.execute(
+            with stage_span("extraction") as span:
+                extraction_result, extract_messages, extract_raw = self.extractor.execute(
                     text, input_type=input_type, metadata=metadata
                 )
                 extracted_events = extraction_result.events
+                span.input = _serialize_messages(extract_messages)
+                span.output = _serialize_raw_output(extract_raw)
             logger.info(f"[timing] extract: {_time.time() - t_extract:.2f}s")
 
             # Update session title from extraction result
@@ -486,14 +509,16 @@ class SessionProcessor:
 
                 input_summary = getattr(extraction_result, 'input_summary', '') or ''
 
-                with stage_span("personalization"):
-                    calendar_events, _ = self.personalize_agent.execute_batch(
+                with stage_span("personalization") as span:
+                    calendar_events, _, pers_messages, pers_raw = self.personalize_agent.execute_batch(
                         events=calendar_events,
                         discovered_patterns=patterns,
                         historical_events=historical_events,
                         user_id=user_id,
                         input_summary=input_summary,
                     )
+                    span.input = _serialize_messages(pers_messages)
+                    span.output = _serialize_raw_output(pers_raw)
 
                 logger.info(f"[timing] personalize: {_time.time() - t_personalize:.2f}s")
 
