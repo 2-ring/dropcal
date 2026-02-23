@@ -398,6 +398,12 @@ class SessionProcessor:
                 stream.set_title(session_title)
             logger.info(f"Title from extraction for session {session_id}: '{session_title}'")
 
+            # Send event count to frontend as soon as extraction completes
+            if extracted_events:
+                stream = get_stream(session_id)
+                if stream:
+                    stream.set_event_count(len(extracted_events))
+
             if not extracted_events:
                 logger.warning(f"No events found in session {session_id}")
                 stream = get_stream(session_id)
@@ -493,7 +499,7 @@ class SessionProcessor:
 
                 # Stream personalized versions (replace resolved events)
                 if stream:
-                    stream.events.clear()
+                    stream.clear_events()
                     for cal_event in calendar_events:
                         stream.push_event(self._calendar_event_to_frontend(
                             cal_event, calendars_lookup, primary_calendar

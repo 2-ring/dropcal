@@ -16,13 +16,29 @@ class SessionStream:
         self.events: List[Dict[str, Any]] = []
         self.title: Optional[str] = None
         self.icon: Optional[str] = None
+        self.event_count: Optional[int] = None  # Known count before resolution
         self.done = False
         self.error: Optional[str] = None
+        self._revision = 0  # Bumped on any event list change
         self._condition = threading.Condition()
 
     def push_event(self, event_data: Dict[str, Any]):
         with self._condition:
             self.events.append(event_data)
+            self._revision += 1
+            self._condition.notify_all()
+
+    def clear_events(self):
+        """Clear events list (thread-safe). Use instead of events.clear()."""
+        with self._condition:
+            self.events.clear()
+            self._revision += 1
+            self._condition.notify_all()
+
+    def set_event_count(self, count: int):
+        """Set the known event count (from extraction, before resolution)."""
+        with self._condition:
+            self.event_count = count
             self._condition.notify_all()
 
     def set_title(self, title: str):

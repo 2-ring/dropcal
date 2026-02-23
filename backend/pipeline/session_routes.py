@@ -62,9 +62,10 @@ def stream_session_updates(session_id: str):
             yield from _poll_db_fallback(session_id, session)
             return
 
-        last_event_count = 0
+        last_revision = 0
         last_title = session.get('title')
         last_icon = session.get('icon')
+        last_event_count = None  # Track event_count (from extraction)
         max_wait = 300  # 5 min max
         heartbeat_interval = 15  # Send keepalive every 15s
         last_heartbeat = time.time()
@@ -87,11 +88,17 @@ def stream_session_updates(session_id: str):
                 last_icon = stream.icon
                 sent_data = True
 
-            # New events available
-            current_count = len(stream.events)
-            if current_count > last_event_count:
+            # Event count (known after extraction, before resolution)
+            if stream.event_count is not None and stream.event_count != last_event_count:
+                yield f"event: count\ndata: {json.dumps({'count': stream.event_count})}\n\n"
+                last_event_count = stream.event_count
+                sent_data = True
+
+            # Events changed (uses revision to detect both additions and replacements)
+            current_revision = stream._revision
+            if current_revision > last_revision and len(stream.events) > 0:
                 yield f"event: event\ndata: {json.dumps({'events': list(stream.events)})}\n\n"
-                last_event_count = current_count
+                last_revision = current_revision
                 sent_data = True
 
             # Error
@@ -102,8 +109,9 @@ def stream_session_updates(session_id: str):
 
             # Done
             if stream.done:
-                # Send final events (may have been updated by personalization)
-                if len(stream.events) != last_event_count or last_event_count == 0:
+                # Always send final events — personalization may have replaced
+                # them without changing the count
+                if stream.events:
                     yield f"event: event\ndata: {json.dumps({'events': list(stream.events)})}\n\n"
                 yield f"event: complete\ndata: {json.dumps({'status': 'processed'})}\n\n"
                 cleanup_stream(session_id)

@@ -70,6 +70,7 @@ function AppContent() {
   const [appState, setAppState] = useState<AppState>('input')
   const [isProcessing, setIsProcessing] = useState(false)
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
+  const [expectedEventCount, setExpectedEventCount] = useState<number | null>(null)
   const [loadingConfig, setLoadingConfig] = useState<LoadingStateConfig>(LOADING_MESSAGES.READING_FILE)
   const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem('dropcal_sidebar') !== 'closed')
   const [feedbackMessage, setFeedbackMessage] = useState<string>('')
@@ -395,6 +396,7 @@ function AppContent() {
     setIsProcessing(true)
     setAppState('loading')
     setCalendarEvents([])
+    setExpectedEventCount(null)
     setFeedbackMessage('')
     setLoadingConfig(LOADING_MESSAGES.PROCESSING_TEXT)
 
@@ -428,7 +430,18 @@ function AppContent() {
             if (events.length > 0) {
               setAppState('review')
               navigate(`/s/${session.id}`)
+              // Update sidebar with live event count
+              setSessionHistory(prev => prev.map(s =>
+                s.id === session.id ? { ...s, processed_events: events } : s
+              ))
             }
+          },
+          onCount: (count) => {
+            setExpectedEventCount(count)
+            // Show count in sidebar immediately (before events are resolved)
+            setSessionHistory(prev => prev.map(s =>
+              s.id === session.id ? { ...s, extracted_events: new Array(count) } : s
+            ))
           },
           onTitle: (title) => {
             setSessionHistory(prev => prev.map(s =>
@@ -465,6 +478,7 @@ function AppContent() {
               })
               .finally(() => {
                 streamingSessionRef.current = null
+                setExpectedEventCount(null)
                 // Defer so the event ID update above commits while isLoading
                 // is still true — EventsWorkspace syncs IDs into editedEvents.
                 setTimeout(() => {
@@ -512,6 +526,7 @@ function AppContent() {
     setIsProcessing(true)
     setAppState('loading')
     setCalendarEvents([])
+    setExpectedEventCount(null)
     setFeedbackMessage('')
     setLoadingConfig(LOADING_MESSAGES.READING_FILE)
 
@@ -547,7 +562,18 @@ function AppContent() {
             if (events.length > 0) {
               setAppState('review')
               navigate(`/s/${session.id}`)
+              // Update sidebar with live event count
+              setSessionHistory(prev => prev.map(s =>
+                s.id === session.id ? { ...s, processed_events: events } : s
+              ))
             }
+          },
+          onCount: (count) => {
+            setExpectedEventCount(count)
+            // Show count in sidebar immediately (before events are resolved)
+            setSessionHistory(prev => prev.map(s =>
+              s.id === session.id ? { ...s, extracted_events: new Array(count) } : s
+            ))
           },
           onTitle: (title) => {
             setSessionHistory(prev => prev.map(s =>
@@ -582,6 +608,7 @@ function AppContent() {
               })
               .finally(() => {
                 streamingSessionRef.current = null
+                setExpectedEventCount(null)
                 setTimeout(() => {
                   setIsProcessing(false)
                   resolve()
@@ -737,7 +764,7 @@ function AppContent() {
       timestamp: new Date(session.created_at),
       inputType: session.input_type,
       status: session.status === 'processed' ? 'completed' as const : 'processing' as const,
-      eventCount: session.event_ids?.length || session.processed_events?.length || 0,
+      eventCount: session.event_ids?.length || session.processed_events?.length || session.extracted_events?.length || 0,
       addedToCalendar: session.added_to_calendar,
     }))
 
@@ -771,7 +798,7 @@ function AppContent() {
           isGuestMode={isGuestMode}
           calendarEvents={calendarEvents}
           calendars={syncedCalendars}
-          expectedEventCount={calendarEvents.length}
+          expectedEventCount={expectedEventCount ?? calendarEvents.length}
           inputType={currentSession?.input_type}
           inputContent={currentSession?.input_content}
           onFileUpload={handleFileUpload}

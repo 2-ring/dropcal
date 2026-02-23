@@ -69,7 +69,7 @@ Supabase PostgreSQL. Singleton client via `get_supabase()` in `database/supabase
 Three tables: `users`, `sessions`, `events`. Models in `backend/database/models.py` use static methods for CRUD (not an ORM).
 
 Key patterns:
-- OAuth tokens are **encrypted with Fernet** (`utils/encryption.py`). Never store tokens in plaintext.
+- OAuth tokens are **encrypted with Fernet** (`auth/encryption.py`). Never store tokens in plaintext.
 - Session statuses: `pending` → `processing` → `processed` | `error`
 - Guest sessions use `secrets.token_hex(32)` access tokens, separate endpoints (`/api/sessions/guest`)
 - Events support soft delete (`deleted_at`), draft status, correction history, and 384-dim vector embeddings (pgvector)
@@ -149,5 +149,5 @@ curl -H "Authorization: Bearer $POSTHOG_PERSONAL_API_KEY" \
 - Only create markdown files for genuinely useful information. No completion reports, summaries, or self-evident docs.
 - AWS CLI (`aws`) and Supabase CLI (`supabase`) are installed and authenticated. Use them directly.
 - PostHog personal API key (`POSTHOG_PERSONAL_API_KEY`) is set in `backend/.env`. Use it to query the PostHog API directly (events, insights, dashboards, feature flags, experiments) as needed.
-- Don't modify `utils/encryption.py` or token encryption logic without explicit request.
+- Don't modify `auth/encryption.py` or token encryption logic without explicit request.
 - When adding new endpoints, follow the blueprint pattern (see `auth/routes.py`, `calendars/routes.py`, `pipeline/session_routes.py`).

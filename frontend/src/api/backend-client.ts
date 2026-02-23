@@ -197,6 +197,7 @@ export function streamSession(
     onEvents: (events: CalendarEvent[]) => void
     onTitle?: (title: string) => void
     onIcon?: (icon: string) => void
+    onCount?: (count: number) => void
     onComplete: () => void
     onError: (error: string) => void
   }
@@ -216,6 +217,13 @@ export function streamSession(
   eventSource.addEventListener('event', (e) => {
     const data = JSON.parse(e.data)
     callbacks.onEvents(data.events)
+  })
+
+  eventSource.addEventListener('count', (e) => {
+    const data = JSON.parse(e.data)
+    if (callbacks.onCount) {
+      callbacks.onCount(data.count)
+    }
   })
 
   eventSource.addEventListener('title', (e) => {
