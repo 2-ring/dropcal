@@ -1,0 +1,10 @@
+<task name="time_inference">
+The event is missing one or both times. Infer whichever of `start_time`/`end_time` is needed based on what's null in the event JSON — or set `is_all_day: true` if the event shouldn't have specific times (e.g. holidays, deadlines, birthdays, multi-day trips).
+
+Use:
+- Event context. e.g. how long is a standard dentist checkup? Or a gym session? Or a dinner reservation?
+- The duration data from the user's own history of similar events. e.g. they always go to the gym from 8pm to 10pm. Think carefully how past events are actually relevant here. Given 10 past classes we might notice: Mon/Wed/Fri classes are typically 50m, 1/week classes are typically >3h, 5 classes are 2hrs but the 1 class from the same course is 50m, which is more relevant. Consider if something about it suggests it might be shorter or longer than typical. e.g. a "Michelin Star Dinner" might take longer than a usual dinner.
+- Any nearby events listed. e.g. "Bus to Class" should end right before "Class", or "Interview 2" might be the same length as "Interview" scheduled right before. Consider whether the inferred times would cause an overlap, and whether that's ok — sometimes people are just doubled booked and that's ok, but the likelihood depends on the event: e.g. "Job Interview" vs "Office Hours".
+
+Output CalendarDateTime(s) matching the existing fields' format (same timezone). Return null for any time already present. If `is_all_day` is set, `start_time` and `end_time` are ignored.
+</task>

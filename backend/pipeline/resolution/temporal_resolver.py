@@ -126,12 +126,25 @@ def resolve_temporal(
             )
 
     # ── Build CalendarDateTime start/end ──────────────────────────────
-    is_all_day = extracted.is_all_day or start_time_resolved is None
+    is_all_day = extracted.is_all_day or (
+        start_time_resolved is None and end_time_resolved is None
+    )
     tz_name = str(tz_obj)
 
     if is_all_day:
         start_dt, end_dt = _build_all_day(
             start_resolved, end_date_resolved
+        )
+    elif start_time_resolved is None and end_time_resolved is not None:
+        # End time only (e.g., "due by 5pm") — date-only start,
+        # timed end. PERSONALIZE will infer the start time.
+        start_dt = CalendarDateTime(date=start_resolved.strftime("%Y-%m-%d"))
+        end = tz_obj.localize(
+            datetime.combine(start_resolved.date(), end_time_resolved.time())
+        )
+        end_dt = CalendarDateTime(
+            dateTime=_format_iso8601(end),
+            timeZone=tz_name,
         )
     else:
         start_dt, end_dt = _build_timed(

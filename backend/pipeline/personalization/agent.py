@@ -34,19 +34,18 @@ from pipeline.models import CalendarEvent, CalendarDateTime
 from pipeline.personalization.similarity import ProductionSimilaritySearch
 from config.posthog import capture_llm_generation
 
+
+class TimeInferenceOutput(BaseModel):
+    """Compound output for time_inference task — can fill start, end, or both."""
+    start_time: Optional[CalendarDateTime] = PydanticField(
+        default=None, description="Inferred start time, or null if already present"
+    )
+    end_time: Optional[CalendarDateTime] = PydanticField(
+        default=None, description="Inferred end time, or null if already present"
+    )
+
 logger = logging.getLogger(__name__)
 
-DEFAULT_DURATIONS = [
-    "**No duration data from similar events.** Consider these typical durations as a starting point:",
-    "- Meetings, calls: 60 min",
-    "- Classes, lectures: 50 min",
-    "- Meals (lunch, dinner, coffee): 60 min",
-    "- Appointments (doctor, dentist): 60 min",
-    "- Workouts, gym: 60 min",
-    "- Quick tasks (pickup, errand): 30 min",
-    "- Parties, social events: 120 min",
-    "- Workshops, seminars: 90 min",
-]
 
 # Task registry — each task maps to a description file, output field type, and merge target.
 # Only tasks in the batch's union get included in the prompt and output model.
@@ -66,10 +65,10 @@ TASK_DEFINITIONS = {
         'field_type': (Optional[str], PydanticField(default=None, description="Output of the calendar task")),
         'merge_field': 'calendar',
     },
-    'end_time': {
-        'file': 'pipeline/personalization/tasks/end_time.txt',
-        'field_type': (Optional[CalendarDateTime], PydanticField(default=None, description="Output of the end_time task")),
-        'merge_field': 'end',
+    'time_inference': {
+        'file': 'pipeline/personalization/tasks/time_inference.txt',
+        'field_type': (Optional[TimeInferenceOutput], PydanticField(default=None, description="Output of the time_inference task")),
+        'merge_field': None,  # Custom merge — handled separately
     },
     'location': {
         'file': 'pipeline/personalization/tasks/location.txt',
@@ -91,7 +90,7 @@ class PersonalizationAgent(BaseAgent):
     - title: Match user's naming conventions
     - description: Enhance or preserve descriptions
     - calendar: Select from available calendars
-    - end_time: Infer missing end times
+    - time_inference: Infer missing start/end times
     - location: Resolve against user's history
     """
 
@@ -185,8 +184,8 @@ class PersonalizationAgent(BaseAgent):
                 'has_location': bool(event.location and event.location.strip()),
             }
 
-            # Duration + surrounding events only for end_time task
-            if 'end_time' in tasks:
+            # Duration + surrounding events for time_inference task
+            if 'time_inference' in tasks:
                 ctx['duration_lines'] = self._build_duration_lines(
                     data.get('duration_stats', {})
                 )
@@ -249,14 +248,23 @@ class PersonalizationAgent(BaseAgent):
         for event_output, event, tasks in zip(result.events, events, per_event_tasks):
             for task_name in tasks:
                 task_def = TASK_DEFINITIONS[task_name]
-                merge_field = task_def['merge_field']
                 value = getattr(event_output, task_name, None)
+
+                if value is None:
+                    continue
+
+                # time_inference: compound output with start_time and end_time
+                if task_name == 'time_inference':
+                    if value.start_time is not None:
+                        event.start = value.start_time
+                    if value.end_time is not None:
+                        event.end = value.end_time
+                    continue
+
+                merge_field = task_def['merge_field']
 
                 # Treat empty strings as null (no change)
                 if isinstance(value, str) and not value.strip():
-                    value = None
-
-                if value is None:
                     continue
 
                 if task_name == 'calendar':
@@ -272,10 +280,21 @@ class PersonalizationAgent(BaseAgent):
         tasks = ['title', 'description', 'location']
         if show_calendar:
             tasks.append('calendar')
-        is_all_day = event.start.date is not None
-        has_end = event.end is not None
-        if not is_all_day and not has_end:
-            tasks.append('end_time')
+
+        is_full_all_day = (
+            event.start.date is not None
+            and (event.end is None or event.end.date is not None)
+        )
+        has_start_time = event.start.dateTime is not None
+        has_end_time = event.end is not None and event.end.dateTime is not None
+
+        # Assign time_inference when any time component is missing on a non-all-day event:
+        # 1) Has start time, no end time (most common — infer end)
+        # 2) Has end time, no start time (e.g., "due by 5pm" — infer start)
+        # 3) Has neither time (date-only start, no end — infer both)
+        if not is_full_all_day and (not has_start_time or not has_end_time):
+            tasks.append('time_inference')
+
         return tasks
 
     def _prefetch_all_event_contexts(
@@ -483,7 +502,7 @@ class PersonalizationAgent(BaseAgent):
     @staticmethod
     def _build_duration_lines(duration_stats: Dict) -> List[str]:
         if not duration_stats:
-            return DEFAULT_DURATIONS
+            return ["No duration data from similar events."]
 
         sorted_vals = sorted(duration_stats['values'])
         individual = ', '.join(str(v) for v in sorted_vals)
@@ -666,20 +685,30 @@ class PersonalizationAgent(BaseAgent):
         event: CalendarEvent,
         user_id: Optional[str]
     ) -> List[Dict]:
-        """Fetch temporally closest events for scheduling constraint awareness."""
-        if not user_id or event.start.date is not None:
-            return []
+        """Fetch temporally closest events for scheduling constraint awareness.
 
-        target_time = event.start.dateTime
-        if not target_time:
+        For timed events: fetches events nearest to the start time.
+        For date-only events: fetches all timed events on that date.
+        """
+        if not user_id:
             return []
 
         try:
             from pipeline.events import EventService
-            return EventService.get_surrounding_events(
-                user_id=user_id,
-                target_time=target_time,
-            )
+
+            if event.start.dateTime:
+                # Timed event — fetch surrounding by time proximity
+                return EventService.get_surrounding_events(
+                    user_id=user_id,
+                    target_time=event.start.dateTime,
+                )
+            elif event.start.date:
+                # Date-only event — fetch all events on that date
+                return EventService.get_events_on_date(
+                    user_id=user_id,
+                    target_date=event.start.date,
+                )
+            return []
         except Exception as e:
             logger.debug(f"Could not fetch surrounding events: {e}")
             return []

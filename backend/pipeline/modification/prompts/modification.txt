@@ -25,7 +25,6 @@ RULES:
 3. **Smart time handling**:
    - "Move to tomorrow" → calculate from {{ current_date }}
    - "Make it 30 minutes" → adjust end time, keep start
-   - "Move to after lunch" → 1pm is a reasonable default
    - Preserve duration when moving unless told otherwise
    - End time must always be after start time
 

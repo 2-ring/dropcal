@@ -384,6 +384,47 @@ class EventService:
         return all_events[:k]
 
     @staticmethod
+    def get_events_on_date(
+        user_id: str,
+        target_date: str,
+        k: int = QueryLimits.SURROUNDING_EVENTS_LIMIT
+    ) -> List[Dict[str, Any]]:
+        """
+        Get timed events on a specific date, ordered by start_time.
+
+        Used by PERSONALIZE to understand a day's schedule when inferring
+        times for events that have a date but no specific time.
+
+        Args:
+            user_id: User's UUID
+            target_date: YYYY-MM-DD date string
+            k: Maximum events to return
+
+        Returns:
+            List of event dicts sorted by start_time.
+        """
+        from database.supabase_client import get_supabase
+        supabase = get_supabase()
+
+        fields = "summary, start_time, end_time, start_date, end_date, is_all_day, location, calendar_name"
+
+        # Timed events that start on this date (start_time between 00:00 and 23:59)
+        day_start = f"{target_date}T00:00:00"
+        day_end = f"{target_date}T23:59:59"
+
+        response = supabase.table("events").select(fields)\
+            .eq("user_id", user_id)\
+            .neq("provider", "dropcal")\
+            .is_("deleted_at", None)\
+            .not_.is_("start_time", None)\
+            .gte("start_time", day_start)\
+            .lte("start_time", day_end)\
+            .order("start_time", desc=False)\
+            .limit(k).execute()
+
+        return response.data or []
+
+    @staticmethod
     def search_location_history(
         user_id: str,
         query_location: str,
