@@ -20,7 +20,7 @@ export const hasSidePanel =
 /** browser.sidebarAction (Firefox) */
 export const hasSidebarAction =
   typeof browser !== 'undefined' &&
-  'sidebarAction' in (browser as any);
+  typeof (browser as any).sidebarAction?.open === 'function';
 
 /** chrome.storage.session (Chrome 102+, Firefox 115+) */
 export const hasSessionStorage =

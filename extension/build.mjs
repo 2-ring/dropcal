@@ -37,7 +37,10 @@ function buildManifest() {
         ...base,
         permissions: [...base.permissions, 'notifications'],
         background: { scripts: ['background.js'], type: 'module' },
-        sidebar_action: { default_panel: 'sidebar/sidebar.html', default_title: 'DropCal' },
+        sidebar_action: {
+          default_panel: 'sidebar/sidebar.html',
+          default_title: 'DropCal',
+        },
         browser_specific_settings: {
           gecko: { id: 'dropcal@dropcal.ai', strict_min_version: '121.0' },
         },

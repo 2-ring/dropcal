@@ -49,6 +49,30 @@
     }
     </script>
 
+  <!-- Structured Data: SiteNavigationElement (influences Google Sitelinks) -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "name": "DropCal",
+          "url": "https://dropcal.ai"
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "name": "App",
+          "url": "https://dropcal.ai/"
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "name": "Welcome",
+          "url": "https://dropcal.ai/welcome"
+        },
+      ]
+    }
+    </script>
+
   <!-- Structured Data: WebApplication -->
   <script type="application/ld+json">
     {

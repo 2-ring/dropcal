@@ -1,9 +1,12 @@
 // Unified side panel adapter.
-// Chrome → chrome.sidePanel, Firefox → browser.sidebarAction,
-// Safari → detached popup window fallback.
+// Chrome → chrome.sidePanel (true side panel).
+// Firefox → browser.sidebarAction (native sidebar), falls back to popup window.
+// Safari → detached popup window.
 
 import { api, hasSidePanel, hasSidebarAction } from './detect';
 import { storage } from './storage';
+
+declare const browser: typeof chrome | undefined;
 
 export interface PanelAdapter {
   open(options: { windowId?: number; sessionId?: string }): Promise<void>;
@@ -35,7 +38,14 @@ function firefoxSidebar(): PanelAdapter {
           storage.session.set({ sidebarSessionId: sessionId }, resolve);
         });
       }
-      await (api as any).sidebarAction.open();
+      try {
+        await (browser as any).sidebarAction.open();
+      } catch {
+        // Fall back to popup window if sidebarAction.open() fails
+        const params = sessionId ? `?session=${sessionId}` : '';
+        const url = api.runtime.getURL(`sidebar/sidebar.html${params}`);
+        await api.windows.create({ url, type: 'popup', width: 380, height: 600 });
+      }
     },
   };
 }
