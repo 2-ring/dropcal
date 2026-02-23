@@ -28,20 +28,41 @@ Key behaviors:
 - **Dates/times as strings**: Output natural language, not ISO timestamps. "Tomorrow at 2pm" → start_date: "tomorrow", start_time: "2pm".
 - **Recurring events**: start_date = first occurrence. end_date = when they stop. Use excluded_dates for skipped dates.
 - **Don't hallucinate**: If it's not in the input, leave it null.
+- **Zero events**: The user submitted this input expecting calendar events, so investigate anything that could possibly be interpreted as an event before returning an empty list.
 
 Examples:
 
-"Team meeting tomorrow at 2pm in Conference Room B. Bring the report."
-→ summary: "Team Meeting", start_date: "tomorrow", start_time: "2pm", location: "Conference Room B", description: "Bring the report"
+"hey, won't be at the gym tomorrow bc I have to take Max to the vet at 4. also did u see the game last night??"
+→ summary: "Vet Appointment", start_date: "tomorrow", start_time: "4pm", description: "Taking Max"
+(Not extracted: gym — user is skipping, not attending; game last night — past event. end_time not inferred.)
 
-Text conversation with Jack Wolfen: "Lunch tomorrow?" ... "Maybe dinner instead" ... "Yes 6:15? @the Ratty?" ... "Sounds good"
-→ summary: "Dinner with Jack", start_date: "tomorrow", start_time: "6:15pm", location: "The Ratty"
+"This week: oil change Tuesday, therapy Wed 4-5pm, Jake's birthday Thursday, grant proposal due Friday"
+→ summary: "Oil Change", start_date: "this Tuesday", is_all_day: false
+→ summary: "Therapy", start_date: "this Wednesday", start_time: "4pm", end_time: "5pm"
+→ summary: "Jake's Birthday", start_date: "this Thursday", is_all_day: true
+→ summary: "Grant Proposal Due", start_date: "this Friday", is_all_day: true
+(end_time only on therapy — "4-5pm" states it explicitly. Birthday + deadline = all-day. Oil change has no time but is NOT all-day.)
 
-Syllabus (CSCI 0500 — Fall 2025, Sep 3 – Dec 10): "Lecture Mon/Wed 3:00-4:20 pm, Friedman 108. No class Nov 26 (Thanksgiving)."
-→ summary: "CSCI 0500 Lecture", start_date: "September 3, 2025", end_date: "December 10, 2025", start_time: "3:00 pm", end_time: "4:20 pm", location: "Friedman Hall 108", recurrence: ["RRULE:FREQ=WEEKLY;BYDAY=MO,WE"], excluded_dates: ["November 26, 2025"]
+Text conversation with Priya: "Brunch Sunday?" ... "11?" ... "Could we do 11:30? I have a thing in the morning" ... "Works for me. Blue State?" ... "See you there!"
+→ summary: "Brunch with Priya", start_date: "this Sunday", start_time: "11:30am", location: "Blue State"
+(Followed negotiation to conclusion: 11 → 11:30. "Thing in the morning" too vague to extract. end_time not inferred.)
 
-"Mom's birthday March 15"
-→ summary: "Mom's Birthday", start_date: "March 15 this year", is_all_day: true
+Syllabus header: "PHYS 0070 — Analytical Mechanics, Spring 2026 (Jan 28 – May 8)"
+"Lab: Fridays 2:00-3:50pm, Barus & Holley 166. No lab Feb 20, Apr 3, or Apr 10."
+→ summary: "PHYS 0070 Lab", start_date: "January 30, 2026", end_date: "May 8, 2026", start_time: "2:00 pm", end_time: "3:50 pm", location: "Barus & Holley 166", recurrence: ["RRULE:FREQ=WEEKLY;BYDAY=FR"], excluded_dates: ["February 20, 2026", "April 3, 2026", "April 10, 2026"]
+(start_date = first Friday after semester starts Jan 28. Course code from header → title. Exclusions listed individually.)
 
-"Company retreat March 20-22 at Lake House"
-→ summary: "Company Retreat", start_date: "March 20 this year", end_date: "March 22 this year", location: "Lake House", is_all_day: true
+Flight booking:
+"United UA 2381: JFK → LAX, Sat Apr 12, dep 7:45 AM, arr 11:10 AM
+United UA 892: LAX → JFK, Thu Apr 17, dep 6:30 PM, arr Fri Apr 18 2:52 AM"
+→ summary: "Flight JFK to LAX", start_date: "April 12 this year", start_time: "7:45am", end_time: "11:10am", location: "John F. Kennedy International Airport", description: "United UA 2381"
+→ summary: "Flight LAX to JFK", start_date: "April 17 this year", start_time: "6:30pm", end_time: "2:52am", location: "Los Angeles International Airport", description: "United UA 892"
+(Arrival = explicit end_time. "This year" added since no year in input. Location = departing airport — where the user physically goes. Full official name used when abundantly obvious from context; if any ambiguity, leave as stated.)
+
+Email — "Subject: Re: Q3 Planning
+
+Great progress on the launch last week! Budget review is confirmed for next Tuesday 2-3:30pm in Room 302. Zoom backup: https://zoom.us/j/98765. Please review the slides beforehand.
+
+Also, Lisa mentioned possibly organizing a team outing in March — details TBD."
+→ summary: "Budget Review", start_date: "next Tuesday", start_time: "2pm", end_time: "3:30pm", location: "Room 302", description: "Review slides beforehand. Zoom fallback: https://zoom.us/j/98765"
+(Not extracted: launch last week — past; team outing — vague intention with "TBD". Zoom link → description, not location.)
