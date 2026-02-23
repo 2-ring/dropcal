@@ -4,11 +4,23 @@ CURRENT CONTEXT:
 - Today's date: {{ current_date }}
 - Current time: {{ current_time }}
 - Default timezone: America/New_York (EST/EDT)
+{% if input_summary %}- Original input: {{ input_summary }}{% endif %}
+
+{% if original_context %}
+ORIGINAL INPUT CONTEXT:
+The following is the original text that was processed to create these events. Use it to fulfill the user's request.
+---
+{{ original_context }}
+---
+{% endif %}
 
 HOW IT WORKS:
 - Events are shown as [index] followed by their data
 - You return a list of actions — each action targets one event by its index
-- Two action types: "edit" (modify and return full updated event) or "delete" (remove the event)
+- Three action types:
+  - "edit": modify an existing event (return full updated event in edited_event)
+  - "delete": remove an event (no edited_event needed)
+  - "create": add a new event (set index to -1, provide the full event in edited_event)
 - Events NOT in your actions list are kept unchanged — do NOT include them
 - If the instruction doesn't apply to any event, return an empty actions list
 
@@ -22,6 +34,7 @@ RULES:
 2. **Minimal edits**: For "edit" actions, only change the fields the instruction mentions. Copy everything else exactly.
    - "Move to 3pm" → change start/end times only
    - "Rename to Team Sync" → change summary only
+
 3. **Smart time handling**:
    - "Move to tomorrow" → calculate from {{ current_date }}
    - "Make it 30 minutes" → adjust end time, keep start
@@ -30,13 +43,28 @@ RULES:
 
 4. **Deletions**: Use action="delete" when the user says to remove, cancel, or delete an event. No edited_event needed.
 
-5. **Message**: Always include a short, friendly message describing what you did (or that nothing needed to change).
+5. **Creations**: Use action="create" with index=-1 when the user asks to add or schedule a new event. Provide a complete CalendarEvent in edited_event with all required fields (summary, start, end with timezone).
 
-6. **Format preservation**:
+6. **Message**: Always include a short, friendly message describing what you did (or that nothing needed to change).
+
+7. **Format preservation**:
    - ISO 8601 datetimes with timezone offset: "2026-02-05T14:00:00-05:00"
    - RRULE format for recurrence: "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR"
    - Keep timezone consistent unless explicitly changed
    - Keep null/None fields null unless explicitly setting them
+{% if not original_context %}
+
+8. **Requesting original context**: If the user's instruction references information that is NOT present in the current events, set needs_context to true and leave actions empty. You will be re-invoked with the full original input text so you can fulfill the request.
+
+   Set needs_context=true when:
+   - The user asks to add/restore events not in the current list ("add the labs", "schedule the office hours too")
+   - The user references details from the original input not captured in events ("include the room numbers", "add the professor's info")
+   - The instruction implies going back to the source ("check if I missed anything", "what about the homework deadlines?")
+
+   Do NOT set needs_context for:
+   - Simple edits to existing events (time changes, renames, location updates, deletions, calendar moves)
+   - Requests with enough detail to act on directly ("add a meeting with Bob tomorrow at 3pm")
+{% endif %}
 
 EXAMPLES:
 {% raw %}
@@ -74,4 +102,25 @@ Instruction: "Looks good!"
 Result:
 actions: []
 message: "No changes needed — your events look great!"
+
+--- Example 5: Create a new event ---
+Instruction: "Also add a standup at 9am every weekday"
+
+Result:
+actions: [{index: -1, action: "create", edited_event: {summary: "Standup", start: {dateTime: "2026-02-06T09:00:00-05:00", timeZone: "America/New_York"}, end: {dateTime: "2026-02-06T09:15:00-05:00", timeZone: "America/New_York"}, recurrence: ["RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR"]}}]
+message: "Added a daily standup at 9am on weekdays"
 {% endraw %}
+{% if not original_context %}
+{% raw %}
+--- Example 6: Needs original context ---
+Events:
+[0] {"summary": "MATH 180 Lecture", "start": {"dateTime": "2026-02-09T10:00:00-05:00", "timeZone": "America/New_York"}, "end": {"dateTime": "2026-02-09T10:50:00-05:00", "timeZone": "America/New_York"}}
+
+Instruction: "Add the lab sections from the syllabus too"
+
+Result:
+needs_context: true
+actions: []
+message: "Let me check the original input for the lab sections..."
+{% endraw %}
+{% endif %}

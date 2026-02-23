@@ -203,6 +203,9 @@ class CalendarEvent(BaseModel):
     description: Optional[str] = Field(default=None, description="Event description/notes")
     recurrence: Optional[List[str]] = Field(default=None, description="RRULE strings for recurring events")
 
+    # Set by EXTRACT — whether the event is intentionally all-day (vs just missing times)
+    is_all_day: bool = Field(default=False, description="True for genuinely all-day events (holidays, birthdays, deadlines). False for events that should have times but don't yet.")
+
     # Set by EXTRACT (if explicit) or PERSONALIZE stage
     calendar: Optional[str] = Field(default=None, description="Target calendar ID (provider calendar ID). None = primary calendar.")
 
@@ -279,18 +282,18 @@ class CalendarEvent(BaseModel):
 
 class EventAction(BaseModel):
     """A single modification action targeting one event by index."""
-    index: int = Field(description="0-based index of the event in the input list")
-    action: Literal["edit", "delete"] = Field(
-        description="'edit' to modify the event (edited_event required), 'delete' to remove it"
+    index: int = Field(description="0-based index of the event in the input list. Use -1 for 'create' actions.")
+    action: Literal["edit", "delete", "create"] = Field(
+        description="'edit' to modify an event (edited_event required), 'delete' to remove it, 'create' to add a new event (edited_event required)"
     )
     edited_event: Optional['CalendarEvent'] = Field(
         default=None,
-        description="The full modified CalendarEvent. Required when action='edit', omit for 'delete'."
+        description="The full CalendarEvent. Required for 'edit' and 'create', omit for 'delete'."
     )
 
 
 class ModificationResult(BaseModel):
-    """Result of the multi-event modification."""
+    """Result of an event modification — actions to apply."""
     actions: List[EventAction] = Field(
         default_factory=list,
         description="List of modifications. Only include events that should change. Events not listed are kept as-is."
@@ -298,4 +301,19 @@ class ModificationResult(BaseModel):
     message: Optional[str] = Field(
         default=None,
         description="Short natural-language response to show the user (e.g. 'Moved your Thursday meeting to 3pm')."
+    )
+
+
+class ModificationDecision(ModificationResult):
+    """Call 1 output — extends ModificationResult with a context-fetch decision.
+
+    If needs_context is true, actions should be empty — the agent will be
+    re-invoked with the original input text using ModificationResult (which
+    has no needs_context field).
+    """
+    needs_context: bool = Field(
+        default=False,
+        description="Set to true if the instruction references information not present "
+                    "in the events (e.g. 'add the labs', 'include the room numbers'). "
+                    "When true, leave actions empty."
     )

@@ -388,7 +388,7 @@ def edit_event():
         )
 
         # Use the MODIFY agent
-        result = modify_agent.execute(events, edit_instruction, calendars=calendars)
+        result = modify_agent.execute(events, edit_instruction, calendars=calendars, session_id=edit_session_id)
 
         return jsonify({
             'success': True,

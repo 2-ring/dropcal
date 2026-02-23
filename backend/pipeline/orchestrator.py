@@ -416,6 +416,21 @@ class SessionProcessor:
                 stream.set_title(session_title)
             logger.info(f"Title from extraction for session {session_id}: '{session_title}'")
 
+            # Save context for the modification agent's context-fetch mechanism
+            input_summary = getattr(extraction_result, 'input_summary', None)
+            context_kwargs = {}
+            if input_summary:
+                context_kwargs['input_summary'] = input_summary
+            # For file sessions, save the processed text (transcription, PDF text, etc.)
+            # Text sessions already have the raw text in input_content.
+            if input_type not in ('text', 'image'):
+                context_kwargs['processed_text'] = text
+            if context_kwargs:
+                try:
+                    DBSession.update_context(session_id, **context_kwargs)
+                except Exception as e:
+                    logger.warning(f"Failed to save context for session {session_id}: {e}")
+
             # Send event count to frontend as soon as extraction completes
             if extracted_events:
                 stream = get_stream(session_id)

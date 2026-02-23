@@ -222,7 +222,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
         const response = await fetch(`${API_URL}/edit-event`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ events: validEvents, instruction, calendars: calendarList }),
+          body: JSON.stringify({ events: validEvents, instruction, calendars: calendarList, session_id: sessionId }),
         })
 
         if (!response.ok) {
@@ -231,15 +231,18 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
         }
 
         const result = await response.json()
-        const actions: { index: number; action: 'edit' | 'delete'; edited_event?: CalendarEvent }[] = result.actions ?? []
+        const actions: { index: number; action: 'edit' | 'delete' | 'create'; edited_event?: CalendarEvent }[] = result.actions ?? []
 
         // Build updated events list by applying actions
         const deleteIndices = new Set<number>()
         const editMap = new Map<number, CalendarEvent>()
+        const newEvents: CalendarEvent[] = []
 
         for (const a of actions) {
           if (a.action === 'delete') {
             deleteIndices.add(a.index)
+          } else if (a.action === 'create' && a.edited_event) {
+            newEvents.push({ ...a.edited_event, version: 1 })
           } else if (a.action === 'edit' && a.edited_event) {
             // Carry over id/version/provider_syncs from original so persistence and sync badges work
             const original = validEvents[a.index]
@@ -259,9 +262,10 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
           if (id) affectedIds.add(id)
         }
 
-        // Remove deleted events right away
+        // Remove deleted events and append new events
         const afterDeletes = validEvents.filter((_, i) => !deleteIndices.has(i))
-        setEditedEvents(afterDeletes)
+        const withCreates = [...afterDeletes, ...newEvents]
+        setEditedEvents(withCreates)
         setActiveLoading(null)
         setIsChatExpanded(false)
 
@@ -280,7 +284,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
             return updated
           })
         } else {
-          onEventsChanged?.(afterDeletes.filter((e): e is CalendarEvent => e !== null))
+          onEventsChanged?.(withCreates.filter((e): e is CalendarEvent => e !== null))
         }
 
         // Persist edits

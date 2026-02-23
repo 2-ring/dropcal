@@ -1022,6 +1022,27 @@ class Session:
         return response.data[0]
 
     @staticmethod
+    def update_context(
+        session_id: str,
+        input_summary: Optional[str] = None,
+        processed_text: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Update session with pipeline context for the modification agent."""
+        supabase = get_supabase()
+
+        data = {}
+        if input_summary is not None:
+            data["input_summary"] = input_summary
+        if processed_text is not None:
+            data["processed_text"] = processed_text
+
+        if not data:
+            return {}
+
+        response = supabase.table("sessions").update(data).eq("id", session_id).execute()
+        return response.data[0]
+
+    @staticmethod
     def verify_guest_token(session_id: str, access_token: str) -> Optional[Dict[str, Any]]:
         """
         Verify guest session access token and return session if valid.

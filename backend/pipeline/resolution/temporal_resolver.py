@@ -178,6 +178,7 @@ def resolve_temporal(
         location=extracted.location,
         description=extracted.description,
         recurrence=recurrence,
+        is_all_day=extracted.is_all_day,
     )
 
 

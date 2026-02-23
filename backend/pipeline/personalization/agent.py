@@ -37,6 +37,9 @@ from config.posthog import capture_llm_generation
 
 class TimeInferenceOutput(BaseModel):
     """Compound output for time_inference task — can fill start, end, or both."""
+    is_all_day: Optional[bool] = PydanticField(
+        default=None, description="Set to true to convert this event to all-day (no specific times). Null to keep as timed."
+    )
     start_time: Optional[CalendarDateTime] = PydanticField(
         default=None, description="Inferred start time, or null if already present"
     )
@@ -253,12 +256,19 @@ class PersonalizationAgent(BaseAgent):
                 if value is None:
                     continue
 
-                # time_inference: compound output with start_time and end_time
+                # time_inference: compound output with is_all_day, start_time, end_time
                 if task_name == 'time_inference':
-                    if value.start_time is not None:
-                        event.start = value.start_time
-                    if value.end_time is not None:
-                        event.end = value.end_time
+                    if value.is_all_day:
+                        # Convert to all-day: extract date from existing start
+                        start_date = event.start.date or (event.start.dateTime[:10] if event.start.dateTime else None)
+                        if start_date:
+                            event.start = CalendarDateTime(date=start_date)
+                            event.end = None
+                    else:
+                        if value.start_time is not None:
+                            event.start = value.start_time
+                        if value.end_time is not None:
+                            event.end = value.end_time
                     continue
 
                 merge_field = task_def['merge_field']
@@ -281,18 +291,14 @@ class PersonalizationAgent(BaseAgent):
         if show_calendar:
             tasks.append('calendar')
 
-        is_full_all_day = (
-            event.start.date is not None
-            and (event.end is None or event.end.date is not None)
-        )
         has_start_time = event.start.dateTime is not None
         has_end_time = event.end is not None and event.end.dateTime is not None
 
-        # Assign time_inference when any time component is missing on a non-all-day event:
-        # 1) Has start time, no end time (most common — infer end)
-        # 2) Has end time, no start time (e.g., "due by 5pm" — infer start)
-        # 3) Has neither time (date-only start, no end — infer both)
-        if not is_full_all_day and (not has_start_time or not has_end_time):
+        # Assign time_inference when any time component is missing on a non-all-day event.
+        # Uses extraction's is_all_day signal — not structural inference — so that
+        # "Dinner with Sarah" (is_all_day=false, no times) gets time_inference
+        # while "Valentine's Day" (is_all_day=true) does not.
+        if not event.is_all_day and (not has_start_time or not has_end_time):
             tasks.append('time_inference')
 
         return tasks
