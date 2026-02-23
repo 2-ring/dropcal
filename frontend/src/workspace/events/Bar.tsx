@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FirstAid as FirstAidIcon, CheckFat as CheckIcon, ChatCircleDots as ChatIcon, PaperPlaneTilt as SendIcon, CalendarStar as CalendarStarIcon, Images, Files, Microphone, Pen, CalendarDots, CaretLeft } from '@phosphor-icons/react'
 import Skeleton from 'react-loading-skeleton'
@@ -121,6 +122,64 @@ export function TopBar({
 }
 
 // ============================================================================
+// LOADING ANIMATIONS
+// ============================================================================
+
+function AnimatedDots() {
+  const [dotCount, setDotCount] = useState(1)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDotCount(prev => (prev % 3) + 1)
+    }, 400)
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <span className="animated-dots">
+      {[0, 1, 2].map(i => (
+        <span key={i} style={{ opacity: i < dotCount ? 1 : 0.15, transition: 'opacity 0.2s ease' }}>.</span>
+      ))}
+    </span>
+  )
+}
+
+function TypingText({ text }: { text: string }) {
+  // Strip trailing "..." from message for separate animation
+  const baseText = text.replace(/\.{2,}$/, '')
+  const hasDots = text !== baseText
+
+  const [displayedLength, setDisplayedLength] = useState(0)
+
+  useEffect(() => {
+    setDisplayedLength(0)
+    if (baseText.length === 0) return
+
+    let frame: number
+    let current = 0
+    const charDelay = 18 // ms per character
+
+    const animate = () => {
+      current++
+      setDisplayedLength(current)
+      if (current < baseText.length) {
+        frame = window.setTimeout(animate, charDelay)
+      }
+    }
+
+    frame = window.setTimeout(animate, charDelay)
+    return () => clearTimeout(frame)
+  }, [baseText])
+
+  return (
+    <span>
+      {baseText.slice(0, displayedLength)}
+      {hasDots && displayedLength >= baseText.length && <AnimatedDots />}
+    </span>
+  )
+}
+
+// ============================================================================
 // BOTTOM BAR
 // ============================================================================
 
@@ -189,35 +248,38 @@ export function BottomBar({
           /* Loading Progress */
           <div className="loading-progress-container">
             <div className="loading-progress-steps">
-              {loadingConfig.map((step, index) => {
-                const IconComponent = step.icon
-                return (
-                  <motion.div
-                    key={index}
-                    className="loading-progress-step"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                  >
-                    {IconComponent && (
-                      <div className="loading-progress-icon">
-                        <IconComponent size={20} weight="duotone" />
-                      </div>
-                    )}
-                    <div className="loading-progress-text">
-                      <div className="loading-progress-message">
-                        {step.message}
-                      </div>
-                      {step.submessage && (
-                        <div className="loading-progress-submessage">{step.submessage}</div>
+              <AnimatePresence mode="wait">
+                {loadingConfig.map((step) => {
+                  const IconComponent = step.icon
+                  return (
+                    <motion.div
+                      key={step.message}
+                      className="loading-progress-step"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      {IconComponent && (
+                        <div className="loading-progress-icon">
+                          <IconComponent size={20} weight="duotone" />
+                        </div>
                       )}
-                    </div>
-                    {step.count && (
-                      <div className="loading-progress-count">{step.count}</div>
-                    )}
-                  </motion.div>
-                )
-              })}
+                      <div className="loading-progress-text">
+                        <div className="loading-progress-message">
+                          <TypingText text={step.message} />
+                        </div>
+                        {step.submessage && (
+                          <div className="loading-progress-submessage">{step.submessage}</div>
+                        )}
+                      </div>
+                      {step.count && (
+                        <div className="loading-progress-count">{step.count}</div>
+                      )}
+                    </motion.div>
+                  )
+                })}
+              </AnimatePresence>
             </div>
           </div>
         ) : (

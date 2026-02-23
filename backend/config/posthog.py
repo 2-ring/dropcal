@@ -166,6 +166,8 @@ def _get_session_id():
 
 # Human-readable labels for each pipeline stage / component.
 _AGENT_LABELS = {
+    'preprocessing': 'Preprocess',
+    'context_load': 'Context Load',
     'extraction': 'Extract',
     'resolution': 'Resolve',
     'personalization': 'Personalize',

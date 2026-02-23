@@ -50,21 +50,16 @@ class CalendarEventSimilarity:
 
     def __init__(
         self,
-        model_name: str = 'all-MiniLM-L6-v2',
         weights: Optional[SimilarityWeights] = None
     ):
         """
         Initialize the similarity engine.
 
         Args:
-            model_name: Sentence transformer model to use
             weights: Custom weights for similarity components (default: 70/15/10/5)
         """
-        # Load sentence transformer model
-        print(f"Loading sentence transformer model: {model_name}")
-        self.model = SentenceTransformer(model_name)
-        self.model.max_seq_length = EmbeddingConfig.MAX_SEQ_LENGTH
-        print(f"✓ Model loaded (dimension: {self.model.get_sentence_embedding_dimension()})")
+        # Reuse global singleton (loaded once at startup, not per-session)
+        self.model = get_embedding_model()
 
         # Similarity weights (research-backed defaults)
         self.weights = weights or SimilarityWeights()

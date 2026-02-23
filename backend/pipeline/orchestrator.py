@@ -294,6 +294,7 @@ class SessionProcessor:
         input_type: str,
         metadata: Optional[dict] = None,
         preloaded_context: Optional[dict] = None,
+        session_start: Optional[float] = None,
     ) -> None:
         """
         Run the full EXTRACT → RESOLVE → PERSONALIZE pipeline.
@@ -305,12 +306,15 @@ class SessionProcessor:
                 Expected keys: patterns, historical_events, timezone,
                 calendars_lookup, primary_calendar. Used by process_file_session
                 to overlap context loading with input preprocessing.
+            session_start: Wall-clock start time from the caller (includes
+                preprocessing). Used for the Pipeline trace duration so it
+                reflects the full user-experienced latency.
         """
         session = DBSession.get_by_id(session_id)
         is_guest = session.get('guest_mode', False) if session else False
         user_id = session.get('user_id', 'anonymous') if session else 'anonymous'
         pipeline_label = f"Session: {input_type}{' (guest)' if is_guest else ''}"
-        pipeline_start = _time.time()
+        pipeline_start = session_start or _time.time()
 
         try:
             DBSession.update_status(session_id, 'processing')
@@ -347,43 +351,47 @@ class SessionProcessor:
                 tz_result['timezone'] = preloaded_context.get('timezone', 'America/New_York')
             else:
                 # Text sessions: load context in parallel with EXTRACT
-                def _load_context():
-                    t0 = _time.time()
-                    p, h = self._load_personalization_context(user_id, is_guest)
-                    context_result['patterns'] = p
-                    context_result['historical_events'] = h
-                    if p is not None:
-                        self.personalize_agent.build_similarity_index(h)
-                    logger.info(f"[timing] context_load: {_time.time() - t0:.2f}s")
-
                 def _load_context_and_tz():
-                    _load_context()
-                    t0 = _time.time()
-                    tz_result['timezone'] = self._get_user_timezone(user_id)
-                    logger.info(f"[timing] timezone_fetch: {_time.time() - t0:.2f}s")
+                    # Set tracking context for this thread so stage_span works
+                    set_tracking_context(
+                        distinct_id=user_id,
+                        trace_id=session_id,
+                        session_id=session_id,
+                        pipeline=pipeline_label,
+                        input_type=input_type,
+                        is_guest=is_guest,
+                    )
+                    with stage_span("context_load"):
+                        p, h = self._load_personalization_context(user_id, is_guest)
+                        context_result['patterns'] = p
+                        context_result['historical_events'] = h
+                        if p is not None:
+                            self.personalize_agent.build_similarity_index(h)
 
-                    if not is_guest:
-                        try:
-                            from database.models import Calendar
-                            cals = Calendar.get_by_user(user_id)
-                            cal_lookup = {}
-                            primary_cal = None
-                            for cal in cals:
-                                cal_id = cal.get('provider_cal_id')
-                                if cal_id:
-                                    info = {
-                                        'name': cal.get('name', cal_id),
-                                        'color': cal.get('color', '#1170C5'),
-                                    }
-                                    cal_lookup[cal_id] = info
-                                    if cal.get('is_primary'):
-                                        primary_cal = info
-                            context_result['calendars_lookup'] = cal_lookup
-                            context_result['primary_calendar'] = primary_cal
-                        except Exception as e:
-                            logger.warning(f"Could not load calendars for SSE enrichment: {e}")
-                            context_result['calendars_lookup'] = {}
-                            context_result['primary_calendar'] = None
+                        tz_result['timezone'] = self._get_user_timezone(user_id)
+
+                        if not is_guest:
+                            try:
+                                from database.models import Calendar
+                                cals = Calendar.get_by_user(user_id)
+                                cal_lookup = {}
+                                primary_cal = None
+                                for cal in cals:
+                                    cal_id = cal.get('provider_cal_id')
+                                    if cal_id:
+                                        info = {
+                                            'name': cal.get('name', cal_id),
+                                            'color': cal.get('color', '#1170C5'),
+                                        }
+                                        cal_lookup[cal_id] = info
+                                        if cal.get('is_primary'):
+                                            primary_cal = info
+                                context_result['calendars_lookup'] = cal_lookup
+                                context_result['primary_calendar'] = primary_cal
+                            except Exception as e:
+                                logger.warning(f"Could not load calendars for SSE enrichment: {e}")
+                                context_result['calendars_lookup'] = {}
+                                context_result['primary_calendar'] = None
 
                 context_thread = threading.Thread(target=_load_context_and_tz, daemon=True)
                 context_thread.start()
@@ -394,10 +402,9 @@ class SessionProcessor:
                 stream.set_stage('extracting')
 
             t_extract = _time.time()
-            with stage_span("extraction"):
-                extraction_result, _, _ = self.extractor.execute(
-                    text, input_type=input_type, metadata=metadata
-                )
+            extraction_result, _, _ = self.extractor.execute(
+                text, input_type=input_type, metadata=metadata
+            )
             extracted_events = extraction_result.events
             logger.info(f"[timing] extract: {_time.time() - t_extract:.2f}s")
 
@@ -638,80 +645,99 @@ class SessionProcessor:
         file preprocessing so they run in parallel, saving seconds on file
         sessions where preprocessing can be slow (PDF/audio).
         """
+        session_start = _time.time()
         try:
             # Determine user info for context preloading
             session = DBSession.get_by_id(session_id)
             is_guest = session.get('guest_mode', False) if session else False
             user_id = session.get('user_id', 'anonymous') if session else 'anonymous'
 
+            # Set tracking context early so preprocessing span is in the trace
+            set_tracking_context(
+                distinct_id=user_id,
+                trace_id=session_id,
+                session_id=session_id,
+                input_type=file_type,
+                is_guest=is_guest,
+            )
+
             # Start context loading in parallel with file preprocessing
             context_result = {}
             tz_result = {}
 
             def _preload_context():
-                t0 = _time.time()
-                p, h = self._load_personalization_context(user_id, is_guest)
-                context_result['patterns'] = p
-                context_result['historical_events'] = h
-                if p is not None:
-                    self.personalize_agent.build_similarity_index(h)
+                # Set tracking context for this thread so stage_span works
+                set_tracking_context(
+                    distinct_id=user_id,
+                    trace_id=session_id,
+                    session_id=session_id,
+                    input_type=file_type,
+                    is_guest=is_guest,
+                )
+                with stage_span("context_load"):
+                    p, h = self._load_personalization_context(user_id, is_guest)
+                    context_result['patterns'] = p
+                    context_result['historical_events'] = h
+                    if p is not None:
+                        self.personalize_agent.build_similarity_index(h)
 
-                tz_result['timezone'] = self._get_user_timezone(user_id)
+                    tz_result['timezone'] = self._get_user_timezone(user_id)
 
-                if not is_guest:
-                    try:
-                        from database.models import Calendar
-                        cals = Calendar.get_by_user(user_id)
-                        cal_lookup = {}
-                        primary_cal = None
-                        for cal in cals:
-                            cal_id = cal.get('provider_cal_id')
-                            if cal_id:
-                                info = {
-                                    'name': cal.get('name', cal_id),
-                                    'color': cal.get('color', '#1170C5'),
-                                }
-                                cal_lookup[cal_id] = info
-                                if cal.get('is_primary'):
-                                    primary_cal = info
-                        context_result['calendars_lookup'] = cal_lookup
-                        context_result['primary_calendar'] = primary_cal
-                    except Exception as e:
-                        logger.warning(f"Could not load calendars for SSE enrichment: {e}")
-                        context_result['calendars_lookup'] = {}
-                        context_result['primary_calendar'] = None
-                logger.info(f"[timing] file_preload_context: {_time.time() - t0:.2f}s")
+                    if not is_guest:
+                        try:
+                            from database.models import Calendar
+                            cals = Calendar.get_by_user(user_id)
+                            cal_lookup = {}
+                            primary_cal = None
+                            for cal in cals:
+                                cal_id = cal.get('provider_cal_id')
+                                if cal_id:
+                                    info = {
+                                        'name': cal.get('name', cal_id),
+                                        'color': cal.get('color', '#1170C5'),
+                                    }
+                                    cal_lookup[cal_id] = info
+                                    if cal.get('is_primary'):
+                                        primary_cal = info
+                            context_result['calendars_lookup'] = cal_lookup
+                            context_result['primary_calendar'] = primary_cal
+                        except Exception as e:
+                            logger.warning(f"Could not load calendars for SSE enrichment: {e}")
+                            context_result['calendars_lookup'] = {}
+                            context_result['primary_calendar'] = None
 
             preload_thread = threading.Thread(target=_preload_context, daemon=True)
             preload_thread.start()
 
             # File preprocessing (runs in parallel with context loading)
-            if file_type == 'audio':
-                text = self._transcribe_audio(file_path)
-                metadata = {'source': 'audio', 'file_path': file_path}
-            elif file_type == 'image':
-                text, metadata = self._prepare_image(file_path)
-            elif file_type in ('pdf', 'document'):
-                text = self._convert_document(file_path)
-                metadata = {'source': file_type, 'file_path': file_path}
-            elif file_type in ('text', 'email'):
-                from pipeline.input.storage import FileStorage
-                file_bytes = FileStorage.download_file(file_path)
-                text = file_bytes.decode('utf-8', errors='replace')
-                if not text.strip():
-                    raise ValueError("File is empty or contains no readable text")
-                metadata = {'source': file_type, 'file_path': file_path}
-            else:
-                raise ValueError(f"Unsupported file type: {file_type}")
+            with stage_span("preprocessing"):
+                if file_type == 'audio':
+                    text = self._transcribe_audio(file_path)
+                    metadata = {'source': 'audio', 'file_path': file_path}
+                elif file_type == 'image':
+                    text, metadata = self._prepare_image(file_path)
+                elif file_type in ('pdf', 'document'):
+                    text = self._convert_document(file_path)
+                    metadata = {'source': file_type, 'file_path': file_path}
+                elif file_type in ('text', 'email'):
+                    from pipeline.input.storage import FileStorage
+                    file_bytes = FileStorage.download_file(file_path)
+                    text = file_bytes.decode('utf-8', errors='replace')
+                    if not text.strip():
+                        raise ValueError("File is empty or contains no readable text")
+                    metadata = {'source': file_type, 'file_path': file_path}
+                else:
+                    raise ValueError(f"Unsupported file type: {file_type}")
 
             # Wait for context loading to finish
             preload_thread.join()
             context_result['timezone'] = tz_result.get('timezone', 'America/New_York')
 
-            # Pass preloaded context to avoid re-loading inside _run_pipeline
+            # Pass preloaded context and real start time to _run_pipeline
             self._run_pipeline(
                 session_id, text, input_type=file_type,
                 metadata=metadata, preloaded_context=context_result,
+                session_start=session_start,
             )
 
         except Exception as e:
