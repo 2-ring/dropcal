@@ -154,7 +154,7 @@ def get_event(
 
     try:
         response = requests.get(url, headers=headers)
-        if response.status_code == 404:
+        if response.status_code in (404, 410):
             return None
         response.raise_for_status()
         ms_event = response.json()
@@ -165,8 +165,8 @@ def get_event(
         return transform.to_universal(ms_event)
 
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching Microsoft Calendar event {provider_event_id}: {e}")
-        return None
+        # Re-raise so callers can distinguish API errors from "not found"
+        raise ValueError(f"Failed to fetch Microsoft Calendar event {provider_event_id}: {e}")
 
 
 def check_conflicts(

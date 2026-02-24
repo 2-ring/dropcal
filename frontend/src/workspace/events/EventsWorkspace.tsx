@@ -81,11 +81,20 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
       pushTimersRef.current.delete(eventId)
       try {
         const result = await pushEvents([eventId])
-        // Silently update provider_syncs so badge shows "synced"
-        if (sessionId && (result.created.length > 0 || result.updated.length > 0)) {
-          const freshEvents = await getSessionEvents(sessionId)
-          setEditedEvents(freshEvents)
-          onEventsChanged?.(freshEvents)
+        // On success, surgically mark this event as synced in local state
+        // so the badge updates without clobbering any in-progress edits
+        if (result.created.includes(eventId) || result.updated.includes(eventId)) {
+          setEditedEvents(prev => prev.map(e => {
+            if (!e || e.id !== eventId) return e
+            return {
+              ...e,
+              provider_syncs: (e.provider_syncs || []).map(s =>
+                s.provider === primaryCalendarProvider
+                  ? { ...s, synced_version: e.version ?? 1 }
+                  : s
+              )
+            }
+          }))
         }
       } catch (err) {
         console.error(`Auto-push failed for event ${eventId}:`, err)
@@ -102,16 +111,23 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
     }
   }, [])
 
-  // Inbound sync: check published events against external calendar on session load
+  // Inbound sync: check published events against external calendar on session load.
+  // Fires once when loading completes (isLoading transitions false) for a given session.
   const inboundSyncedSessionRef = useRef<string | null>(null)
+  const prevIsLoadingRef = useRef(isLoading)
 
   useEffect(() => {
-    if (!sessionId || !user || isLoading) return
-    if (inboundSyncedSessionRef.current === sessionId) return
+    const wasLoading = prevIsLoadingRef.current
+    prevIsLoadingRef.current = isLoading
 
-    const validEvents = editedEvents.filter((e): e is CalendarEvent => e !== null)
-    const hasPublishedEvents = validEvents.some(
-      e => e.provider_syncs && e.provider_syncs.length > 0
+    // Only fire on the isLoading true→false transition, or on initial load of a non-loading session
+    if (isLoading || !sessionId || !user) return
+    if (inboundSyncedSessionRef.current === sessionId) return
+    // For streaming sessions, only fire after loading completes
+    if (wasLoading === isLoading && editedEvents.every(e => e === null)) return
+
+    const hasPublishedEvents = editedEvents.some(
+      (e): e is CalendarEvent => e !== null && !!(e.provider_syncs && e.provider_syncs.length > 0)
     )
     if (!hasPublishedEvents) return
 
@@ -122,15 +138,16 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
         if (result.updated > 0 || result.deleted > 0) {
           setEditedEvents(result.events)
           onEventsChanged?.(result.events)
+          const count = result.updated + result.deleted
           addNotification(createSuccessNotification(
-            `Updated ${result.updated + result.deleted} event${(result.updated + result.deleted) !== 1 ? 's' : ''} from calendar`
+            `Updated ${count} event${count !== 1 ? 's' : ''} from calendar`
           ))
         }
       })
       .catch(err => {
         console.error('Inbound sync failed:', err)
       })
-  }, [sessionId, editedEvents, isLoading, user])
+  }, [sessionId, isLoading, user])
 
   const runConflictCheck = async () => {
     if (!sessionId) return

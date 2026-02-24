@@ -919,9 +919,6 @@ class EventService:
         if not updates:
             return False
 
-        # Apply field updates
-        Event.update(event_id, updates)
-
         # Update provider_syncs to mark as in-sync at current version
         current_version = event.get('version', 1)
         syncs = list(event.get('provider_syncs') or [])
@@ -930,7 +927,10 @@ class EventService:
                 s['synced_version'] = current_version
                 s['synced_at'] = datetime.utcnow().isoformat()
                 break
-        Event.update(event_id, {'provider_syncs': syncs})
+        updates['provider_syncs'] = syncs
+
+        # Single atomic update for both field changes and sync metadata
+        Event.update(event_id, updates)
 
         return True
 

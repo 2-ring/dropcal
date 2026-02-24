@@ -3,12 +3,19 @@ Calendar provider factory.
 
 Routes calendar operations to the correct provider based on user's primary provider.
 Provides a unified interface for calendar operations across all providers.
+
+Outbound sync: sync_event(), sync_events_from_session()
+Inbound sync:  sync_session_inbound()
 """
 
 from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime, timezone
 from database.models import User, Event, Session as DBSession
 from pipeline.events import EventService
 from config.calendar import CollectionConfig
+
+
+INBOUND_SYNC_COOLDOWN_MINUTES = 5
 
 
 def get_provider_modules(provider: str) -> tuple:
@@ -418,4 +425,133 @@ def sync_events_from_session(
         'num_created': len(created),
         'num_updated': len(updated),
         'num_skipped': len(skipped),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Inbound sync — pull external calendar changes into DropCal events
+# ---------------------------------------------------------------------------
+
+def sync_session_inbound(
+    user_id: str,
+    session_id: str
+) -> Dict[str, Any]:
+    """
+    Fetch the current state of published events from the external calendar
+    and update DropCal if they've been modified externally.
+
+    Only checks events that have provider_syncs entries (published events).
+    Skips entirely if the most recent sync was within INBOUND_SYNC_COOLDOWN_MINUTES.
+    Uses last-write-wins for conflict resolution.
+
+    Args:
+        user_id: User's UUID
+        session_id: Session UUID
+
+    Returns:
+        Dict with checked, updated, deleted counts, skipped_stale flag,
+        and the full updated events list for the session.
+    """
+    session = DBSession.get_by_id(session_id)
+    if not session:
+        raise ValueError(f"Session {session_id} not found")
+    if session.get('user_id') != user_id:
+        raise PermissionError("Session does not belong to user")
+
+    event_ids = session.get('event_ids') or []
+    empty_result = lambda stale=False: {
+        'checked': 0, 'updated': 0, 'deleted': 0,
+        'skipped_stale': stale,
+        'events': EventService.get_events_by_session(session_id, event_ids) if event_ids else []
+    }
+
+    if not event_ids:
+        return empty_result()
+
+    event_rows = Event.get_by_ids(event_ids)
+
+    # Filter to published, non-deleted events
+    published = [
+        row for row in event_rows
+        if (row.get('provider_syncs') or []) and not row.get('deleted_at')
+    ]
+    if not published:
+        return empty_result()
+
+    # Staleness check: skip if most recent synced_at is within cooldown
+    now = datetime.now(timezone.utc)
+    most_recent_sync = None
+    for row in published:
+        for sync in (row.get('provider_syncs') or []):
+            synced_at_str = sync.get('synced_at')
+            if not synced_at_str:
+                continue
+            try:
+                synced_at = datetime.fromisoformat(synced_at_str.replace('Z', '+00:00'))
+                if not synced_at.tzinfo:
+                    synced_at = synced_at.replace(tzinfo=timezone.utc)
+                if most_recent_sync is None or synced_at > most_recent_sync:
+                    most_recent_sync = synced_at
+            except (ValueError, TypeError):
+                pass
+
+    if most_recent_sync:
+        minutes_since = (now - most_recent_sync).total_seconds() / 60
+        if minutes_since < INBOUND_SYNC_COOLDOWN_MINUTES:
+            return empty_result(stale=True)
+
+    # Resolve provider — bail gracefully if no calendar connected
+    try:
+        provider = get_user_primary_provider(user_id)
+    except ValueError:
+        return empty_result()
+
+    if not is_authenticated(user_id, provider):
+        return empty_result()
+
+    # Fetch each published event from the external calendar
+    checked = 0
+    updated_count = 0
+    deleted_ids: List[str] = []
+
+    for row in published:
+        sync_entry = next(
+            (s for s in (row.get('provider_syncs') or []) if s.get('provider') == provider),
+            None
+        )
+        if not sync_entry or not sync_entry.get('provider_event_id'):
+            continue
+
+        checked += 1
+
+        try:
+            external_event = get_event(
+                user_id,
+                sync_entry['provider_event_id'],
+                sync_entry.get('calendar_id', 'primary'),
+                provider
+            )
+
+            if external_event is None:
+                # Deleted externally — soft-delete locally
+                Event.soft_delete(row['id'])
+                deleted_ids.append(row['id'])
+            else:
+                if EventService.merge_from_external(row['id'], external_event, provider):
+                    updated_count += 1
+
+        except Exception as e:
+            print(f"[inbound-sync] Error fetching event {row['id']}: {e}")
+            continue
+
+    # Build final event list, excluding any we just soft-deleted
+    live_ids = [eid for eid in event_ids if eid not in deleted_ids]
+    events = EventService.get_events_by_session(session_id, live_ids) if live_ids else []
+
+    return {
+        'checked': checked,
+        'updated': updated_count,
+        'deleted': len(deleted_ids),
+        'skipped_stale': False,
+        'events': events
     }

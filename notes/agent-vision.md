@@ -2,16 +2,17 @@
 
 ## Value Proposition
 
-A. **Persistent context and memory** — the agent retains context and memory across interactions.
+A. **Persistent context and memory**
+B. **Intelligent create/edit/delete** — knows when to look up more info, edit vs. create, etc.
+C. **Proactive eventually**
+D. **Calendar reasoning** — "when do I have time for this?", "I'm overwhelmed, help me plan"
+E. **Clarifying questions**
+F. **Feels premium** — something you'd pay for
+G. **Beyond session-by-session** — multi-source input (photo + text + PDF in one thread), agent detects what's scheduling vs. context vs. question
+H. **Engineering argument** — adding capabilities to the pipeline means new stages or bloated stages with messy inter-stage contracts. Agent with tools scales linearly. Pipeline stages become tools the agent calls.
 
-B. **Intelligent create/edit/delete** — it can do the exact right thing, knowing when to look up more info, when to edit one event and create more, etc.
+## Pricing / Tiers — Open Questions
 
-C. **Proactive eventually** — the agent can become proactive over time.
-
-D. **Calendar reasoning and life planning** — you could ask it questions like "when do I have time for this?" or "I was thinking of doing this, do I realistically have time?" or "I'm feeling really stressed and overwhelmed right now" and it can generate a plan like "you have this due date this day so prioritize this."
-
-E. **Clarifying questions** — it can easily ask clarifying questions when needed.
-
-F. **Feels more premium** — feels like something you would pay for.
-
-G. **Beyond session-by-session** — removing the session-by-session logic could be good because if you want to provide a photo and then an instructional sentence and then a PDF, all relevant, the session-based approach doesn't support this. Each "session" could be a much more natural concept with lots of different info sources. The flow can still be drop something in and if it contains scheduling info it's handled in one shot, but the agent can detect when that's appropriate over something else.
+- Option A: pipeline = free, agent = paid. Two systems, clean cost split.
+- Option B: agent for everyone, limited free tier (create-only, no memory). One architecture, one UX.
+- What's the right upgrade moment? What are the free limits?
