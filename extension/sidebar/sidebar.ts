@@ -15,6 +15,7 @@ const skeletonList = document.getElementById('skeleton-list')!;
 const eventsList = document.getElementById('events-list')!;
 const errorMessage = document.getElementById('sidebar-error-message')!;
 const btnBack = document.getElementById('btn-back')!;
+const btnAddAll = document.getElementById('btn-add-all')!;
 const btnOpenDropcal = document.getElementById('btn-open-dropcal')!;
 
 let currentSessionId: string | null = null;
@@ -251,7 +252,19 @@ function loadSession(sessionId: string): void {
     } else {
       showState('empty');
     }
+
+    syncAddButton(session.addedToCalendar);
   });
+}
+
+function syncAddButton(addedToCalendar: boolean): void {
+  if (addedToCalendar) {
+    btnAddAll.classList.add('added');
+    btnAddAll.innerHTML = `<i class="ph ph-check-circle btn-icon" style="font-size: 18px"></i> Added to calendar`;
+  } else {
+    btnAddAll.classList.remove('added');
+    btnAddAll.innerHTML = `<i class="ph-duotone ph-calendar-star btn-icon" style="font-size: 18px"></i> Add to Calendar`;
+  }
 }
 
 // ===== Buttons =====
@@ -260,12 +273,33 @@ btnBack.addEventListener('click', () => {
   window.close();
 });
 
+btnAddAll.addEventListener('click', () => {
+  if (!currentSessionId || btnAddAll.classList.contains('loading') || btnAddAll.classList.contains('added')) return;
+
+  btnAddAll.classList.add('loading');
+  btnAddAll.innerHTML = `<i class="ph ph-spinner btn-icon" style="font-size: 18px"></i> Adding...`;
+
+  api.runtime.sendMessage(
+    { type: 'PUSH_ALL_EVENTS', sessionId: currentSessionId },
+    (response) => {
+      btnAddAll.classList.remove('loading');
+      if (response?.ok) {
+        btnAddAll.classList.add('added');
+        btnAddAll.innerHTML = `<i class="ph ph-check-circle btn-icon" style="font-size: 18px"></i> Added to calendar`;
+      } else {
+        btnAddAll.innerHTML = `<i class="ph-duotone ph-calendar-star btn-icon" style="font-size: 18px"></i> Add to Calendar`;
+      }
+    },
+  );
+});
+
 btnOpenDropcal.addEventListener('click', () => {
   if (currentSessionId) {
     api.runtime.sendMessage({
       type: 'OPEN_SESSION',
       sessionId: currentSessionId,
     });
+    window.close();
   }
 });
 

@@ -11,6 +11,7 @@ import {
   getCalendarProviders,
   setPrimaryCalendarProvider,
   disconnectCalendarProvider,
+  pushEvents,
 } from './api';
 import {
   api,
@@ -645,6 +646,39 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       updateSessionRecord(sessionId, { dismissedAt: Date.now() }),
     ]).then(() => {
       sendResponse({ ok: true });
+    });
+    return true;
+  }
+
+  // Sidebar — push all session events to calendar
+  if (message.type === 'PUSH_ALL_EVENTS') {
+    const { sessionId } = message;
+    ensureAuth().then(async (hasAuth) => {
+      if (!hasAuth) {
+        sendResponse({ ok: false, error: 'Not authenticated' });
+        return;
+      }
+      try {
+        const history = await getHistory();
+        const session = history.sessions.find((s) => s.sessionId === sessionId);
+        const eventIds = (session?.events || [])
+          .map((e) => e.id)
+          .filter((id): id is string => !!id);
+
+        if (eventIds.length === 0) {
+          sendResponse({ ok: false, error: 'No events to add' });
+          return;
+        }
+
+        const result = await pushEvents(sessionId, eventIds);
+        if (result.success) {
+          await updateSessionRecord(sessionId, { addedToCalendar: true });
+        }
+        sendResponse({ ok: result.success, message: result.message });
+      } catch (error) {
+        console.error('DropCal: Push events failed', error);
+        sendResponse({ ok: false, error: 'Failed to add events to calendar' });
+      }
     });
     return true;
   }

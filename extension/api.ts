@@ -166,6 +166,19 @@ export async function disconnectCalendarProvider(provider: string): Promise<void
   await handleResponse(response);
 }
 
+// Push events to the user's calendar provider
+export async function pushEvents(
+  sessionId: string,
+  eventIds: string[],
+): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${API_URL}/events/push`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ event_ids: eventIds, session_id: sessionId }),
+  });
+  return handleResponse(response);
+}
+
 // Upload a file (from drop zone / file picker) as FormData
 export async function uploadFile(
   fileData: Uint8Array,

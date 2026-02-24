@@ -118,4 +118,5 @@ export type ExtensionMessage =
   | { type: 'SET_PRIMARY_PROVIDER'; provider: string }
   | { type: 'DISCONNECT_PROVIDER'; provider: string }
   | { type: 'SIGN_OUT' }
-  | { type: 'DISMISS_SESSION'; sessionId: string };
+  | { type: 'DISMISS_SESSION'; sessionId: string }
+  | { type: 'PUSH_ALL_EVENTS'; sessionId: string };

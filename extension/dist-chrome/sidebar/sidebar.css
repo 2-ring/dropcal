@@ -363,6 +363,9 @@ body {
   padding: 16px 20px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* CTA Button */
@@ -401,4 +404,45 @@ body {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+/* Secondary Button (Open in DropCal) */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 20px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.15s ease,
+              color 0.15s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.btn-secondary:active {
+  transform: scale(0.98);
+}
+
+/* Add All — success state */
+.btn-add-all.added {
+  background: var(--success);
+  pointer-events: none;
+}
+
+/* Add All — loading state */
+.btn-add-all.loading {
+  opacity: 0.7;
+  pointer-events: none;
 }
