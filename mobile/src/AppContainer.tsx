@@ -198,10 +198,7 @@ export function AppContainer({
     setLoadingConfig(LOADING_MESSAGES.READING_FILE);
 
     try {
-      // Determine file type
-      const fileType = file.type.startsWith('audio/') ? 'audio' : 'image';
-
-      const { session } = await apiUploadFile(file, fileType);
+      const { session } = await apiUploadFile(file);
       setCurrentSession(session);
       setLoadingConfig(LOADING_MESSAGES.PROCESSING_FILE);
 
