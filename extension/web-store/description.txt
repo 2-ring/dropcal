@@ -1,0 +1,19 @@
+DropCal turns anything you find online into calendar events — instantly.
+
+Right-click any text or image on a webpage and select "Send to DropCal." AI reads it, extracts every event it finds (dates, times, locations, descriptions), and presents them ready to add to your calendar in one click. No copying. No switching tabs. No manual entry.
+
+It works with practically anything: class schedules, conference agendas, flight confirmations, event flyers, meeting notes, screenshots of posters — if there's a date in it, DropCal will find it.
+
+How it works:
+1. Highlight text or right-click an image on any webpage
+2. Select "Send to DropCal" from the context menu
+3. Review the extracted events in the popup or side panel
+4. Click "Add to Calendar" to push them all at once
+
+You can also paste or type text directly into the extension, or upload files (PDFs, images, documents) from the popup.
+
+Events appear in a clean side panel with full details — times, locations, descriptions — grouped by date. Works with Google Calendar, Microsoft Outlook, and Apple Calendar.
+
+DropCal learns your preferences over time. It picks up on how you name events, which calendar you route them to, and how you like things formatted — then applies those patterns automatically.
+
+Requires a free DropCal account at dropcal.ai.

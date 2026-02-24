@@ -1,0 +1,70 @@
+Chrome Web Store — Privacy & Compliance Form Answers
+=====================================================
+
+SINGLE PURPOSE DESCRIPTION
+--------------------------
+DropCal converts text and images from webpages into calendar events. Users right-click selected text or an image, choose "Send to DropCal," and the extension sends it to the DropCal API for AI-powered event extraction. Extracted events are displayed in the extension's side panel, where users can review and add them to Google Calendar, Outlook, or Apple Calendar in one click.
+
+
+PERMISSION JUSTIFICATIONS
+=========================
+
+contextMenus
+------------
+The extension registers a "Send to DropCal" context menu item that appears when users right-click selected text or images on any webpage. This is the primary way users send content to DropCal for event extraction. Without this permission, users would have to manually copy and paste text into the extension popup.
+
+storage
+-------
+The extension uses chrome.storage.local to persist authentication tokens (so users stay signed in between browser sessions), session history (so users can revisit recently processed events), user preferences (date format and theme), and notification state (to avoid duplicate notifications). No data is synced across devices.
+
+alarms
+------
+After a user submits content for processing, the extension uses chrome.alarms to poll the DropCal API at 30-second intervals to check whether the server has finished extracting events. This runs in the background service worker so the user can continue browsing while processing completes. Alarms are cleared once the session reaches a terminal state (processed or error) or after a 5-minute timeout.
+
+notifications
+-------------
+The extension shows a single browser notification when event extraction is complete, so the user knows their events are ready to review. This is especially useful when the user has navigated away from the extension while waiting for processing. Notifications are not used for marketing or recurring messages.
+
+sidePanel
+---------
+The extension opens a Chrome side panel to display extracted calendar events with full details (title, date, time, location, description, calendar assignment). The side panel lets users review all events from a session and add them to their calendar without leaving the current webpage. This is the main event review and action interface.
+
+Host permission (https://api.dropcal.ai/*)
+------------------------------------------
+All extension functionality requires communicating with the DropCal backend API at api.dropcal.ai. The extension sends user-selected text or images to the API for event extraction, polls for processing status, fetches extracted events, retrieves user profile and calendar settings, and pushes events to connected calendars. No other hosts are accessed.
+
+
+REMOTE CODE
+===========
+Are you using remote code? No
+
+All JavaScript is bundled and included in the extension package. The extension does not load external scripts, use eval(), or reference remote JS/Wasm files. All processing logic runs server-side via standard HTTPS API calls to api.dropcal.ai, which return JSON data — not executable code.
+
+
+DATA USAGE
+==========
+Check the following:
+- [x] Authentication information
+- [x] Website content
+- [x] User activity
+
+Do NOT check:
+- [ ] Personally identifiable information
+- [ ] Health information
+- [ ] Financial and payment information
+- [ ] Personal communications
+- [ ] Location
+- [ ] Web history
+
+Justification for checked items:
+
+Authentication information: The extension stores OAuth access and refresh tokens locally (via chrome.storage) to maintain the user's signed-in session with DropCal. Tokens are transmitted to api.dropcal.ai over HTTPS for authenticated API requests. Tokens are never shared with third parties.
+
+Website content: When a user right-clicks and selects "Send to DropCal," the selected text or image URL from the current webpage is sent to the DropCal API for event extraction. Only content the user explicitly selects and submits is transmitted. The extension does not passively collect or monitor webpage content.
+
+User activity: The extension tracks which sessions a user has created, their processing status, and event counts to display session history in the popup. This is functional data for the extension's UI, not behavioral analytics. No clicks, keystrokes, mouse positions, or scroll data are collected.
+
+Certifications:
+- [x] I do not sell or transfer user data to third parties, apart from the approved use cases
+- [x] I do not use or transfer user data for purposes that are unrelated to my item's single purpose
+- [x] I do not use or transfer user data to determine creditworthiness or for lending purposes

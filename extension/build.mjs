@@ -1,7 +1,8 @@
 import * as esbuild from 'esbuild';
-import { copyFileSync, readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync } from 'fs';
-import { join, resolve, dirname } from 'path';
+import { copyFileSync, readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync, createWriteStream } from 'fs';
+import { join, resolve, dirname, relative } from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -27,7 +28,7 @@ function buildManifest() {
     case 'chrome':
       manifest = {
         ...base,
-        permissions: [...base.permissions, 'notifications', 'sidePanel'],
+        permissions: [...base.permissions, 'sidePanel'],
         background: { service_worker: 'background.js', type: 'module' },
         side_panel: { default_path: 'sidebar/sidebar.html' },
       };
@@ -35,7 +36,7 @@ function buildManifest() {
     case 'firefox':
       manifest = {
         ...base,
-        permissions: [...base.permissions, 'notifications'],
+        permissions: [...base.permissions],
         background: { scripts: ['background.js'], type: 'module' },
         sidebar_action: {
           default_panel: 'sidebar/sidebar.html',
@@ -137,11 +138,23 @@ async function run() {
     await Promise.all([bgCtx.watch(), popupCtx.watch(), contentCtx.watch(), sidebarCtx.watch()]);
     console.log(`Watching for changes (${browser})...`);
   } else {
+    // Type-check first
+    console.log(`Type-checking...`);
+    try {
+      execSync('npx tsc --noEmit', { cwd: __dirname, stdio: 'inherit' });
+    } catch {
+      process.exit(1);
+    }
+
     await Promise.all([bgCtx.rebuild(), popupCtx.rebuild(), contentCtx.rebuild(), sidebarCtx.rebuild()]);
     await Promise.all([bgCtx.dispose(), popupCtx.dispose(), contentCtx.dispose(), sidebarCtx.dispose()]);
     buildManifest();
     copyStaticAssets();
-    console.log(`Build complete (${browser}) → ${outDir}/`);
+
+    // Create zip bundle (excludes sourcemaps)
+    const zipName = `dropcal-${browser}.zip`;
+    execSync(`cd ${outDir} && zip -r ../${zipName} . -x '*.map'`, { cwd: __dirname, stdio: 'inherit' });
+    console.log(`Build complete (${browser}) → ${outDir}/ → ${zipName}`);
   }
 }
 
