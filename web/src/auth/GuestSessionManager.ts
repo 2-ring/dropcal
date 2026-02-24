@@ -18,6 +18,7 @@ export class GuestSessionManager {
   static hasReachedLimit() { return instance.hasReachedLimit(); }
   static getRemainingCount() { return instance.getRemainingCount(); }
   static getSessionIds() { return instance.getSessionIds(); }
+  static removeSession(sessionId: string) { return instance.removeSession(sessionId); }
   static clearGuestSessions() { return instance.clearGuestSessions(); }
   static isToastDismissed() { return instance.isToastDismissed(); }
   static dismissToast() { return instance.dismissToast(); }

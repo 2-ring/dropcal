@@ -119,7 +119,12 @@ function AppContent() {
         guestSessions.map(gs =>
           getGuestSession(gs.id)
             .then(s => { debugLog('guestSessions', 'fetched OK:', gs.id, s.status); return s })
-            .catch(err => { debugError('guestSessions', 'fetch FAILED:', gs.id, err); return null })
+            .catch(err => {
+              debugError('guestSessions', 'fetch FAILED:', gs.id, err)
+              // Session no longer exists on backend — remove from localStorage
+              GuestSessionManager.removeSession(gs.id)
+              return null
+            })
         )
       )
       const valid = sessions.filter((s): s is BackendSession => s !== null)
@@ -784,25 +789,29 @@ function AppContent() {
   const handleEventDeleted = useCallback((eventId: string, sessionId?: string, remainingCount?: number) => {
     if (!sessionId) return
 
+    // If no events remain, the backend deletes the session — remove it from history
+    if (remainingCount === 0) {
+      setSessionHistory(prev => prev.filter(s => s.id !== sessionId))
+      setCalendarEvents([])
+      setCurrentSession(null)
+      setAppState('input')
+      navigate('/')
+      return
+    }
+
     setSessionHistory(prev => prev.map(s => {
       if (s.id !== sessionId) return s
       // Update event_ids to reflect the removal
       const updatedEventIds = (s.event_ids || []).filter((id: string) => id !== eventId)
       return { ...s, event_ids: updatedEventIds }
     }))
-
-    // If no events remain, navigate back to input
-    if (remainingCount === 0) {
-      setCalendarEvents([])
-      setCurrentSession(null)
-      setAppState('input')
-      navigate('/')
-    }
   }, [navigate])
 
-  // Convert backend sessions to menu format (filter out error and empty sessions)
+  // Convert backend sessions to menu format (filter out invalid, error, and empty sessions)
   const menuSessions: SessionListItem[] = sessionHistory
     .filter(session => {
+      // Skip sessions missing critical fields
+      if (!session.id || !session.created_at) return false
       if (session.status === 'error') return false
       // Allow pending/processing sessions through (still in progress)
       if (session.status === 'pending' || session.status === 'processing') return true
@@ -815,10 +824,10 @@ function AppContent() {
       title: session.title || (session.status === 'processed' ? 'Untitled' : ''),
       icon: session.icon,
       timestamp: new Date(session.created_at),
-      inputType: session.input_type,
+      inputType: session.input_type || 'text',
       status: session.status === 'processed' ? 'completed' as const : 'processing' as const,
       eventCount: session.event_ids?.length || session.processed_events?.length || session.extracted_events?.length || 0,
-      addedToCalendar: session.added_to_calendar,
+      addedToCalendar: session.added_to_calendar ?? false,
     }))
 
   return (

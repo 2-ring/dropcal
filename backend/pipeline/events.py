@@ -155,6 +155,12 @@ class EventService:
             else:
                 logger.warning(f"Unknown modification action type: {action_type}")
 
+        # If the session has no events left, delete it
+        session = Session.get_by_id(session_id)
+        if session and len(session.get('event_ids') or []) == 0:
+            Session.delete(session_id)
+            return []
+
         # Return the full updated event list for this session
         return EventService.get_events_by_session(session_id)
 

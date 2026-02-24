@@ -419,9 +419,11 @@ def apply_modifications(session_id):
             actions=actions,
         )
 
+        session_deleted = len(updated_events) == 0
         return jsonify({
             'success': True,
             'events': updated_events,
+            'session_deleted': session_deleted,
         })
 
     except Exception as e:
@@ -529,12 +531,18 @@ def delete_event(event_id):
         # Events don't store session_id — look up via session.event_ids array
         session_id = None
         remaining_event_count = None
+        session_deleted = False
         try:
             parent_session = DBSession.find_session_for_event(event_id)
             if parent_session:
                 session_id = parent_session['id']
                 updated_session = DBSession.remove_event(session_id, event_id)
                 remaining_event_count = len(updated_session.get('event_ids') or [])
+
+                # If no events remain, delete the now-empty session
+                if remaining_event_count == 0:
+                    DBSession.delete(session_id)
+                    session_deleted = True
         except Exception as e:
             logger.warning(f"Failed to remove event {event_id} from session: {e}")
 
@@ -543,6 +551,7 @@ def delete_event(event_id):
             'event_id': event_id,
             'session_id': session_id,
             'remaining_event_count': remaining_event_count,
+            'session_deleted': session_deleted,
         })
 
     except Exception as e:

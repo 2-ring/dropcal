@@ -68,6 +68,12 @@ export class GuestSessionManager {
     return this.getGuestSessions().sessions.map(s => s.id);
   }
 
+  removeSession(sessionId: string): void {
+    const storage = this.getGuestSessions();
+    storage.sessions = storage.sessions.filter(s => s.id !== sessionId);
+    this.storage.setItem(GUEST_STORAGE_KEY, JSON.stringify(storage));
+  }
+
   clearGuestSessions(): void {
     this.storage.removeItem(GUEST_STORAGE_KEY);
   }
