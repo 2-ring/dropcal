@@ -1,8 +1,8 @@
 # DropCal
 
-Converts messy text, images, audio, PDFs, and emails into calendar events via a 3-stage AI pipeline. Three-app monorepo: `backend/` (Flask/Python), `frontend/` (React/Vite/TypeScript), `mobile/` (Expo/React Native).
+Converts messy text, images, audio, PDFs, and emails into calendar events via a 3-stage AI pipeline. Four-package monorepo: `backend/` (Flask/Python), `web/` (React/Vite/TypeScript), `mobile/` (Expo/React Native), `shared/` (TypeScript business logic shared between web & mobile).
 
-Production: dropcal.ai (frontend) / api.dropcal.ai (backend)
+Production: dropcal.ai (web) / api.dropcal.ai (backend)
 
 ## Architecture
 
@@ -41,6 +41,27 @@ MODIFY ← user edits (separate from pipeline)
 
 All Pydantic models live in `backend/pipeline/models.py`. EXTRACT processes everything in a single LLM call, RESOLVE runs per-event (deterministic), PERSONALIZE runs as a single batched LLM call if the user has enough history for personalization patterns.
 
+### Shared Package (`@dropcal/shared`)
+
+All business logic shared between web and mobile lives in `shared/`:
+
+```
+shared/src/
+├── types/           # API types, event types, sync types
+├── api/             # createApiClient() factory, createSyncClient() factory
+├── auth/            # GuestSessionManager (instance with StorageAdapter DI)
+├── events/          # RRULE recurrence, timezone utilities
+├── utils/           # Greetings, friendly error messages
+└── storage/         # StorageAdapter interface
+```
+
+The API client uses dependency injection — each platform provides its own `getAccessToken` and `baseUrl`:
+```typescript
+const client = createApiClient({ baseUrl: API_URL, getAccessToken, getGuestAccessToken })
+```
+
+Platform-specific code stays in each app: SSE streaming (web only, uses EventSource), file upload wrappers (web uses File, mobile uses { uri, name, type }), icon-dependent UI types.
+
 ### LLM Provider Config
 
 `backend/config/text.py` controls which LLM each pipeline stage uses. Switch between presets by changing the `CONFIG` line:
@@ -78,7 +99,7 @@ Key patterns:
 ## Auth
 
 - Supabase Auth handles JWT tokens. Backend validates with `@require_auth` decorator (`auth/middleware.py`) which sets `request.user_id`.
-- Frontend: `AuthContext` (React Context) manages state, `useAuth()` hook for components.
+- Web: `AuthContext` (React Context) manages state, `useAuth()` hook for components.
 - Google OAuth for auth + calendar scopes. Microsoft MSAL for Outlook. Apple CalDAV with app-specific passwords.
 
 ## Key Commands
@@ -90,14 +111,14 @@ cd backend && python app.py                    # Dev server (port 5000)
 cd backend && gunicorn wsgi:app -b 0.0.0.0:8000  # Production
 cd backend && pytest tests/                    # Run tests
 
-# Frontend
-cd frontend && npm run dev                     # Vite dev server (port 5173)
-cd frontend && npm run build                   # Production build
-cd frontend && npx tsc --noEmit                # Type check
+# Web
+cd web && npm run dev                          # Vite dev server (port 5173)
+cd web && npm run build                        # Production build
+cd web && npx tsc --noEmit                     # Type check
 
 # Deploy (CI/CD does this on push to main)
 cd backend && eb deploy dropcal-prod           # Backend → Elastic Beanstalk
-cd frontend && aws s3 sync dist/ s3://dropcal-frontend --delete  # Frontend → S3
+cd web && aws s3 sync dist/ s3://dropcal-frontend --delete  # Web → S3
 
 # Database
 supabase db push                               # Apply migrations
@@ -107,7 +128,7 @@ supabase migration new <name>                  # Create migration
 ## Conventions
 
 - **Python**: PascalCase classes, snake_case functions, Pydantic models for all structured LLM output. Pipeline stages use `ChatPromptTemplate` → `chain.invoke()` or Instructor. Flask blueprints for route groups.
-- **TypeScript**: PascalCase components, camelCase functions/hooks. API client in `frontend/src/api/backend-client.ts`. Types in `frontend/src/api/types.ts`.
+- **TypeScript**: PascalCase components, camelCase functions/hooks. Shared API client factory in `shared/src/api/client.ts`. Web re-exports in `web/src/api/backend-client.ts`. Types in `shared/src/types/`.
 - **New pipeline stages**: Inherit `BaseAgent`, implement `execute()`, add Pydantic model to `pipeline/models.py`, put prompt in `prompts/` dir next to the stage's module.
 - **New calendar providers**: Add `auth.py`, `fetch.py`, `create.py` in `backend/calendars/<provider>/`, register in `factory.py`.
 - **New input processors**: Inherit `BaseInputProcessor`, register in `app.py` via `input_processor_factory.register_processor()`.
@@ -122,13 +143,13 @@ PostHog tracks LLM costs, latency, token usage, and product analytics. Project I
 - `backend/config/posthog.py` — client init, thread-local tracking context, `get_invoke_config()` helper
 - Callbacks attached in: `pipeline/extraction/extract.py`, `pipeline/modification/agent.py`, `pipeline/personalization/agent.py`, `pipeline/personalization/pattern_discovery.py`
 
-**Frontend (product analytics):**
-- `frontend/src/main.tsx` — PostHog init + `PostHogProvider` wrapper. Autocapture, pageviews, and pageleave enabled.
-- `frontend/src/auth/AuthContext.tsx` — `posthog.identify()` on sign-in/session restore, `posthog.reset()` on sign-out. Links frontend events to backend LLM costs by shared user ID.
+**Web (product analytics):**
+- `web/src/main.tsx` — PostHog init + `PostHogProvider` wrapper. Autocapture, pageviews, and pageleave enabled.
+- `web/src/auth/AuthContext.tsx` — `posthog.identify()` on sign-in/session restore, `posthog.reset()` on sign-out. Links frontend events to backend LLM costs by shared user ID.
 
 **Env vars:**
 - Backend: `POSTHOG_API_KEY`, `POSTHOG_HOST`, `POSTHOG_PERSONAL_API_KEY`, `POSTHOG_PROJECT_ID`
-- Frontend: `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`
+- Web: `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`
 
 **PostHog API:** Use the personal API key for querying analytics programmatically:
 ```bash

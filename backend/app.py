@@ -345,6 +345,7 @@ def process_input():
 # ============================================================================
 
 @app.route('/edit-event', methods=['POST'])
+@require_auth
 def edit_event():
     """
     MODIFY: apply user edits
@@ -364,17 +365,7 @@ def edit_event():
         return jsonify({'error': 'No edit instruction provided'}), 400
 
     try:
-        # Set PostHog tracking context (try to get user from auth header)
-        edit_user_id = 'anonymous'
-        try:
-            auth_header = request.headers.get('Authorization')
-            if auth_header and auth_header.startswith('Bearer '):
-                from auth.middleware import verify_token
-                decoded = verify_token(auth_header.replace('Bearer ', ''))
-                if decoded:
-                    edit_user_id = decoded.get('sub', 'anonymous')
-        except Exception:
-            pass
+        edit_user_id = request.user_id
 
         # Modification gets its own trace_id but groups under the original
         # session via session_id so PostHog shows pipeline + edits together.
@@ -496,9 +487,12 @@ def update_event(event_id):
 
         if updates:
             updates['user_modified'] = True
+            # Bump version in the same write so provider sync detects the change
+            # atomically with the field updates (no window where fields are new
+            # but version is stale)
+            current_version = event.get('version') or 1
+            updates['version'] = current_version + 1
             Event.update(event_id, updates)
-            # Bump version so provider sync detects the change
-            Event.increment_version(event_id)
 
         # Return the updated event in CalendarEvent format
         updated_event = Event.get_by_id(event_id)

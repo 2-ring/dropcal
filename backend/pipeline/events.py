@@ -120,8 +120,9 @@ class EventService:
                 updates = EventService.calendar_event_to_db_params(cal_event)
                 if updates:
                     updates['user_modified'] = True
+                    current_version = event.get('version') or 1
+                    updates['version'] = current_version + 1
                     Event.update(event_id, updates)
-                    Event.increment_version(event_id)
 
             elif action_type == 'delete':
                 event_id = act.get('event_id')

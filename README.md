@@ -6,11 +6,12 @@ Turn messy text, images, audio, PDFs, and emails into calendar events. Drop it i
 
 ## Stack
 
-Three-app monorepo:
+Four-package monorepo:
 
-- `backend/` — Flask API, 5-stage AI pipeline (IDENTIFY → CONSOLIDATE → STRUCTURE → RESOLVE → PERSONALIZE), Supabase PostgreSQL
-- `frontend/` — React + Vite + TypeScript
+- `backend/` — Flask API, 3-stage AI pipeline (EXTRACT → RESOLVE → PERSONALIZE), Supabase PostgreSQL
+- `web/` — React + Vite + TypeScript
 - `mobile/` — Expo / React Native
+- `shared/` — TypeScript business logic shared between web & mobile
 
 Calendar integrations: Google, Microsoft Outlook, Apple (CalDAV).
 
@@ -31,10 +32,10 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Frontend (port 5173):
+Web (port 5173):
 
 ```
-cd frontend
+cd web
 npm install
 npm run dev
 ```
@@ -47,10 +48,10 @@ Backend to Elastic Beanstalk:
 cd backend && eb deploy dropcal-prod
 ```
 
-Frontend to S3:
+Web to S3:
 
 ```
-cd frontend && npm run build && aws s3 sync dist/ s3://dropcal-frontend --delete
+cd web && npm run build && aws s3 sync dist/ s3://dropcal-frontend --delete
 ```
 
 Database migrations:
@@ -64,5 +65,5 @@ supabase migration new <name>
 
 ```
 cd backend && pytest tests/
-cd frontend && npx tsc --noEmit
+cd web && npx tsc --noEmit
 ```

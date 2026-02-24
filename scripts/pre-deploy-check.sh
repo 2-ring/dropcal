@@ -29,14 +29,14 @@ print_status() {
 # ============================================================================
 # FRONTEND CHECKS
 # ============================================================================
-echo "📦 Frontend Checks"
+echo "📦 Web Frontend Checks"
 echo "─────────────────────────────────────────"
 
-cd frontend
+cd web
 
 # Check if node_modules exists
 if [ ! -d "node_modules" ]; then
-    echo -e "${YELLOW}⚠${NC} Installing frontend dependencies..."
+    echo -e "${YELLOW}⚠${NC} Installing web dependencies..."
     npm install
 fi
 

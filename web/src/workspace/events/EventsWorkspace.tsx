@@ -18,6 +18,7 @@ import { updateEvent, deleteEvent, applyModifications, pushEvents, getSessionEve
 import type { ConflictInfo } from '../../api/backend-client'
 import type { SyncCalendar } from '../../api/sync'
 import { useAuth } from '../../auth/AuthContext'
+import { getAccessToken } from '../../auth/supabase'
 import {
   useNotificationQueue,
   createSuccessNotification,
@@ -305,9 +306,13 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
 
         const calendarList = calendars.map(c => ({ id: c.id, name: c.summary }))
 
+        const token = await getAccessToken()
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (token) headers['Authorization'] = `Bearer ${token}`
+
         const response = await fetch(`${API_URL}/edit-event`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ events: validEvents, instruction, calendars: calendarList, session_id: sessionId }),
         })
 
@@ -364,13 +369,36 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
 
         // Persist all modifications in one batch call
         if (sessionId && batchActions.length > 0) {
+          // Snapshot which event IDs were touched by this batch so we can
+          // merge the server response without clobbering concurrent user edits
+          const touchedIds = new Set(batchActions.map(a => a.event_id).filter(Boolean))
+
           applyModifications(sessionId, batchActions)
             .then(persistedEvents => {
-              setEditedEvents(persistedEvents)
-              onEventsChanged?.(persistedEvents)
+              // Merge: for events touched by this batch, use the server version.
+              // For events the user may have edited concurrently, keep the local version.
+              setEditedEvents(prev => {
+                const serverMap = new Map(persistedEvents.map(e => [e.id, e]))
+                // Start with local events, replacing only the ones this batch touched
+                const merged = prev.map(e => {
+                  if (!e || !e.id) return e
+                  if (touchedIds.has(e.id) && serverMap.has(e.id)) {
+                    return serverMap.get(e.id)!
+                  }
+                  return e
+                }).filter((e): e is CalendarEvent => e !== null)
+                // Add any newly created events from the server that aren't in local state
+                for (const evt of persistedEvents) {
+                  if (evt.id && !merged.some(e => e.id === evt.id)) {
+                    merged.push(evt)
+                  }
+                }
+                onEventsChanged?.(merged)
+                return merged
+              })
               // Auto-push any published events that were modified
               for (const evt of persistedEvents) {
-                if (evt.id && evt.provider_syncs?.length) {
+                if (evt.id && touchedIds.has(evt.id) && evt.provider_syncs?.length) {
                   scheduleDebouncedPush(evt.id, evt.provider_syncs)
                 }
               }
@@ -470,8 +498,23 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
     }
   }
 
+  // Cancel any pending push timer for an event (e.g. before deleting it)
+  const cancelPendingPush = (eventId: string) => {
+    const timer = pushTimersRef.current.get(eventId)
+    if (timer) {
+      clearTimeout(timer)
+      pushTimersRef.current.delete(eventId)
+    }
+  }
+
   // Swipe left: remove event
   const handleSwipeDelete = async (event: CalendarEvent) => {
+    // Cancel any pending auto-push so a deleted event doesn't get synced
+    if (event.id) cancelPendingPush(event.id)
+
+    // Capture original position for rollback
+    const originalIndex = editedEvents.indexOf(event)
+
     // Remove from local state immediately
     setEditedEvents(prev => prev.filter(e => e !== event))
 
@@ -480,8 +523,13 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
         const result = await deleteEvent(event.id)
         onEventDeleted?.(event.id, result.session_id, result.remaining_event_count)
       } catch (error) {
-        // Re-add on failure
-        setEditedEvents(prev => [...prev, event])
+        // Re-add at original position on failure
+        setEditedEvents(prev => {
+          const restored = [...prev]
+          const insertAt = Math.min(originalIndex, restored.length)
+          restored.splice(insertAt, 0, event)
+          return restored
+        })
         addNotification(createErrorNotification(getFriendlyErrorMessage(error)))
         return
       }

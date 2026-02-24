@@ -13,10 +13,10 @@ backend/ENV/
 .env*.local
 
 # Node
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
-frontend/dist-ssr/
+web/node_modules/
+web/dist/
+web/.vite/
+web/dist-ssr/
 extension/node_modules/
 extension/dist/
 *.local
