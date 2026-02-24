@@ -532,14 +532,17 @@ def delete_event(event_id):
         Event.soft_delete(event_id)
 
         # Remove from parent session's event_ids
-        session_id = event.get('session_id')
+        # Events don't store session_id — look up via session.event_ids array
+        session_id = None
         remaining_event_count = None
-        if session_id:
-            try:
+        try:
+            parent_session = DBSession.find_session_for_event(event_id)
+            if parent_session:
+                session_id = parent_session['id']
                 updated_session = DBSession.remove_event(session_id, event_id)
                 remaining_event_count = len(updated_session.get('event_ids') or [])
-            except Exception:
-                pass  # Non-critical — session list will self-correct on next fetch
+        except Exception as e:
+            logger.warning(f"Failed to remove event {event_id} from session: {e}")
 
         return jsonify({
             'success': True,

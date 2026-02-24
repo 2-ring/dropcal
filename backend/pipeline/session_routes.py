@@ -120,7 +120,10 @@ def stream_session_updates(session_id: str):
                 # them without changing the count
                 if stream.events:
                     yield f"event: event\ndata: {json.dumps({'events': list(stream.events)})}\n\n"
-                yield f"event: complete\ndata: {json.dumps({'status': 'processed'})}\n\n"
+                complete_data = {'status': 'processed'}
+                if hasattr(stream, 'event_ids') and stream.event_ids:
+                    complete_data['event_ids'] = stream.event_ids
+                yield f"event: complete\ndata: {json.dumps(complete_data)}\n\n"
                 cleanup_stream(session_id)
                 return
 
@@ -185,7 +188,10 @@ def _poll_db_fallback(session_id, session):
                 if current_status == 'processed':
                     events = EventService.get_events_by_session(session_id)
                     yield f"event: event\ndata: {json.dumps({'events': events})}\n\n"
-                yield f"event: complete\ndata: {json.dumps({'status': current_status})}\n\n"
+                    yield f"event: complete\ndata: {json.dumps({'status': 'processed'})}\n\n"
+                else:
+                    error_msg = session.get('error_message', 'Processing failed')
+                    yield f"event: error\ndata: {json.dumps({'error': error_msg})}\n\n"
                 return
 
         # Heartbeat to keep connection alive through ALB/Nginx

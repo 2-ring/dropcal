@@ -481,16 +481,28 @@ function AppContent() {
               s.id === session.id ? { ...s, icon } : s
             ))
           },
-          onComplete: () => {
+          onComplete: (sseEventIds) => {
+            // Assign DB event IDs from the SSE complete payload (order-preserving)
+            if (sseEventIds && sseEventIds.length > 0) {
+              setCalendarEvents(prev => prev.map((event, i) => ({
+                ...event,
+                id: sseEventIds[i] || event.id,
+              })))
+            }
+
+            // Fetch full session metadata for sidebar/state updates
             const fetchSession = user ? getSession(session.id) : getGuestSession(session.id)
             fetchSession
               .then(updated => {
-                // Merge DB event IDs into the SSE-delivered events
-                const eventIds = updated.event_ids || []
-                setCalendarEvents(prev => prev.map((event, i) => ({
-                  ...event,
-                  id: eventIds[i] || event.id,
-                })))
+                // If SSE didn't include event_ids (e.g. DB polling fallback),
+                // fall back to mapping from fetched session
+                if (!sseEventIds || sseEventIds.length === 0) {
+                  const eventIds = updated.event_ids || []
+                  setCalendarEvents(prev => prev.map((event, i) => ({
+                    ...event,
+                    id: eventIds[i] || event.id,
+                  })))
+                }
                 setCurrentSession(prev => prev?.id === session.id ? { ...prev, ...updated } : prev)
                 setSessionHistory(prev => prev.map(s =>
                   s.id === session.id ? { ...s, ...updated, status: 'processed' } : s
@@ -619,15 +631,24 @@ function AppContent() {
               s.id === session.id ? { ...s, icon } : s
             ))
           },
-          onComplete: () => {
+          onComplete: (sseEventIds) => {
+            if (sseEventIds && sseEventIds.length > 0) {
+              setCalendarEvents(prev => prev.map((event, i) => ({
+                ...event,
+                id: sseEventIds[i] || event.id,
+              })))
+            }
+
             const fetchSession = user ? getSession(session.id) : getGuestSession(session.id)
             fetchSession
               .then(updated => {
-                const eventIds = updated.event_ids || []
-                setCalendarEvents(prev => prev.map((event, i) => ({
-                  ...event,
-                  id: eventIds[i] || event.id,
-                })))
+                if (!sseEventIds || sseEventIds.length === 0) {
+                  const eventIds = updated.event_ids || []
+                  setCalendarEvents(prev => prev.map((event, i) => ({
+                    ...event,
+                    id: eventIds[i] || event.id,
+                  })))
+                }
                 setCurrentSession(prev => prev?.id === session.id ? { ...prev, ...updated } : prev)
                 setSessionHistory(prev => prev.map(s =>
                   s.id === session.id ? { ...s, ...updated, status: 'processed' } : s

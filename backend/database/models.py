@@ -1164,6 +1164,23 @@ class Session:
         return response.data[0]
 
     @staticmethod
+    def find_session_for_event(event_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Find the session that contains an event ID in its event_ids array.
+
+        Args:
+            event_id: Event UUID to search for
+
+        Returns:
+            Session dict if found, None otherwise
+        """
+        supabase = get_supabase()
+        response = supabase.table("sessions").select("id,event_ids")\
+            .contains("event_ids", [event_id])\
+            .limit(1).execute()
+        return response.data[0] if response.data else None
+
+    @staticmethod
     def remove_event(session_id: str, event_id: str) -> Dict[str, Any]:
         """
         Remove an event ID from session's event_ids array.
@@ -1399,7 +1416,7 @@ class Event:
         return response.data
 
     @staticmethod
-    def update(event_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+    def update(event_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Update event fields.
 
@@ -1408,17 +1425,22 @@ class Event:
             updates: Dict of fields to update
 
         Returns:
-            Dict containing updated event data
+            Dict containing updated event data, or None if event not found
         """
         supabase = get_supabase()
         response = supabase.table("events").update(updates).eq("id", event_id).execute()
+        if not response.data:
+            return None
         return response.data[0]
 
     @staticmethod
     def increment_version(event_id: str) -> Dict[str, Any]:
         """
-        Increment the version counter for an event.
+        Atomically increment the version counter for an event.
         Called on every user edit to track changes for provider sync.
+
+        Uses an RPC function for atomic increment to avoid read-modify-write races.
+        Falls back to non-atomic increment if RPC is unavailable.
 
         Args:
             event_id: Event UUID
@@ -1427,6 +1449,15 @@ class Event:
             Dict containing updated event data
         """
         supabase = get_supabase()
+        try:
+            response = supabase.rpc('increment_event_version', {
+                'p_event_id': event_id
+            }).execute()
+            if response.data:
+                return response.data[0] if isinstance(response.data, list) else response.data
+        except Exception:
+            pass  # RPC not yet deployed — fall back to read-modify-write
+
         event = Event.get_by_id(event_id)
         if not event:
             raise ValueError(f"Event {event_id} not found")
@@ -1476,12 +1507,14 @@ class Event:
         return response.data[0]
 
     @staticmethod
-    def soft_delete(event_id: str) -> Dict[str, Any]:
-        """Soft delete an event."""
+    def soft_delete(event_id: str) -> Optional[Dict[str, Any]]:
+        """Soft delete an event. Returns None if event not found."""
         supabase = get_supabase()
         response = supabase.table("events").update({
             "deleted_at": datetime.utcnow().isoformat()
         }).eq("id", event_id).execute()
+        if not response.data:
+            return None
         return response.data[0]
 
     @staticmethod

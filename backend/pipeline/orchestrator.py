@@ -469,6 +469,7 @@ class SessionProcessor:
                 def _resolve_one(extracted):
                     return resolve_temporal(extracted, user_timezone=timezone)
 
+                failed_events = []
                 with ThreadPoolExecutor(max_workers=min(len(extracted_events), 8)) as pool:
                     future_to_idx = {
                         pool.submit(_resolve_one, ext): i
@@ -481,12 +482,20 @@ class SessionProcessor:
                         try:
                             ordered_results[idx] = future.result()
                         except Exception as e:
+                            failed_summary = extracted_events[idx].summary
+                            failed_events.append(failed_summary)
                             logger.warning(
-                                f"Temporal resolution failed for '{extracted_events[idx].summary}': {e}"
+                                f"Temporal resolution failed for '{failed_summary}': {e}"
                             )
 
                     for i in sorted(ordered_results):
                         calendar_events.append(ordered_results[i])
+
+                if failed_events:
+                    logger.warning(
+                        f"Dropped {len(failed_events)}/{len(extracted_events)} events "
+                        f"due to temporal resolution failures: {failed_events}"
+                    )
 
             logger.info(f"[timing] resolve: {_time.time() - t_resolve:.2f}s")
 
@@ -590,8 +599,9 @@ class SessionProcessor:
             DBSession.update_status(session_id, 'processed')
 
             # ── SIGNAL FRONTEND: pipeline complete ───────────────────────
+            event_ids = [e['id'] for e in created_events] if created_events else []
             if stream:
-                stream.mark_done()
+                stream.mark_done(event_ids=event_ids)
 
             logger.info(f"[timing] total_pipeline: {_time.time() - pipeline_start:.2f}s")
             capture_pipeline_trace(

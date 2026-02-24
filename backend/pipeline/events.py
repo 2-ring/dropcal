@@ -106,10 +106,15 @@ class EventService:
                 event_id = act.get('event_id')
                 cal_event = act.get('event', {})
                 if not event_id or not cal_event:
+                    logger.warning(f"Skipping edit action: missing event_id or event data")
                     continue
 
                 event = Event.get_by_id(event_id)
-                if not event or event.get('user_id') != user_id:
+                if not event:
+                    logger.warning(f"Skipping edit action: event {event_id} not found")
+                    continue
+                if event.get('user_id') != user_id:
+                    logger.warning(f"Skipping edit action: event {event_id} not owned by user {user_id}")
                     continue
 
                 updates = EventService.calendar_event_to_db_params(cal_event)
@@ -121,24 +126,33 @@ class EventService:
             elif action_type == 'delete':
                 event_id = act.get('event_id')
                 if not event_id:
+                    logger.warning(f"Skipping delete action: missing event_id")
                     continue
 
                 event = Event.get_by_id(event_id)
-                if not event or event.get('user_id') != user_id:
+                if not event:
+                    logger.warning(f"Skipping delete action: event {event_id} not found")
+                    continue
+                if event.get('user_id') != user_id:
+                    logger.warning(f"Skipping delete action: event {event_id} not owned by user {user_id}")
                     continue
 
                 Event.soft_delete(event_id)
                 try:
                     Session.remove_event(session_id, event_id)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to remove event {event_id} from session {session_id}: {e}")
 
             elif action_type == 'create':
                 cal_event = act.get('event', {})
                 if not cal_event.get('summary'):
+                    logger.warning(f"Skipping create action: missing summary")
                     continue
 
                 EventService.create_from_calendar_event(user_id, session_id, cal_event)
+
+            else:
+                logger.warning(f"Unknown modification action type: {action_type}")
 
         # Return the full updated event list for this session
         return EventService.get_events_by_session(session_id)
