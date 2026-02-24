@@ -28,10 +28,6 @@ export const hasSessionStorage =
   typeof _chrome.storage !== 'undefined' &&
   'session' in _chrome.storage;
 
-/** chrome.notifications (not available in Safari extensions) */
-export const hasNotifications =
-  typeof _chrome !== 'undefined' && 'notifications' in _chrome;
-
 /** chrome.action.openPopup() (Chrome 127+, Firefox 127+) */
 export const hasOpenPopup =
   typeof _chrome !== 'undefined' &&

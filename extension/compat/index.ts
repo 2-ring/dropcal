@@ -4,7 +4,6 @@
 export { api, hasSidebarAction } from './detect';
 export * as features from './detect';
 export { storage, clearSessionFallback } from './storage';
-export { notifications } from './notifications';
 export { panel } from './panel';
 export { action } from './action';
 export { onPollTick, startPolling, stopPolling, stopAllPolling, isPolling } from './polling';

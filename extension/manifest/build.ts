@@ -15,7 +15,7 @@ function buildManifest(browser: Browser): Record<string, any> {
     case 'chrome':
       return {
         ...base,
-        permissions: [...base.permissions, 'notifications', 'sidePanel'],
+        permissions: [...base.permissions, 'sidePanel'],
         background: {
           service_worker: 'background.js',
           type: 'module',
@@ -28,7 +28,7 @@ function buildManifest(browser: Browser): Record<string, any> {
     case 'firefox':
       return {
         ...base,
-        permissions: [...base.permissions, 'notifications'],
+        permissions: [...base.permissions],
         background: {
           scripts: ['background.js'],
           type: 'module',
@@ -49,11 +49,9 @@ function buildManifest(browser: Browser): Record<string, any> {
     case 'safari':
       return {
         ...base,
-        // Safari lacks chrome.notifications — omit from permissions
         background: {
           service_worker: 'background.js',
         },
-        // Safari lacks chrome.notifications — omit from permissions
       };
   }
 }

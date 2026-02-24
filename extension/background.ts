@@ -17,7 +17,6 @@ import {
   api,
   storage,
   clearSessionFallback,
-  notifications,
   action,
   panel,
   onPollTick,
@@ -288,13 +287,6 @@ onPollTick(async (sessionId) => {
         events,
       });
       await pushNotification(sessionId);
-
-      notifications.create(`dropcal-${sessionId}`, {
-        type: 'basic',
-        iconUrl: 'icons/icon128.png',
-        title: 'DropCal',
-        message: count === 1 ? '1 event scheduled' : `${count} events scheduled`,
-      });
 
       action.tryOpenPopup();
       return;
@@ -690,14 +682,3 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return false;
 });
 
-// ===== Notification Click =====
-
-notifications.onClicked.addListener(async (notificationId: string) => {
-  if (!notificationId.startsWith('dropcal-')) return;
-  const sessionId = notificationId.replace('dropcal-', '');
-  storage.session.set({ sidebarSessionId: sessionId });
-  // Notification click is a user gesture — open session in DropCal instead
-  // (sidePanel.open from service worker without user gesture context is unreliable)
-  const url = `${DROPCAL_URL}/s/${sessionId}`;
-  api.tabs.create({ url });
-});
