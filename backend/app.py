@@ -134,19 +134,18 @@ app.config['MAX_CONTENT_LENGTH'] = FileLimits.MAX_UPLOAD_BYTES
 # CENTRALIZED MODEL CONFIGURATION
 # ============================================================================
 
-from config.text import create_text_model, print_text_config
-from config.audio import print_audio_config
+from config.models import create_llm, get_extraction_threshold, print_model_config
 
 # Create LLM instances for each pipeline stage
-llm_extract = create_text_model('extract')
-llm_modify = create_text_model('modify')
-llm_personalize = create_text_model('personalize')
-llm_pattern_discovery = create_text_model('pattern_discovery')
-llm_vision = create_text_model('vision')
+llm_extract_simple = create_llm('extraction.text_simple')
+llm_extract_complex = create_llm('extraction.text_complex')
+llm_vision = create_llm('extraction.vision')
+llm_personalize = create_llm('personalization.personalize')
+llm_pattern_discovery = create_llm('personalization.pattern_discovery')
+llm_modify = create_llm('modification.modify')
 
 # Print configuration on startup
-print_text_config()
-print_audio_config()
+print_model_config()
 
 # ============================================================================
 
@@ -157,7 +156,12 @@ personalization_service = PersonalizationService()
 pattern_discovery_service = PatternDiscoveryService(llm_pattern_discovery)
 
 # Initialize agents
-extractor = UnifiedExtractor(llm_extract, llm_vision=llm_vision)
+extractor = UnifiedExtractor(
+    llm_simple=llm_extract_simple,
+    llm_complex=llm_extract_complex,
+    llm_vision=llm_vision,
+    complexity_threshold=get_extraction_threshold(),
+)
 modify_agent = EventModificationAgent(llm_modify)
 personalize_agent = PersonalizationAgent(llm_personalize)
 

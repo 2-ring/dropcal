@@ -554,12 +554,12 @@ class PersonalizationAgent(BaseAgent):
     def _capture_posthog_generation(self, messages, raw_ai_message, duration_ms):
         """Capture a manual $ai_generation event with full LLM I/O."""
         try:
-            from config.text import get_text_provider, get_model_specs
+            from config.models import get_assigned_model, get_model_specs
             from config.posthog import _PROVIDER_TO_POSTHOG
 
-            provider = get_text_provider('personalize')
-            specs = get_model_specs(provider)
-            model_name = specs['model_name']
+            model_name = get_assigned_model('personalization.personalize')
+            specs = get_model_specs(model_name)
+            provider = specs['provider']
             posthog_provider = _PROVIDER_TO_POSTHOG.get(provider, provider)
 
             input_messages = [

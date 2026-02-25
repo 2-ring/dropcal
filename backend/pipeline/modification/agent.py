@@ -41,9 +41,9 @@ class EventModificationAgent(BaseAgent):
         self._prompt_path = "pipeline/modification/prompts/modification.txt"
 
         # Resolve provider/model for manual PostHog capture
-        from config.text import get_text_provider, get_model_specs
-        self._provider = get_text_provider('modify')
-        self._model_name = get_model_specs(self._provider)['model_name']
+        from config.models import get_assigned_model, get_model_specs
+        self._model_name = get_assigned_model('modification.modify')
+        self._provider = get_model_specs(self._model_name)['provider']
 
     def execute(
         self,

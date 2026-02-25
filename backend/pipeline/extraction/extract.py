@@ -8,7 +8,12 @@ structured facts — all at once.
 Usage:
     from extraction.extract import UnifiedExtractor
 
-    extractor = UnifiedExtractor(llm, llm_vision=llm_vision)
+    extractor = UnifiedExtractor(
+        llm_simple=llm_simple,
+        llm_complex=llm_complex,
+        llm_vision=llm_vision,
+        complexity_threshold=500,
+    )
     result = extractor.execute(text, input_type='text')
     # Returns ExtractedEventBatch with session_title and events
 """
@@ -36,16 +41,15 @@ _INPUT_TYPE_LABELS = {
 }
 
 
-def _capture_generation(input_content, raw_ai_message, duration_ms):
+def _capture_generation(config_path: str, input_content, raw_ai_message, duration_ms):
     """Capture a manual $ai_generation event with full LLM I/O for PostHog."""
     try:
-        from config.text import get_text_provider, get_model_specs
+        from config.models import get_assigned_model, get_model_specs
         from config.posthog import _PROVIDER_TO_POSTHOG
 
-        component = 'extract'
-        provider = get_text_provider(component)
-        specs = get_model_specs(provider)
-        model_name = specs['model_name']
+        model_name = get_assigned_model(config_path)
+        specs = get_model_specs(model_name)
+        provider = specs['provider']
         posthog_provider = _PROVIDER_TO_POSTHOG.get(provider, provider)
 
         # Serialize output — content for JSON mode, tool_calls for tool-calling mode
@@ -78,12 +82,17 @@ class UnifiedExtractor(BaseAgent):
     """
     Unified EXTRACT stage — finds all events AND extracts structured facts
     in a single LLM call. Replaces IDENTIFY + CONSOLIDATE + STRUCTURE.
+
+    Routes to simple (non-reasoning) or complex (reasoning) model based on
+    input length, and to vision model for images.
     """
 
-    def __init__(self, llm, llm_vision=None):
+    def __init__(self, llm_simple, llm_complex, llm_vision=None, complexity_threshold=500):
         super().__init__("Extract")
-        self.llm = llm
-        self.llm_vision = llm_vision or llm
+        self.llm_simple = llm_simple
+        self.llm_complex = llm_complex
+        self.llm_vision = llm_vision or llm_complex
+        self.complexity_threshold = complexity_threshold
 
     def execute(
         self,
@@ -111,6 +120,12 @@ class UnifiedExtractor(BaseAgent):
         else:
             return self._execute_text(text, input_type)
 
+    def _pick_text_model(self, text: str):
+        """Pick simple or complex model based on input length."""
+        if len(text) <= self.complexity_threshold:
+            return self.llm_simple, 'extraction.text_simple'
+        return self.llm_complex, 'extraction.text_complex'
+
     def _execute_text(self, text: str, input_type: str) -> tuple:
         """Text path: single structured output call."""
         system_prompt = load_prompt("pipeline/extraction/prompts/unified_extract.txt")
@@ -118,7 +133,10 @@ class UnifiedExtractor(BaseAgent):
         source_label = _INPUT_TYPE_LABELS.get(input_type, input_type or 'text')
         user_message = f"[SOURCE TYPE: {source_label}]\n\n{text}"
 
-        structured_llm = self.llm.with_structured_output(
+        llm, config_path = self._pick_text_model(text)
+        logger.info(f"Extraction using {config_path} (input: {len(text)} chars, threshold: {self.complexity_threshold})")
+
+        structured_llm = llm.with_structured_output(
             ExtractedEventBatch, include_raw=True
         )
 
@@ -134,9 +152,8 @@ class UnifiedExtractor(BaseAgent):
         result = raw_result['parsed']
         raw_ai_message = raw_result.get('raw')
 
-        # Manual PostHog generation capture — pass string content directly
-        # (not from message objects, which may be mutated by with_structured_output)
         _capture_generation(
+            config_path,
             [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
@@ -189,8 +206,8 @@ class UnifiedExtractor(BaseAgent):
         result = raw_result['parsed']
         raw_ai_message = raw_result.get('raw')
 
-        # Manual PostHog generation capture — use text content only (strip base64 image data)
         _capture_generation(
+            'extraction.vision',
             [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"[image: {media_type}]\n\n{user_text}"},

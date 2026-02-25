@@ -6,7 +6,7 @@ Multi-provider audio transcription (Deepgram, OpenAI Whisper, Grok)
 import os
 from pathlib import Path
 from typing import Set, Optional
-from config.audio import get_audio_provider, get_api_key, get_model
+from config.models import get_audio_provider, get_audio_api_key, get_audio_model_name
 
 from .factory import BaseInputProcessor, ProcessingResult, InputType
 
@@ -31,8 +31,8 @@ class AudioProcessor(BaseInputProcessor):
             api_key: Optional API key override. If None, uses config/env
         """
         self.provider = get_audio_provider()
-        self.api_key = api_key or get_api_key(self.provider)
-        self.model = get_model(self.provider)
+        self.api_key = api_key or get_audio_api_key()
+        self.model = get_audio_model_name()
 
         # Initialize provider-specific client
         if self.provider == 'deepgram':

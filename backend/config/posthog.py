@@ -180,11 +180,11 @@ _AGENT_LABELS = {
 # Maps stage_name → config component, so get_invoke_config() can resolve
 # the actual provider (grok/claude/openai) instead of the LangChain class name.
 _AGENT_TO_COMPONENT = {
-    'extraction': 'extract',
-    'personalization': 'personalize',
-    'modification': 'modify',
-    'pattern_discovery': 'pattern_discovery',
-    'pattern_analysis': 'pattern_discovery',
+    'extraction': 'extraction.text_complex',
+    'personalization': 'personalization.personalize',
+    'modification': 'modification.modify',
+    'pattern_discovery': 'personalization.pattern_discovery',
+    'pattern_analysis': 'personalization.pattern_discovery',
 }
 
 # Display names for input types in pipeline trace names.
@@ -206,8 +206,8 @@ def _truncate(s, max_len=50):
 # OpenAI-compatible API, and PostHog only has pricing tables for "openai"
 # provider — not "grok".  Map so costs show up correctly.
 _PROVIDER_TO_POSTHOG = {
-    'grok': 'openai',
-    'claude': 'anthropic',
+    'xai': 'openai',
+    'anthropic': 'anthropic',
     'openai': 'openai',
 }
 
@@ -285,10 +285,10 @@ def get_invoke_config(agent_name=None, properties=None):
         component = _AGENT_TO_COMPONENT.get(agent_name)
         if component:
             try:
-                from config.text import get_text_provider, get_model_specs
-                provider = get_text_provider(component)
-                merged_properties['provider'] = provider
-                merged_properties['model'] = get_model_specs(provider)['model_name']
+                from config.models import get_assigned_model, get_model_specs
+                model_name = get_assigned_model(component)
+                merged_properties['model'] = model_name
+                merged_properties['provider'] = get_model_specs(model_name)['provider']
             except Exception:
                 pass
 
