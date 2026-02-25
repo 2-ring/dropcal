@@ -100,11 +100,6 @@ function AppContent() {
   const appStateRef = useRef<AppState>(appState)
   appStateRef.current = appState
 
-  // Promise that resolves with event IDs once pipeline events are saved to DB.
-  // Allows push handlers to wait for DB persistence before attempting calendar sync.
-  const eventsSavedPromiseRef = useRef<Promise<string[]> | null>(null)
-  const eventsSavedResolveRef = useRef<((ids: string[]) => void) | null>(null)
-
   // Guest mode state
   const [isGuestMode, setIsGuestMode] = useState(false)
   const [authModalHeading, setAuthModalHeading] = useState<string | null>(null)
@@ -447,11 +442,8 @@ function AppContent() {
       }
       setSessionHistory(prev => [session, ...prev.filter(s => s.id !== session.id)])
 
-      // Stream events via SSE (events arrive as they're resolved)
+      // Stream events via SSE (events arrive with DB IDs already attached)
       streamingSessionRef.current = session.id
-      eventsSavedPromiseRef.current = new Promise<string[]>(resolve => {
-        eventsSavedResolveRef.current = resolve
-      })
       await new Promise<void>((resolve, reject) => {
         const cleanup = streamSession(session.id, {
           onEvents: (events) => {
@@ -478,7 +470,6 @@ function AppContent() {
               extracting: LOADING_MESSAGES.EXTRACTING_EVENTS,
               resolving: LOADING_MESSAGES.EXTRACTING_FACTS,
               personalizing: LOADING_MESSAGES.FORMATTING_CALENDAR,
-              saving: LOADING_MESSAGES.ADDING_TO_CALENDAR,
             }
             if (stageMessages[stage]) {
               setLoadingConfig(stageMessages[stage])
@@ -494,34 +485,11 @@ function AppContent() {
               s.id === session.id ? { ...s, icon } : s
             ))
           },
-          onComplete: (sseEventIds) => {
-            // Assign DB event IDs from the SSE complete payload (order-preserving)
-            if (sseEventIds && sseEventIds.length > 0) {
-              setCalendarEvents(prev => prev.map((event, i) => ({
-                ...event,
-                id: sseEventIds[i] || event.id,
-              })))
-            }
-
-            // Resolve the save promise so any pending push operations can proceed
-            const resolvedIds = sseEventIds || []
-            eventsSavedResolveRef.current?.(resolvedIds)
-            eventsSavedResolveRef.current = null
-            eventsSavedPromiseRef.current = null
-
+          onComplete: () => {
             // Fetch full session metadata for sidebar/state updates
             const fetchSession = user ? getSession(session.id) : getGuestSession(session.id)
             fetchSession
               .then(updated => {
-                // If SSE didn't include event_ids (e.g. DB polling fallback),
-                // fall back to mapping from fetched session
-                if (!sseEventIds || sseEventIds.length === 0) {
-                  const eventIds = updated.event_ids || []
-                  setCalendarEvents(prev => prev.map((event, i) => ({
-                    ...event,
-                    id: eventIds[i] || event.id,
-                  })))
-                }
                 setCurrentSession(prev => prev?.id === session.id ? { ...prev, ...updated } : prev)
                 setSessionHistory(prev => prev.map(s =>
                   s.id === session.id ? { ...s, ...updated, status: 'processed' } : s
@@ -543,10 +511,6 @@ function AppContent() {
           },
           onError: (error) => {
             streamingSessionRef.current = null
-            // Unblock any pending push operations waiting for save
-            eventsSavedResolveRef.current?.([])
-            eventsSavedResolveRef.current = null
-            eventsSavedPromiseRef.current = null
             cleanup()
             reject(new Error(error))
           },
@@ -610,11 +574,8 @@ function AppContent() {
 
       setLoadingConfig(LOADING_MESSAGES.PROCESSING_FILE)
 
-      // Stream events via SSE (events arrive as they're resolved)
+      // Stream events via SSE (events arrive with DB IDs already attached)
       streamingSessionRef.current = session.id
-      eventsSavedPromiseRef.current = new Promise<string[]>(resolve => {
-        eventsSavedResolveRef.current = resolve
-      })
       await new Promise<void>((resolve, reject) => {
         const cleanup = streamSession(session.id, {
           onEvents: (events) => {
@@ -641,7 +602,6 @@ function AppContent() {
               extracting: LOADING_MESSAGES.EXTRACTING_EVENTS,
               resolving: LOADING_MESSAGES.EXTRACTING_FACTS,
               personalizing: LOADING_MESSAGES.FORMATTING_CALENDAR,
-              saving: LOADING_MESSAGES.ADDING_TO_CALENDAR,
             }
             if (stageMessages[stage]) {
               setLoadingConfig(stageMessages[stage])
@@ -657,30 +617,10 @@ function AppContent() {
               s.id === session.id ? { ...s, icon } : s
             ))
           },
-          onComplete: (sseEventIds) => {
-            if (sseEventIds && sseEventIds.length > 0) {
-              setCalendarEvents(prev => prev.map((event, i) => ({
-                ...event,
-                id: sseEventIds[i] || event.id,
-              })))
-            }
-
-            // Resolve the save promise so any pending push operations can proceed
-            const resolvedIds = sseEventIds || []
-            eventsSavedResolveRef.current?.(resolvedIds)
-            eventsSavedResolveRef.current = null
-            eventsSavedPromiseRef.current = null
-
+          onComplete: () => {
             const fetchSession = user ? getSession(session.id) : getGuestSession(session.id)
             fetchSession
               .then(updated => {
-                if (!sseEventIds || sseEventIds.length === 0) {
-                  const eventIds = updated.event_ids || []
-                  setCalendarEvents(prev => prev.map((event, i) => ({
-                    ...event,
-                    id: eventIds[i] || event.id,
-                  })))
-                }
                 setCurrentSession(prev => prev?.id === session.id ? { ...prev, ...updated } : prev)
                 setSessionHistory(prev => prev.map(s =>
                   s.id === session.id ? { ...s, ...updated, status: 'processed' } : s
@@ -702,10 +642,6 @@ function AppContent() {
           },
           onError: (error) => {
             streamingSessionRef.current = null
-            // Unblock any pending push operations waiting for save
-            eventsSavedResolveRef.current?.([])
-            eventsSavedResolveRef.current = null
-            eventsSavedPromiseRef.current = null
             cleanup()
             reject(new Error(error))
           },
@@ -760,8 +696,6 @@ function AppContent() {
   // Handle new session
   const handleNewSession = useCallback(() => {
     activeViewSessionRef.current = null
-    eventsSavedPromiseRef.current = null
-    eventsSavedResolveRef.current = null
     setAppState('input')
     setCurrentSession(null)
     setCalendarEvents([])
@@ -813,14 +747,6 @@ function AppContent() {
     }
   }, [user, currentSession])
 
-  // Returns a promise that resolves with event IDs once pipeline events are saved to DB.
-  // Used by EventsWorkspace to wait before pushing events to calendar.
-  const waitForEventsSaved = useCallback(async (): Promise<string[]> => {
-    if (eventsSavedPromiseRef.current) {
-      return eventsSavedPromiseRef.current
-    }
-    return []
-  }, [])
 
   // Handle events changed in EventsWorkspace (edits, syncs) — keep parent state in sync
   const handleEventsChanged = useCallback((events: CalendarEvent[]) => {
@@ -916,7 +842,7 @@ function AppContent() {
           onNewSession={handleNewSession}
           onAuthRequired={() => setAuthModalHeading('Sign in to add events to your calendar.')}
           sessionId={currentSession?.id}
-          waitForEventsSaved={waitForEventsSaved}
+
         />
       </div>
     </div>

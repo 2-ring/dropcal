@@ -120,10 +120,7 @@ def stream_session_updates(session_id: str):
                 # them without changing the count
                 if stream.events:
                     yield f"event: event\ndata: {json.dumps({'events': list(stream.events)})}\n\n"
-                complete_data = {'status': 'processed'}
-                if hasattr(stream, 'event_ids') and stream.event_ids:
-                    complete_data['event_ids'] = stream.event_ids
-                yield f"event: complete\ndata: {json.dumps(complete_data)}\n\n"
+                yield f"event: complete\ndata: {json.dumps({'status': 'processed'})}\n\n"
                 cleanup_stream(session_id)
                 return
 

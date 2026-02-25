@@ -51,10 +51,9 @@ interface EventsWorkspaceProps {
   onAuthRequired?: () => void
   sessionId?: string
   calendars?: SyncCalendar[]
-  waitForEventsSaved?: () => Promise<string[]>
 }
 
-export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsChanged, isLoading = false, loadingConfig = [], expectedEventCount, inputType, inputContent, onBack, onAuthRequired, sessionId, calendars: propCalendars, waitForEventsSaved }: EventsWorkspaceProps) {
+export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsChanged, isLoading = false, loadingConfig = [], expectedEventCount, inputType, inputContent, onBack, onAuthRequired, sessionId, calendars: propCalendars }: EventsWorkspaceProps) {
   const [changeRequest, setChangeRequest] = useState('')
   const [isChatExpanded, setIsChatExpanded] = useState(false)
   const [editingEventIndex, setEditingEventIndex] = useState<number | null>(null)
@@ -431,19 +430,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
         onAuthRequired?.()
         return
       }
-      let validEditedEvents = editedEvents.filter((e): e is CalendarEvent => e !== null)
-      const hasIds = validEditedEvents.some(e => !!e.id)
-
-      // If events haven't been saved to DB yet, wait for pipeline to finish saving
-      if (!hasIds && waitForEventsSaved) {
-        setActiveLoading(LOADING_MESSAGES.SAVING_TO_DATABASE)
-        const savedIds = await waitForEventsSaved()
-        // Patch events with their DB IDs (positional mapping from pipeline)
-        validEditedEvents = validEditedEvents.map((e, i) => ({
-          ...e,
-          id: e.id || savedIds[i],
-        }))
-      }
+      const validEditedEvents = editedEvents.filter((e): e is CalendarEvent => e !== null)
 
       setActiveLoading(LOADING_MESSAGES.ADDING_TO_CALENDAR)
       try {
@@ -483,18 +470,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
       return
     }
 
-    let eventId = event.id
-
-    // If event hasn't been saved to DB yet, wait for pipeline to finish saving
-    if (!eventId && waitForEventsSaved) {
-      setActiveLoading(LOADING_MESSAGES.SAVING_TO_DATABASE)
-      const savedIds = await waitForEventsSaved()
-      // Find this event's position in editedEvents to get its DB ID
-      const validEvents = editedEvents.filter((e): e is CalendarEvent => e !== null)
-      const index = validEvents.indexOf(event)
-      eventId = index >= 0 ? savedIds[index] : undefined
-    }
-
+    const eventId = event.id
     if (!eventId) return
 
     setActiveLoading(LOADING_MESSAGES.ADDING_TO_CALENDAR)

@@ -27,7 +27,6 @@ class SessionStream:
         self.stage: Optional[str] = None  # Current pipeline stage
         self.done = False
         self.error: Optional[str] = None
-        self.event_ids: Optional[List[str]] = None
         self._revision = 0  # Bumped on any event list change
         self._condition = threading.Condition()
         self._created_at = time.monotonic()
@@ -57,7 +56,7 @@ class SessionStream:
             self._condition.notify_all()
 
     def set_stage(self, stage: str):
-        """Set the current pipeline stage (extracting, resolving, personalizing, saving)."""
+        """Set the current pipeline stage (extracting, resolving, personalizing)."""
         with self._condition:
             self.stage = stage
             self._condition.notify_all()
@@ -67,10 +66,9 @@ class SessionStream:
             self.icon = icon
             self._condition.notify_all()
 
-    def mark_done(self, event_ids: Optional[List[str]] = None):
+    def mark_done(self):
         with self._condition:
             self.done = True
-            self.event_ids = event_ids
             self._condition.notify_all()
 
     def mark_error(self, error: str):

@@ -220,13 +220,14 @@ class SessionProcessor:
             logger.warning(f"Error selecting icon for session {session_id}: {e}")
 
     @staticmethod
-    def _calendar_event_to_frontend(cal_event, calendars_lookup=None, primary_calendar=None) -> dict:
+    def _calendar_event_to_frontend(cal_event, calendars_lookup=None, primary_calendar=None, event_id=None) -> dict:
         """Convert a CalendarEvent model to the dict shape the frontend expects.
 
         Args:
             cal_event: CalendarEvent model
             calendars_lookup: Optional dict mapping provider_cal_id → {name, color}
             primary_calendar: Optional dict {name, color} for the primary calendar
+            event_id: Optional DB event ID to include
         """
         tz = 'America/New_York'
         if cal_event.start.date is not None:
@@ -241,6 +242,8 @@ class SessionProcessor:
             'start': start,
             'end': end,
         }
+        if event_id:
+            result['id'] = event_id
         if cal_event.location:
             result['location'] = cal_event.location
         if cal_event.description:
@@ -546,21 +549,8 @@ class SessionProcessor:
 
                 logger.info(f"[timing] personalize: {_time.time() - t_personalize:.2f}s")
 
-            # Stream events to frontend (after personalization so titles,
-            # calendar assignments, and formatting are final)
-            stream = get_stream(session_id)
-            if stream:
-                for cal_event in calendar_events:
-                    stream.push_event(self._calendar_event_to_frontend(
-                        cal_event, calendars_lookup, primary_calendar
-                    ))
-
             # ── SAVE: write events to DB (batch insert) ─────────────────
-            # Frontend already has events via SSE. Save to DB, signal
-            # completion, then compute embeddings in background.
-            stream = get_stream(session_id)
-            if stream:
-                stream.set_stage('saving')
+            # Save first so events have DB IDs before streaming to frontend.
             t_save = _time.time()
             events_data = []
             for calendar_event in calendar_events:
@@ -596,12 +586,23 @@ class SessionProcessor:
 
             logger.info(f"[timing] save: {_time.time() - t_save:.2f}s")
 
+            # Build event ID lookup from saved records
+            event_ids = [e['id'] for e in created_events] if created_events else []
+
+            # Stream events to frontend with DB IDs already attached
+            stream = get_stream(session_id)
+            if stream:
+                for i, cal_event in enumerate(calendar_events):
+                    event_id = event_ids[i] if i < len(event_ids) else None
+                    stream.push_event(self._calendar_event_to_frontend(
+                        cal_event, calendars_lookup, primary_calendar, event_id=event_id
+                    ))
+
             DBSession.update_status(session_id, 'processed')
 
             # ── SIGNAL FRONTEND: pipeline complete ───────────────────────
-            event_ids = [e['id'] for e in created_events] if created_events else []
             if stream:
-                stream.mark_done(event_ids=event_ids)
+                stream.mark_done()
 
             logger.info(f"[timing] total_pipeline: {_time.time() - pipeline_start:.2f}s")
             capture_pipeline_trace(

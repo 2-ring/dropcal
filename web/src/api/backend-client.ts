@@ -108,7 +108,7 @@ export function streamSession(
     onIcon?: (icon: string) => void
     onCount?: (count: number) => void
     onStage?: (stage: string) => void
-    onComplete: (eventIds?: string[]) => void
+    onComplete: () => void
     onError: (error: string) => void
   }
 ): () => void {
@@ -157,15 +157,8 @@ export function streamSession(
     }
   })
 
-  eventSource.addEventListener('complete', (e) => {
-    let eventIds: string[] | undefined
-    if (e instanceof MessageEvent && e.data) {
-      try {
-        const data = JSON.parse(e.data)
-        eventIds = data.event_ids
-      } catch { /* ignore parse errors */ }
-    }
-    callbacks.onComplete(eventIds)
+  eventSource.addEventListener('complete', () => {
+    callbacks.onComplete()
     eventSource.close()
   })
 
