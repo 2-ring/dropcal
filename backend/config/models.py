@@ -31,9 +31,9 @@ MODELS: Dict[str, Dict[str, Any]] = {
         'provider': 'openai',
         'api_key_env': 'OPENAI_API_KEY',
         'reasoning': {'effort': 'low'},
-        'cost_per_m': {'input': 2.00, 'output': 8.00},
+        'cost_per_m': {'input': 1.75, 'output': 14.00},
     },
-    'claude-sonnet-4-5-20250929': {
+    'claude-sonnet-4-6': {
         'provider': 'anthropic',
         'api_key_env': 'ANTHROPIC_API_KEY',
         'cost_per_m': {'input': 3.00, 'output': 15.00},
@@ -41,12 +41,12 @@ MODELS: Dict[str, Dict[str, Any]] = {
 
     # ── Transcription Models ─────────────────────────────────────────────
 
-    'nova-2': {
+    'nova-3': {
         'provider': 'deepgram',
         'api_key_env': 'DEEPGRAM_API_KEY',
         'max_file_size_mb': None,
     },
-    'whisper-1': {
+    'gpt-4o-transcribe': {
         'provider': 'openai',
         'api_key_env': 'OPENAI_API_KEY',
         'max_file_size_mb': 25,
@@ -90,7 +90,7 @@ class ModificationConfig:
 
 @dataclass
 class TranscriptionConfig:
-    audio: str = 'whisper-1'
+    audio: str = 'gpt-4o-transcribe'
 
 
 @dataclass
