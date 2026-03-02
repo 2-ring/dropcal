@@ -687,7 +687,6 @@ function AppContent() {
 
   // Handle session click (load from history)
   const handleSessionClick = useCallback((sessionId: string) => {
-    activeViewSessionRef.current = sessionId
     navigate(`/s/${sessionId}`)
     // On mobile (full-screen overlay), auto-close sidebar on navigation
     if (window.innerWidth <= 768) setSidebarOpen(false)
