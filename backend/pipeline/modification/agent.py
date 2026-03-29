@@ -72,10 +72,12 @@ class EventModificationAgent(BaseAgent):
         current_date = datetime.now().strftime('%Y-%m-%d')
         current_time = datetime.now().strftime('%H:%M:%S')
 
-        # Build numbered event list for the prompt
+        # Build event list for the prompt, keyed by UUID
         event_lines = []
         for i, event in enumerate(events):
-            event_lines.append(f"[{i}] {event}")
+            event_id = event.get('id') if isinstance(event, dict) else getattr(event, 'id', None)
+            key = event_id or f'no-id-{i}'
+            event_lines.append(f"[{key}] {event}")
         events_block = "\n\n".join(event_lines)
 
         # Build calendars context with IDs so the LLM outputs correct IDs
@@ -115,36 +117,39 @@ class EventModificationAgent(BaseAgent):
 
         # ── Context fetch + Call 2 if needed ─────────────────────────
         if decision.needs_context and session_id:
-            original_context = self._fetch_original_context(session_id)
-            if original_context:
-                logger.info(f"Modification agent fetching context for session {session_id} ({len(original_context)} chars)")
+            original_context, context_error = self._fetch_original_context_with_retry(session_id)
 
-                system_prompt_with_context = load_prompt(
-                    self._prompt_path,
-                    current_date=current_date,
-                    current_time=current_time,
-                    input_summary=input_summary or '',
-                    original_context=original_context,
-                )
+            if context_error:
+                raise ValueError(context_error)
 
-                messages_with_context = [
-                    SystemMessage(content=system_prompt_with_context),
-                    HumanMessage(content=human_content),
-                ]
+            logger.info(f"Modification agent fetching context for session {session_id} ({len(original_context)} chars)")
 
-                start2 = _time.time()
-                raw_result2 = self.llm_execute.invoke(messages_with_context)
-                duration_ms2 = (_time.time() - start2) * 1000
-                result = raw_result2['parsed']
+            system_prompt_with_context = load_prompt(
+                self._prompt_path,
+                current_date=current_date,
+                current_time=current_time,
+                input_summary=input_summary or '',
+                original_context=original_context,
+            )
 
-                self._capture_posthog(
-                    "modification_with_context", system_prompt_with_context,
-                    human_content, raw_result2, result, duration_ms2,
-                )
+            messages_with_context = [
+                SystemMessage(content=system_prompt_with_context),
+                HumanMessage(content=human_content),
+            ]
 
-                return result
+            start2 = _time.time()
+            raw_result2 = self.llm_execute.invoke(messages_with_context)
+            duration_ms2 = (_time.time() - start2) * 1000
+            result = raw_result2['parsed']
 
-        # needs_context=false, or no session_id, or context fetch failed
+            self._capture_posthog(
+                "modification_with_context", system_prompt_with_context,
+                human_content, raw_result2, result, duration_ms2,
+            )
+
+            return result
+
+        # needs_context=false or no session_id — act on event data alone
         return decision
 
     # ── Helpers ───────────────────────────────────────────────────────
@@ -161,38 +166,51 @@ class EventModificationAgent(BaseAgent):
             logger.warning(f"Failed to fetch input_summary for session {session_id}: {e}")
         return None
 
-    def _fetch_original_context(self, session_id: str) -> Optional[str]:
+    def _fetch_original_context_with_retry(
+        self, session_id: str, retries: int = 2
+    ) -> tuple[Optional[str], Optional[str]]:
         """
-        Fetch original input context for a session.
+        Fetch original input context for a session, with retries on DB errors.
 
-        Text sessions → input_content (the raw text).
-        File sessions → processed_text (transcription, PDF text, etc.).
-        Image sessions → None (no text representation).
+        Returns (context, error_message). Exactly one will be non-None.
+        - Image sessions: no text representation → error immediately, no retry.
+        - DB errors: retry up to `retries` times before returning an error.
         """
-        try:
-            from database.models import Session as DBSession
-            session = DBSession.get_by_id(session_id)
-            if not session:
-                return None
+        from database.models import Session as DBSession
 
-            input_type = session.get('input_type', 'text')
+        last_exc = None
+        for attempt in range(retries + 1):
+            try:
+                session = DBSession.get_by_id(session_id)
+                if not session:
+                    return None, "The original session could not be found."
 
-            if input_type == 'image':
-                return None
+                input_type = session.get('input_type', 'text')
 
-            if input_type == 'text':
-                context = session.get('input_content')
-            else:
-                context = session.get('processed_text') or session.get('input_content')
+                if input_type == 'image':
+                    return None, "This request needs the original input, but image sessions don't have a text representation."
 
-            if context and len(context) > MAX_CONTEXT_LENGTH:
-                context = context[:MAX_CONTEXT_LENGTH] + "\n\n[...truncated]"
+                if input_type == 'text':
+                    context = session.get('input_content')
+                else:
+                    context = session.get('processed_text') or session.get('input_content')
 
-            return context
+                if not context:
+                    return None, "The original input text is not available for this session."
 
-        except Exception as e:
-            logger.warning(f"Failed to fetch context for session {session_id}: {e}")
-            return None
+                if len(context) > MAX_CONTEXT_LENGTH:
+                    context = context[:MAX_CONTEXT_LENGTH] + "\n\n[...truncated]"
+
+                return context, None
+
+            except Exception as e:
+                last_exc = e
+                if attempt < retries:
+                    logger.warning(f"Context fetch attempt {attempt + 1} failed for session {session_id}: {e}, retrying...")
+                    _time.sleep(0.5 * (attempt + 1))
+
+        logger.error(f"All context fetch attempts failed for session {session_id}: {last_exc}")
+        return None, "Failed to retrieve the original input after multiple attempts. Please try again."
 
     def _capture_posthog(
         self, generation_name: str, system_prompt: str, human_content: str,

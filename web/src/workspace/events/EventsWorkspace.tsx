@@ -322,43 +322,41 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
         }
 
         const result = await response.json()
-        const actions: { index: number; action: 'edit' | 'delete' | 'create'; edited_event?: CalendarEvent }[] = result.actions ?? []
+        const actions: { event_id?: string; action: 'edit' | 'delete' | 'create'; changes?: Partial<CalendarEvent> }[] = result.actions ?? []
 
         // Build optimistic UI update + batch persistence actions
-        const deleteIndices = new Set<number>()
-        const editMap = new Map<number, CalendarEvent>()
+        const deletedIds = new Set<string>()
+        const editedMap = new Map<string, CalendarEvent>()
         const newEvents: CalendarEvent[] = []
-        const batchActions: { event_id?: string; action: 'edit' | 'delete' | 'create'; event?: CalendarEvent }[] = []
+        const batchActions: { event_id?: string; action: 'edit' | 'delete' | 'create'; changes?: Partial<CalendarEvent> }[] = []
 
         for (const a of actions) {
-          if (a.action === 'delete') {
-            deleteIndices.add(a.index)
-            const original = validEvents[a.index]
-            if (original?.id) {
-              batchActions.push({ event_id: original.id, action: 'delete' })
+          if (a.action === 'delete' && a.event_id) {
+            deletedIds.add(a.event_id)
+            batchActions.push({ event_id: a.event_id, action: 'delete' })
+          } else if (a.action === 'create' && a.changes) {
+            newEvents.push({ ...a.changes as CalendarEvent, version: 1 })
+            batchActions.push({ action: 'create', changes: a.changes })
+          } else if (a.action === 'edit' && a.event_id && a.changes) {
+            const original = validEvents.find(e => e.id === a.event_id)
+            if (original) {
+              editedMap.set(a.event_id, {
+                ...original,
+                ...a.changes,
+                id: original.id,
+                provider_syncs: original.provider_syncs,
+                version: (original.version ?? 1) + 1,
+              })
             }
-          } else if (a.action === 'create' && a.edited_event) {
-            newEvents.push({ ...a.edited_event, version: 1 })
-            batchActions.push({ action: 'create', event: a.edited_event })
-          } else if (a.action === 'edit' && a.edited_event) {
-            const original = validEvents[a.index]
-            editMap.set(a.index, {
-              ...a.edited_event,
-              id: original?.id,
-              provider_syncs: original?.provider_syncs,
-              version: (original?.version ?? 1) + 1,
-            })
-            if (original?.id) {
-              batchActions.push({ event_id: original.id, action: 'edit', event: a.edited_event })
-            }
+            batchActions.push({ event_id: a.event_id, action: 'edit', changes: a.changes })
           }
         }
 
         // Optimistic UI update: apply changes immediately
-        let optimistic = validEvents.map((event, i) => {
-          if (deleteIndices.has(i)) return null
-          const edited = editMap.get(i)
-          return edited ?? event
+        let optimistic = validEvents.map(event => {
+          if (!event.id) return event
+          if (deletedIds.has(event.id)) return null
+          return editedMap.get(event.id) ?? event
         }).filter((e): e is CalendarEvent => e !== null)
         optimistic = [...optimistic, ...newEvents]
 

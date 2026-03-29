@@ -28,7 +28,8 @@ class EventService:
         """
         params: Dict[str, Any] = {}
 
-        params['summary'] = cal_event.get('summary', '')
+        if cal_event.get('summary'):
+            params['summary'] = cal_event['summary']
 
         start = cal_event.get('start', {})
         if start.get('dateTime'):
@@ -49,13 +50,13 @@ class EventService:
             params['is_all_day'] = True
 
         for field in ('location', 'description'):
-            if cal_event.get(field) is not None:
+            if field in cal_event:
                 params[field] = cal_event[field]
 
-        if cal_event.get('calendar') is not None:
+        if 'calendar' in cal_event:
             params['calendar_name'] = cal_event['calendar']
 
-        if cal_event.get('recurrence') is not None:
+        if 'recurrence' in cal_event:
             params['recurrence'] = cal_event['recurrence']
 
         return params
@@ -91,10 +92,10 @@ class EventService:
         Args:
             user_id: User's UUID (for ownership checks)
             session_id: Session UUID
-            actions: List of {event_id?, action, event?} dicts where:
-                - edit:   {event_id, action="edit", event={...CalendarEvent}}
+            actions: List of action dicts where:
+                - edit:   {event_id, action="edit", changes={...partial CalendarEvent fields}}
                 - delete: {event_id, action="delete"}
-                - create: {action="create", event={...CalendarEvent}}
+                - create: {action="create", changes={...full CalendarEvent fields}}
 
         Returns:
             List of CalendarEvent dicts for the full updated session
@@ -104,9 +105,9 @@ class EventService:
 
             if action_type == 'edit':
                 event_id = act.get('event_id')
-                cal_event = act.get('event', {})
-                if not event_id or not cal_event:
-                    logger.warning(f"Skipping edit action: missing event_id or event data")
+                changes = act.get('changes', {})
+                if not event_id or not changes:
+                    logger.warning(f"Skipping edit action: missing event_id or changes")
                     continue
 
                 event = Event.get_by_id(event_id)
@@ -117,7 +118,7 @@ class EventService:
                     logger.warning(f"Skipping edit action: event {event_id} not owned by user {user_id}")
                     continue
 
-                updates = EventService.calendar_event_to_db_params(cal_event)
+                updates = EventService.calendar_event_to_db_params(changes)
                 if updates:
                     updates['user_modified'] = True
                     current_version = event.get('version') or 1
@@ -145,12 +146,12 @@ class EventService:
                     logger.warning(f"Failed to remove event {event_id} from session {session_id}: {e}")
 
             elif action_type == 'create':
-                cal_event = act.get('event', {})
-                if not cal_event.get('summary'):
+                changes = act.get('changes', {})
+                if not changes.get('summary'):
                     logger.warning(f"Skipping create action: missing summary")
                     continue
 
-                EventService.create_from_calendar_event(user_id, session_id, cal_event)
+                EventService.create_from_calendar_event(user_id, session_id, changes)
 
             else:
                 logger.warning(f"Unknown modification action type: {action_type}")

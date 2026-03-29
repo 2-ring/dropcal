@@ -280,15 +280,30 @@ class CalendarEvent(BaseModel):
 # MODIFY: Event Modification
 # ============================================================================
 
+class EventChanges(BaseModel):
+    """Partial CalendarEvent — only include fields that should change. Omit everything else."""
+    summary: Optional[str] = Field(default=None, description="New event title")
+    start: Optional[CalendarDateTime] = Field(default=None, description="New start time")
+    end: Optional[CalendarDateTime] = Field(default=None, description="New end time")
+    location: Optional[str] = Field(default=None, description="New location")
+    description: Optional[str] = Field(default=None, description="New description")
+    recurrence: Optional[List[str]] = Field(default=None, description="New recurrence rules")
+    calendar: Optional[str] = Field(default=None, description="Target calendar ID")
+    is_all_day: Optional[bool] = Field(default=None, description="Set to true for all-day events")
+
+
 class EventAction(BaseModel):
-    """A single modification action targeting one event by index."""
-    index: int = Field(description="0-based index of the event in the input list. Use -1 for 'create' actions.")
-    action: Literal["edit", "delete", "create"] = Field(
-        description="'edit' to modify an event (edited_event required), 'delete' to remove it, 'create' to add a new event (edited_event required)"
-    )
-    edited_event: Optional['CalendarEvent'] = Field(
+    """A single modification action."""
+    event_id: Optional[str] = Field(
         default=None,
-        description="The full CalendarEvent. Required for 'edit' and 'create', omit for 'delete'."
+        description="UUID of the event to modify. Required for 'edit' and 'delete'. Omit for 'create'."
+    )
+    action: Literal["edit", "delete", "create"] = Field(
+        description="'edit' to change fields, 'delete' to remove, 'create' to add a new event"
+    )
+    changes: Optional[EventChanges] = Field(
+        default=None,
+        description="Fields to change. For 'edit': only the fields being modified. For 'create': all required fields. Omit for 'delete'."
     )
 
 

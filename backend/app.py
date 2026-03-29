@@ -386,7 +386,7 @@ def edit_event():
 
         return jsonify({
             'success': True,
-            'actions': [a.model_dump() for a in result.actions],
+            'actions': [a.model_dump(exclude_none=True) for a in result.actions],
             'message': result.message
         })
 
