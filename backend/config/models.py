@@ -38,6 +38,11 @@ MODELS: Dict[str, Dict[str, Any]] = {
         'api_key_env': 'ANTHROPIC_API_KEY',
         'cost_per_m': {'input': 3.00, 'output': 15.00},
     },
+    'anthropic.claude-haiku-3-5': {
+        'provider': 'bedrock',
+        'bedrock_model_id': 'anthropic.claude-3-5-haiku-20241022-v1:0',
+        'cost_per_m': {'input': 0.80, 'output': 4.00},
+    },
 
     # ── Transcription Models ─────────────────────────────────────────────
 
@@ -79,8 +84,8 @@ class ExtractionConfig:
 
 @dataclass
 class PersonalizationConfig:
-    personalize: str = 'grok-4-1-fast-non-reasoning'
-    pattern_discovery: str = 'grok-4-1-fast-non-reasoning'
+    personalize: str = 'anthropic.claude-haiku-3-5'
+    pattern_discovery: str = 'anthropic.claude-haiku-3-5'
 
 
 @dataclass
@@ -145,13 +150,19 @@ def create_llm(path: str):
 
 def _create_llm(model_name: str, specs: Dict[str, Any]):
     """Create a LangChain LLM instance from model name + specs."""
-    api_key = os.getenv(specs['api_key_env'])
-    if not api_key:
-        raise ValueError(f"API key not found: {specs['api_key_env']}")
+    provider = specs['provider']
+    api_key = None
+    if provider != 'bedrock':
+        api_key = os.getenv(specs['api_key_env'])
+        if not api_key:
+            raise ValueError(f"API key not found: {specs['api_key_env']}")
 
     provider = specs['provider']
 
-    if provider == 'anthropic':
+    if provider == 'bedrock':
+        from langchain_aws import ChatBedrock
+        return ChatBedrock(model_id=specs['bedrock_model_id'])
+    elif provider == 'anthropic':
         from langchain_anthropic import ChatAnthropic
         return ChatAnthropic(model=model_name, api_key=api_key)
     elif provider in ('xai', 'openai'):
