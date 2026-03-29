@@ -7,7 +7,7 @@ export function Privacy() {
       <PageHeader />
       <div className="legal-content">
         <h1>Privacy Policy</h1>
-        <p className="legal-updated">Last updated: February 23, 2026</p>
+        <p className="legal-updated">Last updated: March 29, 2026</p>
 
         <p>
           DropCal ("we", "our", "us") operates the dropcal.ai website and
@@ -69,34 +69,30 @@ export function Privacy() {
 
         <h2>How We Process Your Data with AI</h2>
         <p>
-          DropCal uses AI models to extract events from your input and to
-          personalize event formatting. This involves sending data to
-          third-party AI providers via their APIs for processing:
+          DropCal uses AI models to extract events from content you submit and
+          to personalize event formatting based on your calendar history.
         </p>
-        <ul>
-          <li>
-            Your input content (text, transcribed audio, extracted document
-            text) is sent to AI models to identify and extract event details.
-          </li>
-          <li>
-            A sample of your existing calendar event titles, dates, and
-            locations may be sent to AI models to analyze your formatting
-            preferences. This analysis is performed solely for your account and
-            is never combined with other users' data.
-          </li>
-          <li>
-            We generate numerical representations (embeddings) of your events
-            to find similar past events and improve formatting suggestions.
-            These embeddings are stored per-user and used only for your
-            personalization.
-          </li>
-        </ul>
         <p>
-          All AI processing is performed on a per-user basis to provide
-          features directly to you. We do not use your data to train, create,
-          or improve any generalized or foundational AI models. Our AI
-          providers' API terms prohibit them from using API inputs for model
-          training.
+          Only content inputted directly into DropCal with the explicit purpose of event extraction (text, transcribed audio, documents) is sent to frontier AI models to identify and extract event details.
+        </p>
+        <p>
+          All other personal information, including data obtained via third-party calendar providers (such as Google, Microsoft, or Apple APIs), is never sent to
+          any third-party AI provider that stores customer inputs or trains
+          models on customer data. All such data is processed exclusively
+          through{' '}
+          <a
+            href="https://docs.aws.amazon.com/bedrock/latest/userguide/data-protection.html"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Amazon Bedrock
+          </a>
+          , which explicitly guarantees that it does not store or log prompts
+          and does not use customer data to train any AI model.
+        </p>
+        <p>
+          We do not use your data to train, create, or improve any generalized
+          AI or machine learning models.
         </p>
 
         <h2>Third-Party Services</h2>
@@ -120,11 +116,16 @@ export function Privacy() {
             Calendar API integration for users who connect Microsoft accounts.
           </li>
           <li>
-            <strong>AI Providers (Anthropic, xAI, OpenAI)</strong> — Your input
-            content, extracted event data, and calendar event samples are sent
-            to AI models for event extraction and personalization. These
-            providers' API terms prohibit them from using inputs for model
-            training.
+            <strong>Amazon Bedrock (AWS)</strong> — Calendar data obtained via
+            Google APIs is processed exclusively through Amazon Bedrock. AWS
+            contractually prohibits storing prompts or training models on
+            customer data (AWS Service Terms §50.12).
+          </li>
+          <li>
+            <strong>AI Providers (Anthropic, xAI, OpenAI)</strong> — Content
+            you directly submit (pasted text, uploaded files, audio) is sent to
+            AI models for event extraction. Google Calendar data is never sent
+            to these providers.
           </li>
           <li>
             <strong>Deepgram</strong> — Audio files are sent for speech-to-text
@@ -169,7 +170,14 @@ export function Privacy() {
             as described above) or as required by law
           </li>
           <li>
-            Do not use Google Calendar data to train, create, or improve
+            Never send Google Calendar data to any third-party AI provider that
+            stores customer inputs, trains models on customer data, or reserves
+            the right to do so — all AI processing of Google Calendar data
+            occurs exclusively through Amazon Bedrock, which contractually
+            prohibits both
+          </li>
+          <li>
+            Do not use Google Calendar data to train, create, or improve any
             generalized AI or machine learning models
           </li>
           <li>
@@ -235,8 +243,8 @@ export function Privacy() {
           for a limited period before being overwritten.
         </p>
         <p>
-          You may also revoke DropCal's access to your Google account at any
-          time through your{' '}
+          You may also revoke DropCal's access to your calendar provider at any
+          time through your provider's account settings (e.g.{' '}
           <a
             href="https://myaccount.google.com/permissions"
             target="_blank"
@@ -244,7 +252,7 @@ export function Privacy() {
           >
             Google Account permissions
           </a>
-          .
+          {' '}or Microsoft account settings).
         </p>
 
         <h2>Cookies and Tracking</h2>
