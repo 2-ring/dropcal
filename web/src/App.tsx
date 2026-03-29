@@ -99,6 +99,9 @@ function AppContent() {
   // Tracks appState without triggering re-renders (used as a guard in the session-loading effect)
   const appStateRef = useRef<AppState>(appState)
   appStateRef.current = appState
+  // Tracks the last sessionId the loading effect actually processed (distinguishes
+  // sessionId changes from viewedSessionStatus re-fires)
+  const prevLoadedSessionIdRef = useRef<string | undefined>()
 
   // Guest mode state
   const [isGuestMode, setIsGuestMode] = useState(false)
@@ -205,13 +208,15 @@ function AppContent() {
   // Load session from URL on mount or when sessionId changes
   useEffect(() => {
     if (sessionId) {
+      const sessionChanged = sessionId !== prevLoadedSessionIdRef.current
+
       // Skip if we're actively streaming this session via SSE — the events
       // aren't persisted yet so loading from DB would clear the live view.
       if (streamingSessionRef.current === sessionId) return
 
-      // Skip if we're already showing events for this session (prevents flash
-      // when SSE completes and sessionHistory status change re-triggers this effect)
-      if (appStateRef.current === 'review' && activeViewSessionRef.current === sessionId) return
+      // Skip if the sessionId didn't change (i.e. this re-fired because
+      // viewedSessionStatus changed) and we're already showing its events.
+      if (!sessionChanged && appStateRef.current === 'review') return
 
       // Wait for auth to finish loading before checking access
       if (authLoading) return
@@ -235,6 +240,7 @@ function AppContent() {
       }
 
       activeViewSessionRef.current = sessionId
+      prevLoadedSessionIdRef.current = sessionId
       setIsProcessing(true)
       setAppState('loading')
       setCalendarEvents([])
@@ -302,6 +308,7 @@ function AppContent() {
   useEffect(() => {
     if (user && user.id !== lastLoadedUserId.current) {
       lastLoadedUserId.current = user.id
+      setSessionHistory([]) // Clear stale sessions from previous user immediately
       setIsLoadingSessions(true)
       getUserSessions()
         .then(setSessionHistory)
@@ -322,6 +329,9 @@ function AppContent() {
   useEffect(() => {
     if (user && calendarReady && user.id !== lastSyncedUserId.current) {
       lastSyncedUserId.current = user.id
+
+      // Clear stale calendars from previous user immediately
+      setSyncedCalendars([])
 
       // Immediately fetch calendars from DB (fast — populates calendar selectors right away)
       getCalendars()
@@ -687,6 +697,7 @@ function AppContent() {
 
   // Handle session click (load from history)
   const handleSessionClick = useCallback((sessionId: string) => {
+    activeViewSessionRef.current = sessionId
     navigate(`/s/${sessionId}`)
     // On mobile (full-screen overlay), auto-close sidebar on navigation
     if (window.innerWidth <= 768) setSidebarOpen(false)

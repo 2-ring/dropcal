@@ -33,6 +33,27 @@ const FEEDBACK_EXPIRY_MS = 24 * 60 * 60 * 1000;
 // Clear emulated session storage on startup (no-ops if real session storage exists)
 clearSessionFallback();
 
+// Recover any sessions stuck in 'polling' after a service worker restart.
+// In-memory poll state (activePolls, rapidTimers) is lost on restart, so
+// sessions that were mid-poll need to be re-polled.
+(async () => {
+  const history = await getHistory();
+  for (const session of history.sessions) {
+    if (session.status === 'polling') {
+      // Check if the session has timed out while the worker was dead
+      if (Date.now() - session.createdAt > MAX_POLL_DURATION_MS) {
+        await updateSessionRecord(session.sessionId, {
+          status: 'error',
+          errorMessage: 'Processing timed out. Please try again.',
+        });
+        await pushNotification(session.sessionId);
+      } else {
+        startPolling(session.sessionId);
+      }
+    }
+  }
+})();
+
 // ===== Auth State Management =====
 
 async function getAuth(): Promise<AuthState | null> {
@@ -82,6 +103,19 @@ async function ensureAuth(): Promise<boolean> {
   return true;
 }
 
+// ===== Storage Serialization =====
+// All read-modify-write operations on sessionHistory and notificationQueue
+// are serialized through this queue to prevent concurrent overwrites when
+// multiple sessions are processing simultaneously.
+
+let _storageQueue: Promise<void> = Promise.resolve();
+
+function serialized<T>(fn: () => Promise<T>): Promise<T> {
+  const op = _storageQueue.then(() => fn());
+  _storageQueue = op.then(() => {}, () => {});
+  return op;
+}
+
 // ===== Session History Management =====
 
 async function getHistory(): Promise<SessionHistory> {
@@ -100,27 +134,32 @@ async function saveHistory(history: SessionHistory): Promise<void> {
   syncBadge();
 }
 
-async function addSessionRecord(record: SessionRecord): Promise<void> {
-  const history = await getHistory();
-  history.sessions = history.sessions.filter((s) => s.sessionId !== record.sessionId);
-  history.sessions.unshift(record);
-  await saveHistory(history);
+function addSessionRecord(record: SessionRecord): Promise<void> {
+  return serialized(async () => {
+    const history = await getHistory();
+    history.sessions = history.sessions.filter((s) => s.sessionId !== record.sessionId);
+    history.sessions.unshift(record);
+    await saveHistory(history);
+  });
 }
 
-async function updateSessionRecord(
+function updateSessionRecord(
   sessionId: string,
   updates: Partial<SessionRecord>,
 ): Promise<void> {
-  const history = await getHistory();
-  const idx = history.sessions.findIndex((s) => s.sessionId === sessionId);
-  if (idx !== -1) {
-    history.sessions[idx] = { ...history.sessions[idx], ...updates };
-    await saveHistory(history);
-  }
+  return serialized(async () => {
+    const history = await getHistory();
+    const idx = history.sessions.findIndex((s) => s.sessionId === sessionId);
+    if (idx !== -1) {
+      history.sessions[idx] = { ...history.sessions[idx], ...updates };
+      await saveHistory(history);
+    }
+  });
 }
 
 // ===== Notification Queue =====
 // Tracks session IDs that need the user's attention (completion order).
+// Serialized through the same queue as history to prevent interleaved writes.
 
 async function getNotificationQueue(): Promise<string[]> {
   return new Promise((resolve) => {
@@ -137,17 +176,21 @@ async function saveNotificationQueue(queue: string[]): Promise<void> {
   syncBadge();
 }
 
-async function pushNotification(sessionId: string): Promise<void> {
-  const queue = await getNotificationQueue();
-  if (!queue.includes(sessionId)) {
-    queue.push(sessionId);
-    await saveNotificationQueue(queue);
-  }
+function pushNotification(sessionId: string): Promise<void> {
+  return serialized(async () => {
+    const queue = await getNotificationQueue();
+    if (!queue.includes(sessionId)) {
+      queue.push(sessionId);
+      await saveNotificationQueue(queue);
+    }
+  });
 }
 
-async function removeNotification(sessionId: string): Promise<void> {
-  const queue = await getNotificationQueue();
-  await saveNotificationQueue(queue.filter((id) => id !== sessionId));
+function removeNotification(sessionId: string): Promise<void> {
+  return serialized(async () => {
+    const queue = await getNotificationQueue();
+    await saveNotificationQueue(queue.filter((id) => id !== sessionId));
+  });
 }
 
 // ===== Context Menu Setup =====
@@ -451,8 +494,11 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const { sessionId } = message;
     const url = `${DROPCAL_URL}/s/${sessionId}`;
     api.tabs.create({ url });
-    sendResponse({ ok: true });
-    return false;
+    // Dismiss the notification for this session since the user is viewing it
+    removeNotification(sessionId)
+      .then(() => updateSessionRecord(sessionId, { dismissedAt: Date.now() }))
+      .then(() => sendResponse({ ok: true }));
+    return true;
   }
 
   if (message.type === 'CLEAR_JOB') {
@@ -532,8 +578,11 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         panel.open({ windowId: window.id, sessionId }).catch(() => {});
       }
     });
-    sendResponse({ ok: true });
-    return false;
+    // Dismiss the notification since the user is viewing this session
+    removeNotification(sessionId)
+      .then(() => updateSessionRecord(sessionId, { dismissedAt: Date.now() }))
+      .then(() => sendResponse({ ok: true }));
+    return true;
   }
 
   // Settings — get full user profile
@@ -633,12 +682,10 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // Popup — dismiss session feedback
   if (message.type === 'DISMISS_SESSION') {
     const { sessionId } = message;
-    Promise.all([
-      removeNotification(sessionId),
-      updateSessionRecord(sessionId, { dismissedAt: Date.now() }),
-    ]).then(() => {
-      sendResponse({ ok: true });
-    });
+    // Both ops are serialized through the storage queue — run sequentially
+    removeNotification(sessionId)
+      .then(() => updateSessionRecord(sessionId, { dismissedAt: Date.now() }))
+      .then(() => sendResponse({ ok: true }));
     return true;
   }
 

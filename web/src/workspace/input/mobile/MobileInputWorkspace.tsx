@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MobileButtonMenu } from './MobileButtonMenu'
 import { useInputHandlers } from '../shared/hooks'
@@ -28,6 +28,42 @@ export function MobileInputWorkspace({
   activeInputRef.current = activeInput
   // Each input component registers its submit here; center button calls it
   const submitRef = useRef<(() => void) | null>(null)
+  const bottomStackRef = useRef<HTMLDivElement>(null)
+
+  // On iOS, position: fixed stays behind the keyboard because the layout
+  // viewport doesn't shrink. Use the visualViewport API to detect the
+  // keyboard height and shift the input container up accordingly.
+  useEffect(() => {
+    if (!activeInput) return
+    const viewport = window.visualViewport
+    if (!viewport) return
+
+    const onResize = () => {
+      const offset = window.innerHeight - viewport.height
+      bottomStackRef.current?.style.setProperty('bottom', `${offset}px`)
+    }
+
+    viewport.addEventListener('resize', onResize)
+    viewport.addEventListener('scroll', onResize)
+    onResize()
+
+    return () => {
+      viewport.removeEventListener('resize', onResize)
+      viewport.removeEventListener('scroll', onResize)
+      bottomStackRef.current?.style.setProperty('bottom', '0px')
+    }
+  }, [activeInput])
+
+  // Escape key closes whichever input modality is currently open
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveInput(null)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   const { handleImageClick: rawImageClick, handleDocumentClick: rawDocumentClick, handleAudioFileUpload } = useInputHandlers({
     onFileUpload
@@ -105,7 +141,7 @@ export function MobileInputWorkspace({
       </div>
 
       {/* Fixed bottom stack: notification on top, active input on bottom */}
-      <div className="mobile-bottom-stack">
+      <div className="mobile-bottom-stack" ref={bottomStackRef}>
         <AnimatePresence mode="wait">
           {notification && onDismissNotification && (
             <NotificationBar

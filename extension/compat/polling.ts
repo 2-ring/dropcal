@@ -33,8 +33,9 @@ export function onPollTick(callback: PollCallback): void {
   }
 }
 
-/** Start polling a session. */
+/** Start polling a session. No-op if already polling this session. */
 export function startPolling(sessionId: string): void {
+  if (activePolls.has(sessionId)) return;
   activePolls.add(sessionId);
   ensureKeepalive();
   scheduleRapidPoll(sessionId);

@@ -273,11 +273,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 4. Clear session cache (in-memory + localStorage)
       sessionCache.clear();
 
-      // 5. Clear guest session data
+      // 5. Clear all user-specific localStorage
+      localStorage.removeItem('dropcal_calendars');
+
+      // 6. Clear guest session data
       GuestSessionManager.clearGuestSessions();
       localStorage.removeItem('dropcal_guest_toast_dismissed');
 
-      // 6. Hard reload to wipe all in-memory state
+      // 7. Hard reload to wipe all in-memory state
       window.location.replace('/');
     } catch (error) {
       console.error('Sign out failed:', error);

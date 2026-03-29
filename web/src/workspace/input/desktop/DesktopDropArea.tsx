@@ -52,6 +52,20 @@ export function DesktopDropArea({
     }
   }, [searchParams])
 
+  // Escape key closes whichever input modality is currently open
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsRecording(false)
+        setIsTextInput(false)
+        setIsLinkInput(false)
+        setIsEmailInput(false)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   // Global paste handler: Ctrl+V anywhere on the page routes content into the drop area
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
