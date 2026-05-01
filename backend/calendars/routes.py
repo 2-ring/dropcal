@@ -849,17 +849,19 @@ def push_events():
         # Build friendly message
         n_created, n_updated, n_skipped, n_failed = len(created), len(updated), len(skipped), len(failed)
 
-        def _plural(n):
-            return 'event' if n == 1 else 'events'
+        def _word(n):
+            return 'Event' if n == 1 else 'Events'
 
         if not (created or updated or skipped or failed):
             message = 'No events to sync'
         elif created and not (updated or skipped or failed):
-            message = f"{n_created} {_plural(n_created)} added to your calendar!"
+            message = f"{_word(n_created)} added to your calendar!"
         elif updated and not (created or skipped or failed):
-            message = f"{n_updated} {_plural(n_updated)} updated in your calendar!"
+            message = f"{_word(n_updated)} updated in your calendar!"
         elif skipped and not (created or updated or failed):
-            message = f"{_plural(n_skipped).capitalize()} already up to date!"
+            message = f"{_word(n_skipped)} already up to date!"
+        elif failed and not (created or updated or skipped):
+            message = f"{_word(n_failed)} failed to sync"
         else:
             parts = []
             if created:
@@ -867,7 +869,7 @@ def push_events():
             if updated:
                 parts.append(f"{n_updated} updated")
             if skipped:
-                parts.append(f"{_plural(n_skipped)} already up to date")
+                parts.append(f"{n_skipped} already up to date")
             if failed:
                 parts.append(f"{n_failed} failed")
             message = ', '.join(parts).capitalize()

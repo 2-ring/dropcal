@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Sidebar as SidebarIcon, Baby, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, MicrosoftOutlookLogo, AppleLogo, Plus } from '@phosphor-icons/react'
+import { Sidebar as SidebarIcon, Baby, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
 import { GoogleGLogo } from '../components/GoogleGLogo'
 import type { SessionListItem } from '../sessions'
 import type { InputType } from '../sessions'
@@ -178,7 +178,7 @@ export function Menu({
       {/* Mobile-only floating "Start new" button (inside open sidebar) */}
       {isOpen && (
         <button className="mobile-new-session-fab" onClick={onNewSession}>
-          <Plus size={20} weight="bold" />
+          <CalendarStar size={20} weight="duotone" />
           <span>Start new</span>
         </button>
       )}
@@ -186,26 +186,28 @@ export function Menu({
       {/* Sidebar that slides in next to the mark */}
       <div className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-content">
-          <Tooltip content="Start new session">
-            <MenuButton
-              onClick={onNewSession}
-              icon={<CalendarStar size={20} weight="duotone" />}
-              variant="primary"
-            >
-              New session
-            </MenuButton>
-          </Tooltip>
+          <div className="sidebar-top-actions">
+            <Tooltip content="Start new session">
+              <MenuButton
+                onClick={onNewSession}
+                icon={<CalendarStar size={20} weight="duotone" />}
+                variant="primary"
+              >
+                New session
+              </MenuButton>
+            </Tooltip>
 
-          {primaryProvider && (
-            <MenuButton
-              onClick={() => window.open(getCalendarUrl(), '_blank')?.focus()}
-              icon={getCalendarIcon()}
-              trailingIcon={<ArrowSquareOut size={14} weight="regular" />}
-              variant="secondary"
-            >
-              View calendar
-            </MenuButton>
-          )}
+            {primaryProvider && (
+              <MenuButton
+                onClick={() => window.open(getCalendarUrl(), '_blank')?.focus()}
+                icon={getCalendarIcon()}
+                trailingIcon={<ArrowSquareOut size={14} weight="regular" />}
+                variant="secondary"
+              >
+                View calendar
+              </MenuButton>
+            )}
+          </div>
 
           <div className="chat-history">
             {isLoadingSessions ? (

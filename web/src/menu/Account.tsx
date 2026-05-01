@@ -17,7 +17,28 @@ export function Account() {
   const { user, loading, signIn } = useAuth();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsInitialView, setSettingsInitialView] = useState<'main' | 'integrations'>('main');
+  const [mobileExpanded, setMobileExpanded] = useState(false);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
+
+  const handleAccountClick = () => {
+    if (isSettingsOpen) {
+      setIsSettingsOpen(false);
+      setMobileExpanded(false);
+      return;
+    }
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    if (isMobile && !mobileExpanded) {
+      setMobileExpanded(true);
+      window.setTimeout(() => setIsSettingsOpen(true), 250);
+    } else {
+      setIsSettingsOpen(true);
+    }
+  };
+
+  // Always collapse the mobile pill when settings closes (covers outside-click, escape, etc.)
+  useEffect(() => {
+    if (!isSettingsOpen) setMobileExpanded(false);
+  }, [isSettingsOpen]);
 
   // Auto-open settings from ?settings=integrations query param
   useEffect(() => {
@@ -105,8 +126,8 @@ export function Account() {
       <div className="account-container">
         <button
           ref={accountButtonRef}
-          className="account-user-button"
-          onClick={() => setIsSettingsOpen(prev => !prev)}
+          className={`account-user-button ${mobileExpanded ? 'expanded' : ''}`}
+          onClick={handleAccountClick}
         >
           <div className="account-user-info">
             {user.user_metadata?.avatar_url ? (
@@ -134,7 +155,7 @@ export function Account() {
 
       {isSettingsOpen && (
         <SettingsPopup
-          onClose={() => { setIsSettingsOpen(false); setSettingsInitialView('main'); }}
+          onClose={() => { setIsSettingsOpen(false); setSettingsInitialView('main'); setMobileExpanded(false); }}
           userEmail={user.email || ''}
           userName={user.user_metadata?.name || user.email?.split('@')[0] || 'User'}
           userAvatar={user.user_metadata?.avatar_url}

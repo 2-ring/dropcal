@@ -833,6 +833,9 @@
   .content {
     margin-left: 0 !important;
     width: 100% !important;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    box-shadow: none;
   }
 
   /* Mobile: sidebar becomes an overlay when open (handled in Menu.css) */

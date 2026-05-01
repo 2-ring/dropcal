@@ -46,10 +46,6 @@
   height: 44px; /* Override to keep action buttons smaller */
 }
 
-.menu-button-action:first-child {
-  margin-top: 0.75rem;
-}
-
 .menu-button-action:hover:not(:disabled) {
   background-color: var(--background-hover);
   border-color: var(--border-hover);
