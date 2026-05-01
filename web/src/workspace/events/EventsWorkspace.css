@@ -230,6 +230,10 @@
   color: var(--text-secondary);
 }
 
+.header-right-input-mobile {
+  display: none;
+}
+
 /* Scrollable Content Area */
 .event-confirmation-content {
   height: 100%;
@@ -1060,6 +1064,18 @@
   .header-left,
   .header-right {
     font-size: 0.8125rem;
+  }
+
+  .header-left {
+    display: none;
+  }
+
+  .header-right-event-count {
+    display: none;
+  }
+
+  .header-right-input-mobile {
+    display: flex;
   }
 
   .header-center {

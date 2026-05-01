@@ -72,9 +72,6 @@
   flex-shrink: 0;
   border: 1.5px solid var(--background);
   box-shadow: var(--shadow-light);
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              border-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .account-user-avatar-placeholder {
@@ -92,9 +89,6 @@
   border: 1.5px solid var(--background);
   box-shadow: var(--shadow-light);
   letter-spacing: -0.3px;
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              border-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .account-user-details {
@@ -125,44 +119,6 @@
   font-weight: 500;
   letter-spacing: -0.1px;
   line-height: 1.2;
-}
-
-/* Mobile: collapsed circular pill that expands on click */
-@media (max-width: 768px) {
-  .account-container {
-    width: fit-content;
-  }
-
-  .account-user-button {
-    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                padding 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                border-radius 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow: hidden;
-  }
-
-  .account-user-button:not(.expanded) {
-    width: var(--menu-button-height);
-    padding: 0;
-    border-radius: 50%;
-    justify-content: center;
-  }
-
-  .account-user-button:not(.expanded) .account-user-details,
-  .account-user-button:not(.expanded) .expand-icon {
-    display: none;
-  }
-
-  /* Scale the avatar to fill the collapsed pill */
-  .account-user-button:not(.expanded) .account-user-avatar,
-  .account-user-button:not(.expanded) .account-user-avatar-placeholder {
-    width: calc(var(--menu-button-height) - 8px);
-    height: calc(var(--menu-button-height) - 8px);
-    border-width: 0;
-  }
-
-  .account-user-button.expanded {
-    width: calc(100vw - 2rem);
-  }
 }
 
 /* Dark mode button styles moved to MenuButton.css */

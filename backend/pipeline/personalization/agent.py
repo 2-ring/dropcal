@@ -23,7 +23,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import SystemMessage, HumanMessage
 from typing import List, Dict, Optional
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 import numpy as np
 from pydantic import BaseModel, create_model, Field as PydanticField
@@ -259,11 +259,14 @@ class PersonalizationAgent(BaseAgent):
                 # time_inference: compound output with is_all_day, start_time, end_time
                 if task_name == 'time_inference':
                     if value.is_all_day:
-                        # Convert to all-day: extract date from existing start
+                        # Convert to all-day: extract date from existing start.
+                        # End is exclusive (start + 1 day), matching iCalendar
+                        # semantics and the DB check constraint.
                         start_date = event.start.date or (event.start.dateTime[:10] if event.start.dateTime else None)
                         if start_date:
+                            end_exclusive = (date.fromisoformat(start_date) + timedelta(days=1)).isoformat()
                             event.start = CalendarDateTime(date=start_date)
-                            event.end = None
+                            event.end = CalendarDateTime(date=end_exclusive)
                     else:
                         if value.start_time is not None:
                             event.start = value.start_time

@@ -105,10 +105,18 @@ export function TopBar({
           <WordMark size={28} className="header-wordmark" />
         </div>
         <div className="header-right">
-          {!eventCount ? (
-            <Skeleton width={80} height={20} />
+          {input && InputIcon ? (
+            <div className="input-display header-right-input-mobile">
+              <InputIcon size={16} weight="regular" />
+              <span className="input-display-text">{getInputSummary(input)}</span>
+            </div>
           ) : (
-            <div className="input-display">
+            <Skeleton width={100} height={20} containerClassName="header-right-input-mobile" />
+          )}
+          {!eventCount ? (
+            <Skeleton width={80} height={20} containerClassName="header-right-event-count" />
+          ) : (
+            <div className="input-display header-right-event-count">
               <CalendarDots size={16} weight="regular" />
               <span className="input-display-text">
                 {eventCount} {eventCount === 1 ? 'event' : 'events'}

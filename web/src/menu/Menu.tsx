@@ -168,19 +168,11 @@ export function Menu({
             </button>
           </Tooltip>
           <Tooltip content="Start new session">
-            <button className="dock-icon-button dock-icon-button-new" onClick={onNewSession}>
+            <button className="dock-icon-button" onClick={onNewSession}>
               <CalendarStar size={20} weight="duotone" />
             </button>
           </Tooltip>
         </div>
-      )}
-
-      {/* Mobile-only floating "Start new" button (inside open sidebar) */}
-      {isOpen && (
-        <button className="mobile-new-session-fab" onClick={onNewSession}>
-          <CalendarStar size={20} weight="duotone" />
-          <span>Start new</span>
-        </button>
       )}
 
       {/* Sidebar that slides in next to the mark */}
