@@ -347,6 +347,7 @@ export function EventEditView({
                   return (
                   <button
                     key={calendar.id}
+                    ref={isSelected ? (el) => el?.scrollIntoView({ block: 'nearest', inline: 'nearest' }) : undefined}
                     className={`calendar-chip ${isSelected ? 'active' : ''}`}
                     onClick={() => handleCalendarSelect(calendar)}
                     style={{

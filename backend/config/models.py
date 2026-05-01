@@ -40,7 +40,7 @@ MODELS: Dict[str, Dict[str, Any]] = {
     },
     'anthropic.claude-sonnet-4-6': {
         'provider': 'bedrock',
-        'bedrock_model_id': 'anthropic.claude-sonnet-4-6',
+        'bedrock_model_id': 'us.anthropic.claude-sonnet-4-6',
         'cost_per_m': {'input': 3.00, 'output': 15.00},
     },
 

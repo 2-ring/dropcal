@@ -13,7 +13,6 @@ import {
   GlobeSimple,
   FootballHelmet,
   CaretLeft,
-  GoogleLogo,
   MicrosoftOutlookLogo,
   AppleLogo,
   Star,
@@ -35,6 +34,7 @@ import { useTheme } from '../theme';
 import { TimezoneInput } from '../workspace/events/inputs/TimezoneInput';
 import { getTimezoneList, filterTimezones, formatTimezoneCompact } from '../workspace/events/timezone';
 import { useViewport } from '../workspace/input/shared/hooks/useViewport';
+import { GoogleGLogo } from '../components/GoogleGLogo';
 
 interface SettingsPopupProps {
   onClose: () => void;
@@ -565,7 +565,7 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                       style={disconnectMode ? { cursor: 'default', opacity: 0.4 } : undefined}
                       disabled={disconnectMode}
                     >
-                      {provider === 'google' && <GoogleLogo size={20} weight="duotone" />}
+                      {provider === 'google' && <GoogleGLogo size={20} />}
                       {provider === 'microsoft' && <MicrosoftOutlookLogo size={20} weight="duotone" />}
                       {provider === 'apple' && <AppleLogo size={20} weight="duotone" />}
                       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '1px' }}>
@@ -588,7 +588,7 @@ export function SettingsPopup({ onClose, userEmail, userName, userAvatar, isLoad
                       : () => handleSetDefault(provider)
                     }
                   >
-                    {provider === 'google' && <GoogleLogo size={20} weight="duotone" />}
+                    {provider === 'google' && <GoogleGLogo size={20} />}
                     {provider === 'microsoft' && <MicrosoftOutlookLogo size={20} weight="duotone" />}
                     {provider === 'apple' && <AppleLogo size={20} weight="duotone" />}
                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '1px' }}>

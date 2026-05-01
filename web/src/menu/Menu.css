@@ -190,6 +190,11 @@
   color: var(--text-primary);
 }
 
+/* Mobile-only floating "Start new" pill button */
+.mobile-new-session-fab {
+  display: none;
+}
+
 /* Button styles moved to MenuButton.css */
 
 .guest-session-counter {
@@ -246,23 +251,10 @@
 .chat-entry-icon {
   flex-shrink: 0;
   color: var(--text-secondary);
-  transition: color 0.15s ease;
-}
-
-.chat-entry:hover {
-  background-color: var(--background-hover);
-}
-
-.chat-entry:hover .chat-entry-icon {
-  color: var(--text-primary);
 }
 
 .chat-entry.active {
-  background-color: var(--background-hover);
-}
-
-.chat-entry.active .chat-entry-icon {
-  color: var(--text-primary);
+  background-color: var(--background-active);
 }
 
 .chat-entry.active:hover {
@@ -399,6 +391,36 @@
   .dock-icon-button {
     width: 28px;
     height: 28px;
+  }
+
+  /* Hide the dock's new-session icon — replaced by the floating pill */
+  .dock-icon-button-new {
+    display: none;
+  }
+
+  .mobile-new-session-fab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: fixed;
+    right: 1rem;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    padding: 0.875rem 1.25rem;
+    background-color: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    z-index: 999;
+  }
+
+  .mobile-new-session-fab:active {
+    background-color: var(--primary-hover);
+    transform: scale(0.97);
   }
 
   .sidebar-header {

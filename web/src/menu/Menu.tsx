@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Sidebar as SidebarIcon, Baby, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
+import { Sidebar as SidebarIcon, Baby, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, MicrosoftOutlookLogo, AppleLogo, Plus } from '@phosphor-icons/react'
 import { GoogleGLogo } from '../components/GoogleGLogo'
 import type { SessionListItem } from '../sessions'
 import type { InputType } from '../sessions'
@@ -168,11 +168,19 @@ export function Menu({
             </button>
           </Tooltip>
           <Tooltip content="Start new session">
-            <button className="dock-icon-button" onClick={onNewSession}>
+            <button className="dock-icon-button dock-icon-button-new" onClick={onNewSession}>
               <CalendarStar size={20} weight="duotone" />
             </button>
           </Tooltip>
         </div>
+      )}
+
+      {/* Mobile-only floating "Start new" button (inside open sidebar) */}
+      {isOpen && (
+        <button className="mobile-new-session-fab" onClick={onNewSession}>
+          <Plus size={20} weight="bold" />
+          <span>Start new</span>
+        </button>
       )}
 
       {/* Sidebar that slides in next to the mark */}

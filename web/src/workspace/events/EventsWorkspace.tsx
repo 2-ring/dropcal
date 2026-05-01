@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Skeleton from 'react-loading-skeleton'
 import 'react-loading-skeleton/dist/skeleton.css'
 import type { CalendarEvent } from './types'
 import type { LoadingStateConfig } from './types'
@@ -169,8 +170,12 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
     prevSessionIdRef.current = sessionId
 
     if (sessionChanged) {
-      // New session — reset to prop data
+      // New session — reset to prop data and close any open event/chat
       setEditedEvents(events)
+      setEditingEventIndex(null)
+      setIsChatExpanded(false)
+      setChangeRequest('')
+      pendingEditRef.current = null
     } else if (editedEvents.length === 0 && events.some(e => e !== null)) {
       // First batch of events arriving (pipeline streaming)
       setEditedEvents(events)
@@ -661,37 +666,49 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
             >
             {isLoading ? (
               // Streaming state - show skeleton for null events, actual cards for completed events
-              Array.from({ length: expectedEventCount || 3 }).map((_, index) => {
-                const event = events[index]
-                const editedEvent = event ? (editedEvents[index] || event) : null
+              <>
+                {/* Month label skeleton - matches MonthHeader spacing so layout stays in place */}
+                <motion.div
+                  key="month-skeleton"
+                  className="event-section-header"
+                  variants={eventItemVariants}
+                >
+                  <span className="event-section-header-text">
+                    <Skeleton width={80} height={18} borderRadius={6} />
+                  </span>
+                </motion.div>
+                {Array.from({ length: expectedEventCount || 3 }).map((_, index) => {
+                  const event = events[index]
+                  const editedEvent = event ? (editedEvents[index] || event) : null
 
-                // Calculate opacity for skeleton fade effect (like session list)
-                const count = expectedEventCount || 3
-                const skeletonOpacity = 1 - (index / count) * 0.7
+                  // Calculate opacity for skeleton fade effect (like session list)
+                  const count = expectedEventCount || 3
+                  const skeletonOpacity = 1 - (index / count) * 0.7
 
-                return (
-                  <motion.div
-                    key={event ? `event-${index}` : `skeleton-${index}`}
-                    variants={eventItemVariants}
-                  >
-                    <Event
-                      event={editedEvent}
-                      index={index}
-                      isLoading={!event}
+                  return (
+                    <motion.div
+                      key={event ? `event-${index}` : `skeleton-${index}`}
+                      variants={eventItemVariants}
+                    >
+                      <Event
+                        event={editedEvent}
+                        index={index}
+                        isLoading={!event}
 
-                      skeletonOpacity={skeletonOpacity}
-                      calendars={calendars}
-                      formatDate={formatDate}
-                      formatTime={formatTime}
-                      formatTimeRange={formatTimeRange}
-                      getCalendarColor={getCalendarColor}
-                      activeProvider={primaryCalendarProvider || undefined}
-                      conflictInfo={eventConflicts[String(index)]}
-                      onClick={() => handleEventClick(index)}
-                    />
-                  </motion.div>
-                )
-              })
+                        skeletonOpacity={skeletonOpacity}
+                        calendars={calendars}
+                        formatDate={formatDate}
+                        formatTime={formatTime}
+                        formatTimeRange={formatTimeRange}
+                        getCalendarColor={getCalendarColor}
+                        activeProvider={primaryCalendarProvider || undefined}
+                        conflictInfo={eventConflicts[String(index)]}
+                        onClick={() => handleEventClick(index)}
+                      />
+                    </motion.div>
+                  )
+                })}
+              </>
             ) : (
               // Complete state - group events by date and show with timing area layout
               (() => {

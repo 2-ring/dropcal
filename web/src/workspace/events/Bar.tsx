@@ -236,7 +236,7 @@ function QueuedLoadingStep({ step }: { step: LoadingStateConfig }) {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
         >
-          {activeStep.icon && <activeStep.icon size={20} weight="bold" />}
+          {activeStep.icon && <activeStep.icon size={18} weight="bold" />}
         </motion.div>
       </AnimatePresence>
       <div className="loading-progress-text">

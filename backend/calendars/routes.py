@@ -778,7 +778,7 @@ def push_events():
             "num_created": 1,
             "num_updated": 1,
             "num_skipped": 0,
-            "message": "Created 1, updated 1"
+            "message": "1 added, 1 updated"
         }
     """
     try:
@@ -846,17 +846,31 @@ def push_events():
             except Exception:
                 pass
 
-        # Build message
-        parts = []
-        if created:
-            parts.append(f"Created {len(created)}")
-        if updated:
-            parts.append(f"updated {len(updated)}")
-        if skipped:
-            parts.append(f"{len(skipped)} already up to date")
-        if failed:
-            parts.append(f"{len(failed)} failed")
-        message = ', '.join(parts) if parts else 'No events to sync'
+        # Build friendly message
+        n_created, n_updated, n_skipped, n_failed = len(created), len(updated), len(skipped), len(failed)
+
+        def _plural(n):
+            return 'event' if n == 1 else 'events'
+
+        if not (created or updated or skipped or failed):
+            message = 'No events to sync'
+        elif created and not (updated or skipped or failed):
+            message = f"{n_created} {_plural(n_created)} added to your calendar!"
+        elif updated and not (created or skipped or failed):
+            message = f"{n_updated} {_plural(n_updated)} updated in your calendar!"
+        elif skipped and not (created or updated or failed):
+            message = f"{_plural(n_skipped).capitalize()} already up to date!"
+        else:
+            parts = []
+            if created:
+                parts.append(f"{n_created} added")
+            if updated:
+                parts.append(f"{n_updated} updated")
+            if skipped:
+                parts.append(f"{_plural(n_skipped)} already up to date")
+            if failed:
+                parts.append(f"{n_failed} failed")
+            message = ', '.join(parts).capitalize()
 
         success = len(failed) == 0 and (len(created) + len(updated) + len(skipped)) > 0
 
