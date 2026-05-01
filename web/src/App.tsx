@@ -744,6 +744,9 @@ function AppContent() {
       // Reload the session to get updated calendar_event_ids
       const updatedSession = await getSession(currentSession.id)
       setCurrentSession(updatedSession)
+      setSessionHistory(prev => prev.map(s =>
+        s.id === updatedSession.id ? { ...s, ...updatedSession } : s
+      ))
 
       return result
     } catch (error) {
