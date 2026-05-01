@@ -38,10 +38,10 @@ MODELS: Dict[str, Dict[str, Any]] = {
         'api_key_env': 'ANTHROPIC_API_KEY',
         'cost_per_m': {'input': 3.00, 'output': 15.00},
     },
-    'anthropic.claude-haiku-3-5': {
+    'anthropic.claude-sonnet-4-6': {
         'provider': 'bedrock',
-        'bedrock_model_id': 'anthropic.claude-3-5-haiku-20241022-v1:0',
-        'cost_per_m': {'input': 0.80, 'output': 4.00},
+        'bedrock_model_id': 'anthropic.claude-sonnet-4-6',
+        'cost_per_m': {'input': 3.00, 'output': 15.00},
     },
 
     # ── Transcription Models ─────────────────────────────────────────────
@@ -84,8 +84,8 @@ class ExtractionConfig:
 
 @dataclass
 class PersonalizationConfig:
-    personalize: str = 'anthropic.claude-haiku-3-5'
-    pattern_discovery: str = 'anthropic.claude-haiku-3-5'
+    personalize: str = 'anthropic.claude-sonnet-4-6'
+    pattern_discovery: str = 'anthropic.claude-sonnet-4-6'
 
 
 @dataclass

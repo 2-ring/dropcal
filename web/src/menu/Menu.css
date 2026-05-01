@@ -57,8 +57,7 @@
   top: 0;
   left: 0;
   height: 100dvh;
-  background-color: var(--background-secondary);
-  border-right: 1px solid var(--border);
+  background-color: var(--background-hover);
   display: flex;
   flex-direction: column;
   transition: width 0.3s ease;

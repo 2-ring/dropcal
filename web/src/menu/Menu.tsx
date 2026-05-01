@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Sidebar as SidebarIcon, Baby, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, GoogleLogo, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
+import { Sidebar as SidebarIcon, Baby, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
+import { GoogleGLogo } from '../components/GoogleGLogo'
 import type { SessionListItem } from '../sessions'
 import type { InputType } from '../sessions'
 import { ICON_MAP } from './iconMap'
@@ -92,7 +93,7 @@ export function Menu({
         return <AppleLogo size={20} weight="duotone" />
       case 'google':
       default:
-        return <GoogleLogo size={20} weight="duotone" />
+        return <GoogleGLogo size={20} />
     }
   }
 
@@ -176,26 +177,6 @@ export function Menu({
 
       {/* Sidebar that slides in next to the mark */}
       <div className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
-        {/* Menu mark logo - visible when sidebar is open */}
-        <button
-          className={`menu-mark-logo ${isOpen ? '' : 'hidden'}`}
-          onClick={onToggle}
-          title="DropCal"
-        >
-          <Logo size={32} />
-        </button>
-
-        <div className="sidebar-header">
-          <div className="sidebar-logo">
-            <span className="display-text word-logo-text">dropcal</span>
-          </div>
-          <Tooltip content="Close sidebar">
-            <button className="sidebar-toggle" onClick={onToggle}>
-              <SidebarIcon size={20} weight="duotone" />
-            </button>
-          </Tooltip>
-        </div>
-
         <div className="sidebar-content">
           <Tooltip content="Start new session">
             <MenuButton
@@ -203,7 +184,7 @@ export function Menu({
               icon={<CalendarStar size={20} weight="duotone" />}
               variant="primary"
             >
-              Start new
+              New session
             </MenuButton>
           </Tooltip>
 

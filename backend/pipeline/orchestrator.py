@@ -28,6 +28,11 @@ import time as _time
 
 logger = logging.getLogger(__name__)
 
+# Hard ceiling on a single session's pipeline run. After this elapses, the
+# watchdog force-marks the session as 'error' so it can never stay in
+# 'processing' forever (e.g. when an upstream LLM call hangs).
+PIPELINE_TIMEOUT_SECS = 300
+
 
 class SessionProcessor:
     """Processes sessions through the EXTRACT → RESOLVE → PERSONALIZE pipeline."""
@@ -44,6 +49,11 @@ class SessionProcessor:
         self.personalization_service = PersonalizationService()
         self.pattern_refresh_service = pattern_refresh_service
         self.icon_selector = get_icon_selector()
+
+        # Sessions whose watchdog has fired. Pipeline checkpoints look here to
+        # abort cleanly if a hung stage finally returns past the deadline.
+        self._timed_out: set = set()
+        self._timed_out_lock = threading.Lock()
 
     # =========================================================================
     # Input preprocessing (unchanged)
@@ -286,6 +296,60 @@ class SessionProcessor:
             return None, None
 
     # =========================================================================
+    # Timeout watchdog
+    # =========================================================================
+
+    def _start_timeout_watchdog(self, session_id: str) -> threading.Timer:
+        """Start a watchdog that force-marks the session as error after
+        PIPELINE_TIMEOUT_SECS. Caller must cancel the returned timer in a
+        finally block when the pipeline exits."""
+        timer = threading.Timer(
+            PIPELINE_TIMEOUT_SECS,
+            self._handle_pipeline_timeout,
+            args=(session_id,),
+        )
+        timer.daemon = True
+        timer.start()
+        return timer
+
+    def _handle_pipeline_timeout(self, session_id: str) -> None:
+        """Watchdog fired: flip session to error so it's no longer 'processing',
+        flag it so any in-flight stage that finally returns aborts at the next
+        checkpoint."""
+        with self._timed_out_lock:
+            self._timed_out.add(session_id)
+        msg = f"Processing timed out after {PIPELINE_TIMEOUT_SECS // 60} minutes"
+        logger.error(f"Session {session_id}: {msg} — force-marking as error")
+        try:
+            session = DBSession.get_by_id(session_id)
+            if session and session.get('status') in ('pending', 'processing'):
+                DBSession.mark_error(session_id, msg)
+        except Exception as e:
+            logger.critical(f"Watchdog DB write failed for {session_id}: {e}")
+        try:
+            stream = get_stream(session_id)
+            if stream and not stream.done:
+                stream.mark_error(msg)
+        except Exception as e:
+            logger.critical(f"Watchdog stream signal failed for {session_id}: {e}")
+
+    def _check_timed_out(self, session_id: str) -> None:
+        """Raise TimeoutError if the watchdog has fired. Called at stage
+        boundaries so a hung stage that finally returns can't write past the
+        deadline and undo the error state."""
+        with self._timed_out_lock:
+            if session_id in self._timed_out:
+                raise TimeoutError(
+                    f"Processing timed out after {PIPELINE_TIMEOUT_SECS // 60} minutes"
+                )
+
+    def _clear_timeout_state(self, session_id: str, watchdog: threading.Timer) -> None:
+        """Cancel the watchdog and drop any timed-out flag for this session."""
+        watchdog.cancel()
+        with self._timed_out_lock:
+            self._timed_out.discard(session_id)
+
+    # =========================================================================
     # Core pipeline
     # =========================================================================
 
@@ -319,6 +383,9 @@ class SessionProcessor:
         pipeline_start = session_start or _time.time()
 
         try:
+            # File preprocessing may have hung past the deadline; bail out
+            # before re-flipping status to 'processing'.
+            self._check_timed_out(session_id)
             DBSession.update_status(session_id, 'processing')
 
             set_tracking_context(
@@ -409,6 +476,7 @@ class SessionProcessor:
             )
             extracted_events = extraction_result.events
             logger.info(f"[timing] extract: {_time.time() - t_extract:.2f}s")
+            self._check_timed_out(session_id)
 
             # Update session title from extraction result
             session_title = extraction_result.session_title
@@ -500,6 +568,7 @@ class SessionProcessor:
                     )
 
             logger.info(f"[timing] resolve: {_time.time() - t_resolve:.2f}s")
+            self._check_timed_out(session_id)
 
             if not calendar_events:
                 DBSession.mark_error(session_id, "No events could be resolved")
@@ -547,6 +616,8 @@ class SessionProcessor:
                     )
 
                 logger.info(f"[timing] personalize: {_time.time() - t_personalize:.2f}s")
+
+            self._check_timed_out(session_id)
 
             # ── SAVE: write events to DB (batch insert) ─────────────────
             # Save first so events have DB IDs before streaming to frontend.
@@ -660,7 +731,11 @@ class SessionProcessor:
 
     def process_text_session(self, session_id: str, text: str) -> None:
         """Process a text session through the pipeline."""
-        self._run_pipeline(session_id, text, input_type='text')
+        watchdog = self._start_timeout_watchdog(session_id)
+        try:
+            self._run_pipeline(session_id, text, input_type='text')
+        finally:
+            self._clear_timeout_state(session_id, watchdog)
 
     def process_file_session(
         self, session_id: str, file_path: str, file_type: str
@@ -672,6 +747,7 @@ class SessionProcessor:
         sessions where preprocessing can be slow (PDF/audio).
         """
         session_start = _time.time()
+        watchdog = self._start_timeout_watchdog(session_id)
         try:
             # Determine user info for context preloading
             session = DBSession.get_by_id(session_id)
@@ -782,3 +858,5 @@ class SessionProcessor:
                 logger.critical(
                     f"Failed to mark session {session_id} as error: {db_err}"
                 )
+        finally:
+            self._clear_timeout_state(session_id, watchdog)

@@ -7,3 +7,4 @@
 export { Tooltip } from './Tooltip'
 export { TypingText } from './TypingText'
 export { WordMark } from './WordMark'
+export { GoogleGLogo } from './GoogleGLogo'

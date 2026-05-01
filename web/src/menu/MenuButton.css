@@ -47,7 +47,7 @@
 }
 
 .menu-button-action:first-child {
-  margin-top: 0.35rem;
+  margin-top: 0.75rem;
 }
 
 .menu-button-action:hover:not(:disabled) {
