@@ -1,28 +1,33 @@
-/* Workspace mark logo - visible when sidebar is closed */
-.workspace-mark-logo {
+/* Always-visible sidebar collapse/expand toggle (desktop).
+   Sits at the workspace's top-left and vertically centers on the events
+   TopBar (1rem from top, 56px tall) — so it shifts right with the content
+   when the sidebar opens, matching the .content margin-left transition. */
+.sidebar-collapse-toggle {
   position: fixed;
-  top: 1rem;
-  left: 1rem;
+  top: calc(var(--page-padding-x, 1rem) + (var(--dock-height, 56px) - 32px) / 2);
+  left: var(--page-padding-x, 1rem);
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   background-color: transparent;
   border: none;
+  border-radius: 8px;
   cursor: pointer;
+  color: var(--text-tertiary);
   z-index: 1001;
   padding: 0;
-  opacity: 1;
-  pointer-events: auto;
-  transition: opacity 0.2s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, left 0.3s ease;
 }
 
-.workspace-mark-logo.hidden {
-  opacity: 0;
-  pointer-events: none;
+.sidebar-collapse-toggle.sidebar-open {
+  left: calc(280px + var(--page-padding-x, 1rem));
 }
 
-.workspace-mark-logo svg {
-  color: var(--text-primary);
+.sidebar-collapse-toggle:hover {
+  color: var(--text-secondary);
+  background-color: var(--background-hover);
 }
 
 /* Menu mark logo - inside sidebar, visible when sidebar is open */
@@ -114,81 +119,6 @@
   font-size: calc(var(--brand-mark-size) * 0.9);
   line-height: var(--brand-mark-size);
   white-space: nowrap;
-}
-
-.sidebar-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background-color: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: 50%;
-  transition: all 0.15s ease;
-}
-
-.sidebar-toggle:hover {
-  background-color: var(--background-hover);
-  color: var(--text-primary);
-}
-
-/* Hide sidebar icon on mobile */
-.sidebar-toggle .sidebar-icon {
-  display: block;
-}
-
-.sidebar-toggle .sidebar-chevron {
-  display: none;
-}
-
-@media (max-width: 768px) {
-  .sidebar-toggle .sidebar-icon {
-    display: none;
-  }
-
-  .sidebar-toggle .sidebar-chevron {
-    display: block;
-  }
-}
-
-/* Minimized dock */
-.sidebar-dock {
-  position: fixed;
-  top: 0.625rem;
-  left: 4rem;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.0625rem;
-  padding: 0.1875rem;
-  background-color: var(--background);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  box-shadow: var(--shadow-light);
-  z-index: 999;
-}
-
-.dock-icon-button {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: 14px;
-  transition: all 0.15s ease;
-  padding: 0;
-}
-
-.dock-icon-button:hover {
-  background-color: var(--background-hover);
-  color: var(--text-primary);
 }
 
 /* Button styles moved to MenuButton.css */
@@ -356,9 +286,9 @@
 
 /* Mobile responsiveness */
 @media (max-width: 768px) {
-  /* Hide workspace logo on mobile - dock handles this instead */
-  .workspace-mark-logo {
-    display: none !important;
+  /* Mobile uses its own header (mobile-input-header) — hide the desktop toggle */
+  .sidebar-collapse-toggle {
+    display: none;
   }
 
   .menu-mark-logo {
@@ -377,31 +307,8 @@
     z-index: 2000;
   }
 
-  .sidebar-dock {
-    top: 0.5rem;
-    left: 3.25rem;
-    padding: 0.15rem;
-    gap: 0.05rem;
-  }
-
-  .dock-icon-button {
-    width: 28px;
-    height: 28px;
-  }
-
-
   .sidebar-header {
     padding: 1rem;
     min-height: auto;
-  }
-
-  .sidebar-toggle {
-    width: var(--brand-mark-size);
-    height: var(--brand-mark-size);
-  }
-
-  .sidebar-toggle svg {
-    width: var(--brand-mark-size);
-    height: var(--brand-mark-size);
   }
 }

@@ -593,7 +593,6 @@ function AppContent() {
           onEventDeleted={handleEventDeleted}
           onEventsChanged={handleEventsChanged}
           onMenuToggle={handleSidebarToggle}
-          onNewSession={handleNewSession}
           sessionId={currentSession?.id}
 
         />

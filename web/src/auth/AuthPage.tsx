@@ -5,11 +5,12 @@
  */
 
 import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft } from '@phosphor-icons/react';
 import { useAuth } from './AuthContext';
 import { WordMark } from '../components/WordMark';
 import { MenuButton } from '../menu/MenuButton';
-import './AuthModal.css';
+import './AuthPage.css';
 
 const GoogleIcon = (
   <svg className="provider-icon" viewBox="0 0 48 48" width="20" height="20">
@@ -49,22 +50,47 @@ export function AuthPage() {
   }, [user, loading, navigate]);
 
   return (
-    <div className="auth-modal-backdrop auth-page-backdrop">
-      <div className="auth-modal">
-        <WordMark size={24} />
-        <h2 className="display-text auth-modal-heading">{heading}</h2>
-        <div className="auth-modal-buttons">
-          <MenuButton onClick={() => signIn('google')} icon={GoogleIcon} variant="signin">
-            Sign in with Google
-          </MenuButton>
-          <MenuButton onClick={() => signIn('microsoft')} icon={MicrosoftIcon} variant="signin">
-            Sign in with Microsoft
-          </MenuButton>
-          <MenuButton onClick={() => signIn('apple')} icon={AppleIcon} variant="signin">
-            Sign in with Apple
-          </MenuButton>
+    <div className="auth-page">
+      <header className="auth-page-topbar">
+        <button
+          type="button"
+          className="auth-page-back"
+          onClick={() => navigate('/welcome')}
+          aria-label="Back to home"
+        >
+          <ArrowLeft size={16} weight="bold" />
+          Back
+        </button>
+      </header>
+
+      <main className="auth-page-main">
+        <div className="auth-page-content">
+          <div className="auth-page-logo">
+            <WordMark size={40} />
+          </div>
+          <h1 className="display-text auth-page-heading">{heading}</h1>
+          <p className="auth-page-subheading">
+            Pick a provider to continue. We'll only ask for the calendar permissions DropCal needs.
+          </p>
+          <div className="auth-page-buttons">
+            <MenuButton onClick={() => signIn('google')} icon={GoogleIcon} variant="signin">
+              Sign in with Google
+            </MenuButton>
+            <MenuButton onClick={() => signIn('microsoft')} icon={MicrosoftIcon} variant="signin">
+              Sign in with Microsoft
+            </MenuButton>
+            <MenuButton onClick={() => signIn('apple')} icon={AppleIcon} variant="signin">
+              Sign in with Apple
+            </MenuButton>
+          </div>
         </div>
-      </div>
+      </main>
+
+      <footer className="auth-page-legal">
+        <Link to="/privacy">Privacy Policy</Link>
+        <span>·</span>
+        <Link to="/terms">Terms of Service</Link>
+      </footer>
     </div>
   );
 }

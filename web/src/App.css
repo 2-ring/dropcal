@@ -743,16 +743,6 @@
     transform: scale(1.1);
   }
 
-  .mobile-header-button.new-event {
-    color: var(--text-secondary);
-  }
-
-  /* Hide the fixed mark logo and sidebar dock on mobile */
-  .fixed-mark-logo,
-  .sidebar-dock {
-    display: none !important;
-  }
-
   /* Content adjustments */
   .content {
     padding: 0;

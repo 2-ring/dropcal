@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Sidebar as SidebarIcon, Baby, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
+import { ArrowLineLeft, Sidebar as SidebarIcon, Baby, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
 import { GoogleGLogo } from '../components/GoogleGLogo'
 import type { SessionListItem } from '../sessions'
 import type { InputType } from '../sessions'
@@ -11,7 +11,6 @@ import { SkeletonSessionGroup } from '../components/skeletons'
 import { TypingText } from '../components/TypingText'
 import { useAuth } from '../auth/AuthContext'
 import { Tooltip } from '../components/Tooltip'
-import { Logo } from '../components/Logo'
 import { useViewport } from '../workspace/input/shared/hooks'
 import './Menu.css'
 
@@ -152,30 +151,20 @@ export function Menu({
 
   return (
     <>
-      {/* Workspace mark logo - visible when sidebar is closed */}
-      <button
-        className={`workspace-mark-logo ${isOpen ? 'hidden' : ''}`}
-        onClick={onToggle}
-        title="DropCal"
-      >
-        <Logo size={32} />
-      </button>
-
-      {/* Dock when sidebar is closed */}
-      {!isOpen && (
-        <div className="sidebar-dock">
-          <Tooltip content="Expand sidebar">
-            <button className="dock-icon-button" onClick={onToggle}>
-              <SidebarIcon size={20} weight="duotone" />
-            </button>
-          </Tooltip>
-          <Tooltip content="Start new session">
-            <button className="dock-icon-button" onClick={onNewSession}>
-              <CalendarStar size={20} weight="duotone" />
-            </button>
-          </Tooltip>
-        </div>
-      )}
+      {/* Always-visible sidebar toggle (desktop only — mobile has its own header) */}
+      <Tooltip content={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}>
+        <button
+          className={`sidebar-collapse-toggle ${isOpen ? 'sidebar-open' : ''}`}
+          onClick={onToggle}
+          title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+        >
+          {isOpen ? (
+            <ArrowLineLeft size={20} weight="duotone" />
+          ) : (
+            <SidebarIcon size={20} weight="duotone" />
+          )}
+        </button>
+      </Tooltip>
 
       {/* Sidebar that slides in next to the mark */}
       <div className={`sidebar ${isOpen ? 'open' : 'closed'}`}>

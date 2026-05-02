@@ -423,7 +423,8 @@
   letter-spacing: 0.02em;
 }
 
-.event-status-bar.status-created {
+.event-status-bar.status-created,
+.event-status-bar.status-edit-applied {
   background-color: var(--success-background);
   color: var(--success);
 }

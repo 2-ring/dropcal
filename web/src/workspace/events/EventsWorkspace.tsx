@@ -281,7 +281,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
         })
         .catch(err => {
           console.error('Failed to persist event edit:', err)
-          setEventTransient(eventId, 'failed')
+          setEventTransient(eventId, 'save-failed')
         })
     }
   }
@@ -455,7 +455,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
         const succeeded = new Set([...created, ...updated, ...skipped])
         for (const id of skipped) setEventTransient(id, 'up-to-date')
         for (const evt of validEditedEvents) {
-          if (evt.id && !succeeded.has(evt.id)) setEventTransient(evt.id, 'failed', 5000)
+          if (evt.id && !succeeded.has(evt.id)) setEventTransient(evt.id, 'sync-failed', 5000)
         }
 
         // Re-fetch events to get updated provider_syncs/version (badges update)
@@ -472,7 +472,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
         console.error('Bulk push failed:', error)
         // No specific event mapping — mark every event being confirmed as failed.
         for (const evt of validEditedEvents) {
-          if (evt.id) setEventTransient(evt.id, 'failed', 5000)
+          if (evt.id) setEventTransient(evt.id, 'sync-failed', 5000)
         }
       } finally {
         setActiveLoading(null)
@@ -496,9 +496,10 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
       if (result.skipped.includes(eventId)) {
         setEventTransient(eventId, 'up-to-date')
       } else if (!result.created.includes(eventId) && !result.updated.includes(eventId)) {
-        setEventTransient(eventId, 'failed', 5000)
+        setEventTransient(eventId, 'sync-failed', 5000)
       }
-      // For created/updated, the band's natural 'created' flash covers it.
+      // For created/updated, the band's natural flash covers it
+      // ("Created" for first sync, "Edit applied" for re-sync after edits).
 
       // Re-fetch events to get updated provider_syncs (badges update)
       if (sessionId) {
@@ -512,7 +513,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
       }
     } catch (error) {
       console.error('Single-event push failed:', error)
-      setEventTransient(eventId, 'failed', 5000)
+      setEventTransient(eventId, 'sync-failed', 5000)
     } finally {
       setActiveLoading(null)
     }
@@ -552,7 +553,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
           restored.splice(insertAt, 0, event)
           return restored
         })
-        if (event.id) setEventTransient(event.id, 'failed', 5000)
+        if (event.id) setEventTransient(event.id, 'delete-failed', 5000)
         return
       }
     }

@@ -9,9 +9,14 @@ import type { ConflictInfo } from '../../api/backend-client'
 /**
  * Parent-controlled transient overrides — set by the workspace after a sync
  * action and cleared after a TTL. These take priority over the natural state
- * derived from event/sync data.
+ * derived from event/sync data. The kind names the action so the band can
+ * surface a context-specific label (e.g. "Save failed" vs "Sync failed").
  */
-export type EventTransientStatus = 'failed' | 'up-to-date'
+export type EventTransientStatus =
+  | 'sync-failed'
+  | 'save-failed'
+  | 'delete-failed'
+  | 'up-to-date'
 
 /**
  * The status band shown at the bottom of an event card.
@@ -30,16 +35,25 @@ export type EventTransientStatus = 'failed' | 'up-to-date'
  * changes flip the icon+message in place.
  */
 
-export type EventStatusKind = 'hidden' | 'created' | 'synced' | 'up-to-date' | 'pending' | 'conflict' | 'failed'
+export type EventStatusKind =
+  | 'hidden'
+  | 'created'
+  | 'edit-applied'
+  | 'synced'
+  | 'up-to-date'
+  | 'pending'
+  | 'conflict'
+  | 'failed'
 
 export type EventStatusState =
   | { kind: 'hidden' }
   | { kind: 'created' }
+  | { kind: 'edit-applied' }
   | { kind: 'synced' }
   | { kind: 'up-to-date' }
   | { kind: 'pending' }
   | { kind: 'conflict'; message: string }
-  | { kind: 'failed' }
+  | { kind: 'failed'; label: string }
 
 type VisibleStatusState = Exclude<EventStatusState, { kind: 'hidden' }>
 
@@ -49,13 +63,22 @@ interface StatusVisualConfig {
   className: string
 }
 
+// `conflict` and `failed` carry their own label inline; their `label` here is
+// just a fallback that should never be shown.
 const STATUS_CONFIG: Record<VisibleStatusState['kind'], StatusVisualConfig> = {
   created: { label: 'Created', Icon: CheckCircle, className: 'status-created' },
+  'edit-applied': { label: 'Edit applied', Icon: CheckCircle, className: 'status-edit-applied' },
   synced: { label: 'Synced', Icon: CloudCheck, className: 'status-synced' },
   'up-to-date': { label: 'Up to date', Icon: CheckCircle, className: 'status-up-to-date' },
   pending: { label: 'Changes pending', Icon: ArrowsClockwise, className: 'status-apply-edits' },
   conflict: { label: '', Icon: Warning, className: 'status-conflict' },
-  failed: { label: 'Failed', Icon: XCircle, className: 'status-failed' },
+  failed: { label: '', Icon: XCircle, className: 'status-failed' },
+}
+
+const TRANSIENT_FAILED_LABELS: Record<Exclude<EventTransientStatus, 'up-to-date'>, string> = {
+  'sync-failed': 'Sync failed',
+  'save-failed': 'Save failed',
+  'delete-failed': 'Delete failed',
 }
 
 /** How long to flash the "Created" state before settling into "Synced". */
@@ -123,12 +146,15 @@ export function getProviderDayUrl(
   }
 }
 
+/** Internal flash kind, derived from the prior sync state. */
+type FlashKind = 'created' | 'edit-applied'
+
 /**
  * Pure reducer: event + context → status state.
  *
  * Precedence (highest first):
- *   1. parent-controlled `transientStatus` ('failed' / 'up-to-date')
- *   2. internal `justCreated` flash (fresh sync transition)
+ *   1. parent-controlled `transientStatus` (action-specific failure / up-to-date)
+ *   2. internal post-sync flash (`Created` for new, `Edit applied` for re-sync)
  *   3. natural sync state (applied / edited / draft)
  *   4. conflict info (only when draft)
  */
@@ -137,15 +163,21 @@ export function deriveStatus(
   activeProvider: string | undefined,
   conflictInfo: ConflictInfo[] | undefined,
   formatTimeRange: (start: string, end: string) => string,
-  justCreated: boolean,
+  flashKind: FlashKind | null,
   transientStatus: EventTransientStatus | null | undefined,
 ): EventStatusState {
-  if (transientStatus === 'failed') return { kind: 'failed' }
+  if (transientStatus && transientStatus !== 'up-to-date') {
+    return { kind: 'failed', label: TRANSIENT_FAILED_LABELS[transientStatus] }
+  }
   if (transientStatus === 'up-to-date') return { kind: 'up-to-date' }
 
   const syncStatus = getEventSyncStatus(event, activeProvider)
 
-  if (syncStatus === 'applied') return { kind: justCreated ? 'created' : 'synced' }
+  if (syncStatus === 'applied') {
+    if (flashKind === 'created') return { kind: 'created' }
+    if (flashKind === 'edit-applied') return { kind: 'edit-applied' }
+    return { kind: 'synced' }
+  }
   if (syncStatus === 'edited') return { kind: 'pending' }
 
   if (conflictInfo && conflictInfo.length > 0) {
@@ -171,29 +203,31 @@ export function EventStatusBand({
   transientStatus,
 }: EventStatusBandProps) {
   const syncStatus = getEventSyncStatus(event, activeProvider)
-  const [justCreated, setJustCreated] = useState(false)
+  const [flashKind, setFlashKind] = useState<FlashKind | null>(null)
   const prevSyncStatusRef = useRef(syncStatus)
 
-  // Detect transitions into 'applied' during the component's lifetime and
-  // flash the 'created' state for CREATED_FLASH_MS. If the event mounts
-  // already-applied (e.g. page reload), we skip the flash and show 'synced'.
+  // Detect transitions into 'applied' during the component's lifetime. The
+  // prior state determines the flash variant: draft→applied = a brand new
+  // event ("Created"), edited→applied = a re-sync after a local edit
+  // ("Edit applied"). If the event mounts already-applied (page reload), we
+  // skip the flash and show the resting "Synced" state.
   useEffect(() => {
     const prev = prevSyncStatusRef.current
     if (prev === syncStatus) return
     prevSyncStatusRef.current = syncStatus
 
     if (syncStatus === 'applied') {
-      setJustCreated(true)
-      const timer = setTimeout(() => setJustCreated(false), CREATED_FLASH_MS)
+      setFlashKind(prev === 'edited' ? 'edit-applied' : 'created')
+      const timer = setTimeout(() => setFlashKind(null), CREATED_FLASH_MS)
       return () => clearTimeout(timer)
     }
 
-    setJustCreated(false)
+    setFlashKind(null)
   }, [syncStatus])
 
   const status = useMemo(
-    () => deriveStatus(event, activeProvider, conflictInfo, formatTimeRange, justCreated, transientStatus),
-    [event, activeProvider, conflictInfo, formatTimeRange, justCreated, transientStatus],
+    () => deriveStatus(event, activeProvider, conflictInfo, formatTimeRange, flashKind, transientStatus),
+    [event, activeProvider, conflictInfo, formatTimeRange, flashKind, transientStatus],
   )
 
   // The appear animation should only play on a real hidden→visible
@@ -249,7 +283,10 @@ function StatusBandShell({
   }, [])
 
   const visual = STATUS_CONFIG[status.kind]
-  const label = status.kind === 'conflict' ? status.message : visual.label
+  const label =
+    status.kind === 'conflict' ? status.message
+    : status.kind === 'failed' ? status.label
+    : visual.label
   const StatusIcon = visual.Icon
 
   // Only the resting "Synced" state offers a deep-link to the provider.

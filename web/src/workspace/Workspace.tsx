@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sidebar, CalendarStar } from '@phosphor-icons/react'
+import { List } from '@phosphor-icons/react'
 import { InputWorkspace } from './input'
 import { EventsWorkspace } from './events/EventsWorkspace'
 import type { CalendarEvent } from './events/types'
@@ -38,7 +38,6 @@ interface WorkspaceProps {
   onEventDeleted?: (eventId: string, sessionId?: string, remainingCount?: number) => void
   onEventsChanged?: (events: CalendarEvent[]) => void
   onMenuToggle?: () => void
-  onNewSession?: () => void
   onAuthRequired?: () => void
   sessionId?: string
 }
@@ -62,7 +61,6 @@ export function Workspace({
   onEventDeleted,
   onEventsChanged,
   onMenuToggle,
-  onNewSession,
   onAuthRequired,
   sessionId,
 }: WorkspaceProps) {
@@ -77,10 +75,7 @@ export function Workspace({
       {appState === 'input' && (
         <div className="mobile-input-header">
           <button className="mobile-header-button" onClick={onMenuToggle} title="Menu">
-            <Sidebar size={24} weight="duotone" />
-          </button>
-          <button className="mobile-header-button new-event" onClick={onNewSession} title="New event">
-            <CalendarStar size={24} weight="duotone" />
+            <List size={24} weight="regular" />
           </button>
         </div>
       )}
