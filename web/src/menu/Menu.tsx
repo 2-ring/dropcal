@@ -12,6 +12,7 @@ import { TypingText } from '../components/TypingText'
 import { useAuth } from '../auth/AuthContext'
 import { Tooltip } from '../components/Tooltip'
 import { Logo } from '../components/Logo'
+import { useViewport } from '../workspace/input/shared/hooks'
 import './Menu.css'
 
 interface MenuProps {
@@ -35,6 +36,7 @@ export function Menu({
   isLoadingSessions = false,
 }: MenuProps) {
   const { user, primaryCalendarProvider } = useAuth()
+  const { isDesktop } = useViewport()
 
   // Track sessions whose titles should animate (arrived while processing)
   const [animatingTitles, setAnimatingTitles] = useState<Set<string>>(new Set())
@@ -189,7 +191,7 @@ export function Menu({
               </MenuButton>
             </Tooltip>
 
-            {primaryProvider && (
+            {isDesktop && primaryProvider && (
               <MenuButton
                 onClick={() => window.open(getCalendarUrl(), '_blank')?.focus()}
                 icon={getCalendarIcon()}

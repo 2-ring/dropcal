@@ -1,8 +1,9 @@
-import { Equals as EqualsIcon, MapPin as LocationIcon, ArrowsClockwise as RepeatIcon, CheckCircle, ArrowsClockwise, Warning } from '@phosphor-icons/react'
+import { Equals as EqualsIcon, MapPin as LocationIcon, ArrowsClockwise as RepeatIcon } from '@phosphor-icons/react'
 import Skeleton from 'react-loading-skeleton'
 import type { CalendarEvent } from './types'
-import { getEventSyncStatus, isAllDay } from './types'
+import { isAllDay } from './types'
 import { formatRecurrence } from './recurrence'
+import { EventStatusBand } from './EventStatusBand'
 import type { ConflictInfo } from '../../api/backend-client'
 import type { SyncCalendar } from '../../api/sync'
 
@@ -126,41 +127,12 @@ export function Event({
         </div>
       </div>
 
-      {/* Status Bar — sync status takes priority over conflicts */}
-      {(() => {
-        const syncStatus = getEventSyncStatus(event, activeProvider)
-
-        if (syncStatus !== 'draft') {
-          const config = {
-            applied: { label: 'Created', Icon: CheckCircle, className: 'status-created' },
-            edited: { label: 'Changes pending', Icon: ArrowsClockwise, className: 'status-apply-edits' },
-          } as const
-
-          const status = config[syncStatus]
-
-          return (
-            <div className={`event-status-bar ${status.className}`}>
-              <status.Icon size={14} weight="bold" />
-              <span>{status.label}</span>
-            </div>
-          )
-        }
-
-        if (conflictInfo && conflictInfo.length > 0) {
-          const message = conflictInfo.length === 1
-            ? `Conflict with ${conflictInfo[0].summary} (${formatTimeRange(conflictInfo[0].start_time, conflictInfo[0].end_time)})`
-            : 'Conflict with multiple events'
-
-          return (
-            <div className="event-status-bar status-conflict">
-              <Warning size={14} weight="bold" />
-              <span>{message}</span>
-            </div>
-          )
-        }
-
-        return null
-      })()}
+      <EventStatusBand
+        event={event}
+        activeProvider={activeProvider}
+        conflictInfo={conflictInfo}
+        formatTimeRange={formatTimeRange}
+      />
     </div>
   )
 }

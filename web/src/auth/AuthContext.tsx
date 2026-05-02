@@ -33,6 +33,17 @@ export interface UserPreferences {
 
 type PlanType = 'free' | 'pro';
 
+const PRIMARY_CALENDAR_PROVIDER_CACHE_KEY = 'dropcal_primary_calendar_provider';
+
+function readCachedPrimaryProvider(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(PRIMARY_CALENDAR_PROVIDER_CACHE_KEY);
+  } catch {
+    return null;
+  }
+}
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
@@ -60,7 +71,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<PlanType>('free');
   const [preferences, setPreferences] = useState<UserPreferences>({});
-  const [primaryCalendarProvider, setPrimaryCalendarProvider] = useState<string | null>(null);
+  const [primaryCalendarProvider, setPrimaryCalendarProvider] = useState<string | null>(readCachedPrimaryProvider);
+
+  useEffect(() => {
+    try {
+      if (primaryCalendarProvider) {
+        window.localStorage.setItem(PRIMARY_CALENDAR_PROVIDER_CACHE_KEY, primaryCalendarProvider);
+      } else {
+        window.localStorage.removeItem(PRIMARY_CALENDAR_PROVIDER_CACHE_KEY);
+      }
+    } catch {
+      // localStorage unavailable
+    }
+  }, [primaryCalendarProvider]);
   const [calendarReady, setCalendarReady] = useState(false);
   const [showAppleCalendarSetup, setShowAppleCalendarSetup] = useState(false);
 
