@@ -20,7 +20,6 @@ interface WorkspaceProps {
   isProcessing: boolean
   loadingConfig?: LoadingStateConfig | LoadingStateConfig[]
   feedbackMessage?: string
-  isGuestMode?: boolean
 
   // Events state props
   calendarEvents: (CalendarEvent | null)[]
@@ -50,7 +49,6 @@ export function Workspace({
   isProcessing,
   loadingConfig,
   feedbackMessage,
-  isGuestMode,
   calendarEvents,
   calendars,
   expectedEventCount,

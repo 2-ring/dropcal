@@ -362,10 +362,10 @@ export function BottomBar({
                       </button>
                     </Tooltip>
                     <button
-                      className="event-confirmation-save-button"
+                      className="event-confirmation-request-button"
                       onClick={onSave}
                     >
-                      <CheckIcon size={20} weight="bold" />
+                      <CheckIcon size={18} weight="bold" />
                       <span>Done</span>
                     </button>
                   </>

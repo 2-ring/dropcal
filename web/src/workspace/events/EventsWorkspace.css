@@ -989,11 +989,11 @@
   height: var(--dock-height);
   padding: 0 1.25rem;
   flex: 1;
-  background-color: var(--primary);
+  background-color: var(--background-elevated);
   border-radius: var(--dock-border-radius);
   box-shadow: var(--shadow-medium);
-  border: none;
-  color: var(--background);
+  border: 1px solid var(--border-light);
+  color: var(--primary);
   font-size: 0.9375rem;
   font-weight: 600;
   font-family: inherit;
@@ -1002,7 +1002,7 @@
 }
 
 .event-confirmation-save-button:hover {
-  background-color: var(--primary-hover);
+  background-color: var(--background-hover);
   transform: translateY(-1px);
   box-shadow: var(--shadow-medium), var(--shadow-heavy);
 }

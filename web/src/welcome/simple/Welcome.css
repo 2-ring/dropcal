@@ -517,6 +517,41 @@
     transform: scale(0.9);
     transform-origin: left center;
   }
+
+  /* No top dock on desktop — just Contact + Log In floating in the top-right. */
+  .welcome-nav {
+    justify-content: flex-end;
+    padding: 0 40px;
+  }
+
+  .nav-container {
+    background: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    max-width: none;
+    width: auto;
+    padding: 0;
+  }
+
+  .nav-logo,
+  .nav-cta-button.cta-button {
+    display: none;
+  }
+
+  .nav-cta-container {
+    gap: 28px;
+  }
+
+  .nav-secondary-link {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .nav-secondary-link:hover {
+    color: #ffffff;
+  }
 }
 
 
