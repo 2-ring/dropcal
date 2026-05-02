@@ -424,6 +424,11 @@
   color: var(--success);
 }
 
+.event-status-bar.status-synced {
+  background-color: var(--background-secondary);
+  color: var(--text-secondary);
+}
+
 .event-status-bar.status-apply-edits {
   background-color: var(--warning-background);
   color: var(--warning);

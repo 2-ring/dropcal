@@ -22,6 +22,7 @@ import {
   onPollTick,
   startPolling,
   stopPolling,
+  stopAllPolling,
 } from './compat';
 
 const MAX_POLL_DURATION_MS = 5 * 60 * 1000;
@@ -54,7 +55,38 @@ clearSessionFallback();
   }
 })();
 
+// Track poll start times for timeout detection. Declared up-front so
+// wipeUserData can clear it during account switches.
+const pollStartTimes = new Map<string, number>();
+
 // ===== Auth State Management =====
+//
+// The website (dropcal.ai) is the source of truth. The content script reads
+// Supabase's localStorage and pushes AUTH_TOKEN / AUTH_SIGNED_OUT messages.
+// We identify the user by the JWT `sub` claim so token refreshes (same user,
+// new accessToken) don't wipe history, while account switches (different user)
+// do.
+
+type AuthInput = {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+};
+
+// Decode the JWT payload (no signature verification — we trust localStorage
+// of dropcal.ai, which is what the user already trusts to authenticate them).
+function decodeJwtSub(token: string): string | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payload + '='.repeat((4 - (payload.length % 4)) % 4);
+    const json = JSON.parse(atob(padded));
+    return typeof json.sub === 'string' ? json.sub : null;
+  } catch {
+    return null;
+  }
+}
 
 async function getAuth(): Promise<AuthState | null> {
   return new Promise((resolve) => {
@@ -64,12 +96,53 @@ async function getAuth(): Promise<AuthState | null> {
   });
 }
 
-async function setAuth(auth: AuthState): Promise<void> {
+// Wipe per-user state. Called on account switch and on website-driven sign-out.
+// Does NOT remove the `auth` key itself — callers control that.
+async function wipeUserData(): Promise<void> {
+  stopAllPolling();
+  pollStartTimes.clear();
   await new Promise<void>((resolve) => {
-    storage.local.set({ auth }, resolve);
+    storage.local.remove(['sessionHistory', 'notificationQueue', 'themeMode'], resolve);
   });
-  setAuthToken(auth.accessToken);
-  fetchAndStoreTheme();
+  await new Promise<void>((resolve) => {
+    storage.session.remove(['sidebarSessionId', 'activeJob'], resolve);
+  });
+  clearBadge();
+}
+
+async function setAuth(input: AuthInput): Promise<void> {
+  const newUserId = decodeJwtSub(input.accessToken);
+  const oldAuth = await getAuth();
+  const oldUserId = oldAuth?.userId ?? null;
+
+  // Account switch: only wipe when both ids are known and they differ. If
+  // the old auth lacks a userId (legacy install pre-this-change), assume same
+  // user — the next refresh will populate userId without wiping.
+  const isUserSwitch =
+    oldUserId !== null && newUserId !== null && oldUserId !== newUserId;
+
+  if (isUserSwitch) {
+    await wipeUserData();
+  }
+
+  const stored: AuthState = {
+    accessToken: input.accessToken,
+    refreshToken: input.refreshToken,
+    expiresAt: input.expiresAt,
+    userId: newUserId,
+  };
+
+  await new Promise<void>((resolve) => {
+    storage.local.set({ auth: stored }, resolve);
+  });
+  setAuthToken(input.accessToken);
+
+  // Only fetch theme on identity change (sign-in or switch). Token refreshes
+  // for the same user shouldn't trigger a redundant network call or theme flicker.
+  const isNewIdentity = oldUserId === null || isUserSwitch;
+  if (isNewIdentity) {
+    fetchAndStoreTheme();
+  }
 }
 
 async function fetchAndStoreTheme(): Promise<void> {
@@ -82,9 +155,16 @@ async function fetchAndStoreTheme(): Promise<void> {
   }
 }
 
-async function clearAuth(): Promise<void> {
+// Remove the stored auth. `wipe: true` also removes per-user data (history,
+// notifications, theme) — used for explicit sign-out from the website or
+// extension UI. `wipe: false` only clears the token — used when an API call
+// returns 401, where the data may still be valid for the next sign-in.
+async function clearAuth(opts: { wipe: boolean } = { wipe: true }): Promise<void> {
+  if (opts.wipe) {
+    await wipeUserData();
+  }
   await new Promise<void>((resolve) => {
-    storage.local.remove(['auth', 'themeMode'], resolve);
+    storage.local.remove('auth', resolve);
   });
   setAuthToken(null);
 }
@@ -93,9 +173,11 @@ async function ensureAuth(): Promise<boolean> {
   const auth = await getAuth();
   if (!auth) return false;
 
-  // Proactively clear expired tokens (with 60s buffer)
+  // Token expired (with 60s buffer): report unauth but DON'T clear stored auth
+  // or wipe data. The next AUTH_TOKEN message from the dropcal.ai content
+  // script will reseed; if it's the same user, no data is lost.
   if (auth.expiresAt && Date.now() / 1000 > auth.expiresAt - 60) {
-    await clearAuth();
+    setAuthToken(null);
     return false;
   }
 
@@ -283,15 +365,14 @@ api.contextMenus.onClicked.addListener(async (info) => {
     setTimeout(() => syncBadge(), 5000);
 
     if (isAuthError) {
-      await clearAuth();
+      // Drop the stored token so the UI shows sign-in, but keep history —
+      // the user may re-authenticate as the same user and the data is still theirs.
+      await clearAuth({ wipe: false });
     }
   }
 });
 
 // ===== Polling Logic =====
-
-// Track poll start times for timeout detection
-const pollStartTimes = new Map<string, number>();
 
 onPollTick(async (sessionId) => {
   if (!pollStartTimes.has(sessionId)) {
@@ -459,26 +540,28 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message.type === 'AUTH_SIGNED_OUT') {
-    clearAuth().then(() => sendResponse({ ok: true }));
+    // Website-driven sign-out: wipe per-user data so the next sign-in starts clean.
+    clearAuth({ wipe: true }).then(() => sendResponse({ ok: true }));
     return true;
   }
 
-  // Popup queries
+  // Popup queries — use ensureAuth so expired tokens count as unauthenticated
+  // (popup will show sign-in; clicking sign-in opens dropcal.ai, which reseeds).
   if (message.type === 'GET_STATUS') {
     Promise.all([
       new Promise<Record<string, any>>((resolve) => {
         storage.session.get('activeJob', resolve);
       }),
-      getAuth(),
-    ]).then(([jobResult, auth]) => {
-      sendResponse({ job: jobResult.activeJob || null, isAuthenticated: !!auth });
+      ensureAuth(),
+    ]).then(([jobResult, isAuthenticated]) => {
+      sendResponse({ job: jobResult.activeJob || null, isAuthenticated });
     });
     return true;
   }
 
   if (message.type === 'GET_AUTH') {
-    getAuth().then((auth) => {
-      sendResponse({ isAuthenticated: !!auth });
+    ensureAuth().then((isAuthenticated) => {
+      sendResponse({ isAuthenticated });
     });
     return true;
   }
@@ -718,9 +801,10 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
-  // Settings — sign out (user-initiated)
+  // Settings — sign out (user-initiated). Wipes per-user data; user expects
+  // a clean slate when they explicitly sign out.
   if (message.type === 'SIGN_OUT') {
-    clearAuth().then(() => {
+    clearAuth({ wipe: true }).then(() => {
       sendResponse({ ok: true });
     });
     return true;

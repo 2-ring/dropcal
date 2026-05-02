@@ -339,6 +339,23 @@ storage.local.onChanged.addListener((changes) => {
         errorMessage.textContent = session.errorMessage || 'Processing failed.';
         showState('error');
       }
+    } else if (history === undefined || history.sessions.length === 0) {
+      // History was wiped (sign-out or account switch). Don't show stale
+      // events from a previous user — close the sidebar.
+      window.close();
+    }
+  }
+
+  if (changes.auth) {
+    const oldUserId =
+      (changes.auth.oldValue as { userId?: string | null } | undefined)?.userId ?? null;
+    const newUserId =
+      (changes.auth.newValue as { userId?: string | null } | undefined)?.userId ?? null;
+    const isAuthed = !!changes.auth.newValue;
+
+    // Sign-out or account switch → close so we can't display another user's data.
+    if (!isAuthed || (oldUserId !== null && newUserId !== null && oldUserId !== newUserId)) {
+      window.close();
     }
   }
 });

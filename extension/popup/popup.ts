@@ -886,14 +886,42 @@ storage.local.onChanged.addListener((changes) => {
     refresh();
   }
   if (changes.auth) {
-    api.runtime.sendMessage({ type: 'GET_AUTH' }, (response) => {
-      if (response?.isAuthenticated) {
-        showView('input');
-        refresh();
-      } else {
-        showView('auth');
-      }
-    });
+    // Distinguish identity change from a same-user token refresh. Token
+    // refreshes shouldn't yank the user out of their current view (e.g.,
+    // settings or a feedback state). Only sign-in/sign-out/account-switch
+    // should reset the view.
+    const oldUserId =
+      (changes.auth.oldValue as { userId?: string | null } | undefined)?.userId ?? null;
+    const newUserId =
+      (changes.auth.newValue as { userId?: string | null } | undefined)?.userId ?? null;
+    const wasAuthed = !!changes.auth.oldValue;
+    const isAuthed = !!changes.auth.newValue;
+
+    if (
+      wasAuthed &&
+      isAuthed &&
+      oldUserId === newUserId &&
+      oldUserId !== null &&
+      currentView !== 'auth'
+    ) {
+      // Same user, just a token rotation, and the popup is already in an
+      // authed view. Don't yank the user away from settings/processing/etc.
+      return;
+    }
+
+    if (isAuthed) {
+      // Fresh sign-in or account switch — start clean.
+      // Reset transient UI state so user A's dismissed/animated state doesn't
+      // bleed into user B's session.
+      animatedTitles.clear();
+      prevTitles.clear();
+      locallyDismissed.clear();
+      feedbackSessionId = null;
+      showView('input');
+      refresh();
+    } else {
+      showView('auth');
+    }
   }
 });
 

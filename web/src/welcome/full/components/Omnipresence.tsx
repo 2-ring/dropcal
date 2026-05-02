@@ -125,11 +125,16 @@ export function Omnipresence() {
                     </div>
 
                     <h2 className="omnipresence-title">
-                        Schedule from anywhere
+                        Never schedule manually again
                     </h2>
 
                     <p className="omnipresence-subtext">
-                        DropCal lives wherever scheduling information exists. Share a screenshot, forward an email, text a photo, paste a link. Your preferences sync across every surface.
+                        Class syllabus? Flyer? Email? Instagram Story? Document? Poster? Text message? 
+                        Drop it in from anywhere and forget about it. DropCal will schedule it exactly as you like:
+                        using the same colors, conventions, and info as you would have.
+
+                        Information copying, tab switching, missing events. Say "Goodbye!" to it all!
+                        And say "Hello!" to the product that knows just how lazy a busy person can be.
                     </p>
 
                     <CTAButton

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     List, X, Mailbox, FingerprintSimple, Flask,
@@ -13,6 +13,8 @@ import { FlowPath } from '../full/components/FlowPath'
 import { CTAButton } from '../full/components/CTAButton'
 import phoneDemoLight from '../../assets/demo/phone-light.png'
 import './Welcome.css'
+
+const PAGE_COUNT = 2
 
 function GoogleLogo({ className }: { className?: string }) {
     return (
@@ -47,6 +49,27 @@ function MicrosoftLogo({ className }: { className?: string }) {
 export function Welcome() {
     const navigate = useNavigate()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    const [scrollProgress, setScrollProgress] = useState(0)
+    const scrollRef = useRef<HTMLDivElement>(null)
+
+    const handleScroll = useCallback(() => {
+        const el = scrollRef.current
+        if (!el) return
+        const pageHeight = el.clientHeight
+        if (pageHeight === 0) return
+        setScrollProgress(el.scrollTop / pageHeight)
+    }, [])
+
+    useEffect(() => {
+        handleScroll()
+    }, [handleScroll])
+
+    const goToPage = (index: number) => {
+        const el = scrollRef.current
+        if (!el) return
+        el.scrollTo({ top: index * el.clientHeight, behavior: 'smooth' })
+    }
+
     const iconSource = [
         Envelope, ChatCircleText, Camera, FileText, Microphone, LinkIcon,
         WhatsappLogo, SlackLogo, Image, NotionLogo,
@@ -119,66 +142,102 @@ export function Welcome() {
                 />
             </div>
 
-            {/* Omnipresence section */}
-            <section className="omnipresence-section">
-                <FlowPath
-                    icons={iconNodes}
-                    iconSize={80}
-                    gap={20}
-                    path="M -400 650 C 0 950, 1000 50, 2000 350"
-                    pathLength={2600}
-                    duration={45}
-                />
-                <div className="omnipresence-container">
-                    <div className="omnipresence-content">
-                        <div className="platform-chips">
-                            <div className="platform-chip">
-                                <GoogleLogo className="platform-icon" /> Google
+            {/* Rounded frame — fixed border, scrolling content inside */}
+            <div className="welcome-frame">
+                <div className="welcome-page-dots" role="tablist" aria-label="Page navigation">
+                    {Array.from({ length: PAGE_COUNT }).map((_, i) => {
+                        const fill = Math.max(0, 1 - Math.abs(scrollProgress - i))
+                        return (
+                            <button
+                                key={i}
+                                type="button"
+                                className="page-dot"
+                                onClick={() => goToPage(i)}
+                                aria-label={`Go to page ${i + 1}`}
+                                aria-current={Math.round(scrollProgress) === i ? 'page' : undefined}
+                            >
+                                <span
+                                    className="page-dot-fill"
+                                    style={{
+                                        opacity: fill,
+                                        transform: `scale(${fill})`,
+                                    }}
+                                />
+                            </button>
+                        )
+                    })}
+                </div>
+
+                <div
+                    className="welcome-pages-scroll"
+                    ref={scrollRef}
+                    onScroll={handleScroll}
+                >
+                    {/* Page 1 — Omnipresence */}
+                    <section className="welcome-page omnipresence-page">
+                        <FlowPath
+                            icons={iconNodes}
+                            iconSize={80}
+                            gap={20}
+                            path="M -400 650 C 0 950, 1000 50, 2000 350"
+                            pathLength={2600}
+                            duration={45}
+                        />
+                        <div className="omnipresence-container">
+                            <div className="omnipresence-content">
+                                <div className="platform-chips">
+                                    <div className="platform-chip">
+                                        <GoogleLogo className="platform-icon" /> Google
+                                    </div>
+                                    <div className="platform-chip">
+                                        <AppleLogo className="platform-icon" /> Apple
+                                    </div>
+                                    <div className="platform-chip">
+                                        <MicrosoftLogo className="platform-icon" /> Microsoft
+                                    </div>
+                                </div>
+                                <h2 className="omnipresence-title">Never<br />schedule again</h2>
+                                <p className="omnipresence-subtext">
+                                    DropCal lives wherever scheduling information exists. Share a screenshot, forward an email, text a photo, paste a link. Your preferences sync across every surface.
+                                </p>
+                                <CTAButton
+                                    text="See how it works"
+                                    to="/"
+                                    backgroundColor="#ffffff"
+                                    textColor="var(--primary-color)"
+                                    className="see-how-cta-desktop"
+                                    iconLeft={<EyesIcon size={22} weight="duotone" />}
+                                    iconRight={<ArrowSquareOut size={20} weight="duotone" />}
+                                />
                             </div>
-                            <div className="platform-chip">
-                                <AppleLogo className="platform-icon" /> Apple
-                            </div>
-                            <div className="platform-chip">
-                                <MicrosoftLogo className="platform-icon" /> Microsoft
+                            <div className="omnipresence-visual">
+                                <div className="phone-mockup">
+                                    <div className="phone-notch"></div>
+                                    <div className="phone-screen">
+                                        <img
+                                            src={phoneDemoLight}
+                                            alt="DropCal app demo"
+                                            className="phone-demo-img"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <h2 className="omnipresence-title">Schedule<br /> from anywhere</h2>
-                        <p className="omnipresence-subtext">
-                            DropCal lives wherever scheduling information exists. Share a screenshot, forward an email, text a photo, paste a link. Your preferences sync across every surface.
-                        </p>
                         <CTAButton
                             text="See how it works"
                             to="/"
                             backgroundColor="#ffffff"
                             textColor="var(--primary-color)"
-                            className="see-how-cta-desktop"
+                            className="see-how-cta-mobile"
                             iconLeft={<EyesIcon size={22} weight="duotone" />}
                             iconRight={<ArrowSquareOut size={20} weight="duotone" />}
                         />
-                    </div>
-                    <div className="omnipresence-visual">
-                        <div className="phone-mockup">
-                            <div className="phone-notch"></div>
-                            <div className="phone-screen">
-                                <img
-                                    src={phoneDemoLight}
-                                    alt="DropCal app demo"
-                                    className="phone-demo-img"
-                                />
-                            </div>
-                        </div>
-                    </div>
+                    </section>
+
+                    {/* Page 2 — Blank placeholder */}
+                    <section className="welcome-page blank-page" />
                 </div>
-                <CTAButton
-                    text="See how it works"
-                    to="/"
-                    backgroundColor="#ffffff"
-                    textColor="var(--primary-color)"
-                    className="see-how-cta-mobile"
-                    iconLeft={<EyesIcon size={22} weight="duotone" />}
-                    iconRight={<ArrowSquareOut size={20} weight="duotone" />}
-                />
-            </section>
+            </div>
 
             <div className="welcome-legal">
                 <Link to="/privacy"><span className="legal-full">Privacy Policy</span><span className="legal-short">Privacy</span></Link>

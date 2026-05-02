@@ -218,18 +218,96 @@
   display: none;
 }
 
-/* ===== Omnipresence section ===== */
-.omnipresence-section {
+/* ===== Frame — fixed rounded border ===== */
+.welcome-frame {
   position: relative;
   width: calc(100% - 48px);
   height: calc(100dvh - 48px);
   margin: 24px;
   border-radius: 80px;
-  padding: 120px 24px;
   background-color: var(--primary-color, #1170C5);
   color: #ffffff;
   overflow: hidden;
   box-sizing: border-box;
+}
+
+/* ===== Scrolling viewport inside the frame ===== */
+.welcome-pages-scroll {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.welcome-pages-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.welcome-page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  flex-shrink: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Page 1 — original omnipresence content */
+.omnipresence-page {
+  padding: 120px 24px;
+}
+
+/* Page 2 — blank placeholder */
+.blank-page {
+  background: transparent;
+}
+
+/* ===== Page dot navigation — fixed inside frame ===== */
+.welcome-page-dots {
+  position: absolute;
+  left: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-dot {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.page-dot:hover {
+  border-color: #ffffff;
+  transform: scale(1.15);
+}
+
+.page-dot-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #ffffff;
+  transform-origin: center;
+  transition: opacity 0.18s ease-out, transform 0.18s ease-out;
+  pointer-events: none;
 }
 
 .omnipresence-container {
@@ -445,8 +523,18 @@
 
 /* ===== Mobile responsive ===== */
 @media (max-width: 1024px) {
-  .omnipresence-section {
+  .welcome-frame {
     border-radius: 40px;
+  }
+
+  .welcome-page-dots {
+    left: 20px;
+    gap: 12px;
+  }
+
+  .page-dot {
+    width: 12px;
+    height: 12px;
   }
 
   .omnipresence-container {

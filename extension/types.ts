@@ -34,6 +34,7 @@ export interface AuthState {
   accessToken: string;
   refreshToken: string;
   expiresAt: number; // Unix timestamp in seconds
+  userId: string | null; // Supabase user ID (JWT `sub`); used to detect account switches
 }
 
 // Phase 1 — single active job (kept for migration + context menu flow)
