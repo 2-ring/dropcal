@@ -256,6 +256,160 @@
   overflow: hidden;
 }
 
+/* ===== Auth layer — sibling of the deck inside the frame. ===== */
+.welcome-auth-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: #ffffff;
+  z-index: 10;
+}
+
+/* Back button — anchored to the frame (not the page) so it doesn't scroll
+   with the page-progress transform. Only rendered when /auth. */
+.welcome-auth-back {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    opacity 0.25s ease;
+  z-index: 30;
+  opacity: 1;
+}
+
+.welcome-auth-back.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.welcome-auth-back:hover {
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.28);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.welcome-auth-content {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.welcome-auth-greeting {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  /* Logo inherits color from currentColor inside the bright frame */
+  color: #ffffff;
+}
+
+.welcome-auth-greeting svg {
+  /* Force the dropcal logo to render in white inside the blue frame. */
+  color: #ffffff;
+}
+
+.welcome-auth-heading {
+  font-size: clamp(1.75rem, 4.2vw, 2.25rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.welcome-auth-subheading {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0 0 56px;
+  padding: 0 8px;
+}
+
+.welcome-auth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+/* Provider buttons inside the frame: dark pills sit nicely on the blue. */
+.welcome-auth-buttons .menu-button-signin {
+  background-color: rgba(0, 0, 0, 0.32);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.welcome-auth-buttons .menu-button-signin:hover:not(:disabled) {
+  background-color: rgba(0, 0, 0, 0.42);
+  border-color: rgba(255, 255, 255, 0.32);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.welcome-auth-buttons .menu-button-signin:active:not(:disabled) {
+  transform: translateY(0);
+  background-color: rgba(0, 0, 0, 0.36);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.welcome-auth-buttons .menu-button-signin .menu-button-icon {
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .welcome-auth-back {
+    top: 16px;
+    left: 16px;
+    font-size: 13px;
+  }
+
+  .welcome-auth-greeting {
+    margin-bottom: 16px;
+  }
+
+  .welcome-auth-heading {
+    font-size: 1.75rem;
+  }
+
+  .welcome-auth-subheading {
+    font-size: 13.5px;
+    margin-bottom: 44px;
+  }
+
+  .welcome-auth-buttons .menu-button-signin {
+    font-size: 14.5px;
+  }
+}
+
 /* Page 1 — original omnipresence content */
 .omnipresence-page {
   padding: 120px 24px;
@@ -276,6 +430,13 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+.welcome-page-dots.hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .page-dot {

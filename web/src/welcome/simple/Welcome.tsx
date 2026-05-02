@@ -1,17 +1,20 @@
-import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
     List, X, Mailbox, FingerprintSimple, Flask,
     Envelope, ChatCircleText, Camera, FileText, Microphone,
     Link as LinkIcon, WhatsappLogo, SlackLogo, NotionLogo,
     TelegramLogo, LinkedinLogo, DiscordLogo, Globe, Image,
-    EyesIcon, ArrowSquareOut,
+    EyesIcon, ArrowSquareOut, ArrowLeft,
 } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
 import { FlowPath } from '../full/components/FlowPath'
 import { CTAButton } from '../full/components/CTAButton'
 import { PageDeck, type PageDeckHandle, type PageRender } from './PageDeck'
+import { useAnimatedPosition } from './animation'
+import { useAuth } from '../../auth/AuthContext'
+import { MenuButton } from '../../menu/MenuButton'
 import phoneDemoLight from '../../assets/demo/phone-light.png'
 import './Welcome.css'
 
@@ -45,11 +48,55 @@ function MicrosoftLogo({ className }: { className?: string }) {
     )
 }
 
+// Provider icons used by the embedded auth state.
+const AuthGoogleIcon = (
+    <svg viewBox="0 0 48 48" width="20" height="20">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
+)
+const AuthMicrosoftIcon = (
+    <svg viewBox="0 0 48 48" width="20" height="20">
+        <path fill="#f25022" d="M0 0h23v23H0z" />
+        <path fill="#00a4ef" d="M25 0h23v23H25z" />
+        <path fill="#7fba00" d="M0 25h23v23H0z" />
+        <path fill="#ffb900" d="M25 25h23v23H25z" />
+    </svg>
+)
+const AuthAppleIcon = (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+        <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+    </svg>
+)
+
 export function Welcome() {
     const navigate = useNavigate()
+    const location = useLocation()
+    const { user, loading: authLoading, signIn } = useAuth()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-    const [position, setPosition] = useState(0)
+    /** Scroll list index — fully owned by the PageDeck. We mirror it here for the page dots. */
+    const [listIndex, setListIndex] = useState(0)
     const deckRef = useRef<PageDeckHandle>(null)
+
+    /** Two state variables. That's it. */
+    const authOpen = location.pathname === '/auth'
+
+    /**
+     * Single shell-level animated value: 0 = deck active, 1 = auth active.
+     * Same tween primitive that PageDeck uses internally for slide-to-slide.
+     * The active deck page receives this as `outerProgress` so its own intrinsic
+     * exit animation plays during the deck↔auth transition.
+     */
+    const shellProgress = useAnimatedPosition(authOpen ? 1 : 0, { duration: 420 })
+
+    // If the user signs in successfully while on /auth, send them into the app.
+    useEffect(() => {
+        if (authOpen && !authLoading && user) {
+            navigate('/app', { replace: true })
+        }
+    }, [authOpen, authLoading, user, navigate])
 
     const goToPage = (index: number) => deckRef.current?.goToPage(index)
 
@@ -109,7 +156,7 @@ export function Welcome() {
 it ever existed. DropCal schedules it the way you would: your colors, your shorthand, your conventions.                        </p>
                             <CTAButton
                                 text="See how it works"
-                                to="/auth?source=demo"
+                                to="/auth"
                                 backgroundColor="#ffffff"
                                 textColor="var(--primary-color)"
                                 className="see-how-cta-desktop"
@@ -140,7 +187,7 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
                 </div>
                 <CTAButton
                     text="See how it works"
-                    to="/auth?source=demo"
+                    to="/auth"
                     backgroundColor="#ffffff"
                     textColor="var(--primary-color)"
                     className="see-how-cta-mobile"
@@ -154,6 +201,18 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
     ]
 
     const PAGE_COUNT = pages.length
+
+    // Auth panel. Lives outside the deck. Uses the same animation primitive
+    // (shellProgress) but is its own visual layer with its own intrinsic
+    // entrance/exit. progress = 0 when active, 1 when fully exited.
+    const authProgress = 1 - shellProgress
+    const authBlockStyle = {
+        transform: `scale(${1 - authProgress * 0.15})`,
+        transformOrigin: 'center center' as const,
+        opacity: Math.max(0, 1 - authProgress * 1.4),
+        willChange: 'transform, opacity',
+        pointerEvents: shellProgress > 0.5 ? 'auto' as const : 'none' as const,
+    }
 
     return (
         <div className="welcome-simple">
@@ -169,14 +228,14 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
                             <Mailbox size={20} weight="duotone" />
                             Contact
                         </a>
-                        <button onClick={() => navigate('/auth?source=login')} className="nav-secondary-link">
+                        <button onClick={() => navigate('/auth')} className="nav-secondary-link">
                             <FingerprintSimple size={20} weight="duotone" />
                             Log In
                         </button>
                         <CTAButton
                             text="Join Beta"
                             iconLeft={<Flask size={20} weight="duotone" />}
-                            to="/auth?source=beta"
+                            to="/auth"
                             backgroundColor="var(--primary)"
                             textColor="white"
                             className="nav-cta-button"
@@ -200,7 +259,7 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
                         <Mailbox size={20} weight="duotone" />
                         Contact
                     </a>
-                    <button onClick={() => { setMobileMenuOpen(false); navigate('/auth?source=login') }}>
+                    <button onClick={() => { setMobileMenuOpen(false); navigate('/auth') }}>
                         <FingerprintSimple size={20} weight="duotone" />
                         Log In
                     </button>
@@ -208,18 +267,37 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
                 <CTAButton
                     text="Join Beta"
                     iconLeft={<Flask size={20} weight="duotone" />}
-                    to="/auth?source=beta"
+                    to="/auth"
                     backgroundColor="var(--primary)"
                     textColor="white"
                     className="drawer-cta-button"
                 />
             </div>
 
-            {/* Rounded frame — fixed border, transitioning content inside */}
+            {/* Rounded frame — fixed border. The deck owns ALL transitions
+                (page-to-page, page-to-auth, auth-to-page) using the same exit/enter
+                machinery. Each page defines its own animation via `progress`. */}
             <div className="welcome-frame">
-                <div className="welcome-page-dots" role="tablist" aria-label="Page navigation">
+                {/* Back button — fades in only on the auth page. */}
+                <button
+                    type="button"
+                    className={`welcome-auth-back ${authOpen ? '' : 'hidden'}`}
+                    onClick={() => navigate('/welcome')}
+                    aria-label="Back"
+                    tabIndex={authOpen ? 0 : -1}
+                >
+                    <ArrowLeft size={18} weight="bold" />
+                    <span>Back</span>
+                </button>
+
+                {/* Page dots — fade out as the shell transitions to auth. */}
+                <div
+                    className={`welcome-page-dots ${authOpen ? 'hidden' : ''}`}
+                    role="tablist"
+                    aria-label="Page navigation"
+                >
                     {Array.from({ length: PAGE_COUNT }).map((_, i) => {
-                        const fill = Math.max(0, 1 - Math.abs(position - i))
+                        const fill = Math.max(0, 1 - Math.abs(listIndex - i))
                         return (
                             <button
                                 key={i}
@@ -227,7 +305,7 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
                                 className="page-dot"
                                 onClick={() => goToPage(i)}
                                 aria-label={`Go to page ${i + 1}`}
-                                aria-current={Math.round(position) === i ? 'page' : undefined}
+                                aria-current={Math.round(listIndex) === i ? 'page' : undefined}
                             >
                                 <span
                                     className="page-dot-fill"
@@ -241,12 +319,40 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
                     })}
                 </div>
 
+                {/* The scroll list — its own concern. Receives shell progress so the
+                    active deck page's intrinsic exit animation plays during deck↔auth. */}
                 <PageDeck
                     ref={deckRef}
                     pages={pages}
-                    onPositionChange={setPosition}
+                    outerProgress={shellProgress}
+                    onPositionChange={setListIndex}
                     pageTransform={() => ({})}
                 />
+
+                {/* Auth panel — sibling layer, not a deck slide. Driven by the same
+                    shellProgress tween. Renders its own intrinsic entrance/exit. */}
+                <div className="welcome-auth-layer" style={authBlockStyle} aria-hidden={!authOpen}>
+                    <div className="welcome-auth-content">
+                        <div className="welcome-auth-greeting">
+                            <Logo size={48} color="#ffffff" />
+                            <h1 className="display-text welcome-auth-heading">Welcome</h1>
+                        </div>
+                        <p className="welcome-auth-subheading">
+                            Pick a provider to continue. We'll only ask for the calendar permissions DropCal needs.
+                        </p>
+                        <div className="welcome-auth-buttons">
+                            <MenuButton onClick={() => signIn('google')} icon={AuthGoogleIcon} variant="signin">
+                                Sign in with Google
+                            </MenuButton>
+                            <MenuButton onClick={() => signIn('microsoft')} icon={AuthMicrosoftIcon} variant="signin">
+                                Sign in with Microsoft
+                            </MenuButton>
+                            <MenuButton onClick={() => signIn('apple')} icon={AuthAppleIcon} variant="signin">
+                                Sign in with Apple
+                            </MenuButton>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div className="welcome-legal">

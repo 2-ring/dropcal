@@ -624,11 +624,17 @@ function App() {
     <NotificationProvider>
       <Routes>
         <Route path="/" element={<RootRedirect />} />
-        <Route path="/auth" element={<AuthPage />} />
         <Route path="/app" element={<RequireAuth><AppContent /></RequireAuth>} />
         <Route path="/app/s/:sessionId" element={<RequireAuth><AppContent /></RequireAuth>} />
-        {/* Web-only routes — skip on native app */}
-        {!native && <Route path="/welcome" element={<Welcome />} />}
+        {/* Web: /welcome and /auth share a single Welcome shell — auth is a state, not a separate route. */}
+        {!native && (
+          <Route element={<Welcome />}>
+            <Route path="/welcome" element={null} />
+            <Route path="/auth" element={null} />
+          </Route>
+        )}
+        {/* Native: standalone auth page (no /welcome on native). */}
+        {native && <Route path="/auth" element={<AuthPage />} />}
         {!native && <Route path="/plans" element={<Plans />} />}
         {!native && <Route path="/privacy" element={<Privacy />} />}
         {!native && <Route path="/terms" element={<Terms />} />}

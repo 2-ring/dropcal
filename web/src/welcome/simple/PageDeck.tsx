@@ -2,6 +2,7 @@ import {
     useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef,
     type ReactNode, type CSSProperties,
 } from 'react'
+import { useAnimatedPosition, type Easing } from './animation'
 import './PageDeck.css'
 
 /**
@@ -28,11 +29,16 @@ export interface PageDeckProps {
     /** Transition duration in ms. */
     duration?: number
     /** Easing for every transition (manual or programmatic). */
-    ease?: (t: number) => number
+    ease?: Easing
     /** Wheel deltaY needed to trigger a step. */
     wheelThreshold?: number
     /** Touch dy needed to trigger a step. */
     swipeThreshold?: number
+    /** Outer-shell exit progress (0 = deck active, 1 = shell has fully exited the deck).
+     *  When nonzero, the deck's active page receives an effective progress that
+     *  reflects this so its own intrinsic exit animation plays during shell-level
+     *  transitions (e.g. opening the auth panel). */
+    outerProgress?: number
     /** Notified continuously as the animated position changes. */
     onPositionChange?: (position: number) => void
     className?: string
@@ -42,98 +48,45 @@ const defaultPageTransform: PageTransform = (progress) => ({
     transform: `translate3d(0, ${-progress * 100}%, 0)`,
 })
 
-/** Fast start, smooth deceleration — the snappy modern page-transition curve. */
-const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4)
-
 export const PageDeck = forwardRef<PageDeckHandle, PageDeckProps>(function PageDeck(
     {
         pages,
         pageTransform = defaultPageTransform,
         duration = 420,
-        ease = easeOutQuart,
+        ease,
         wheelThreshold = 30,
         swipeThreshold = 50,
+        outerProgress = 0,
         onPositionChange,
         className = '',
     },
     ref,
 ) {
     const containerRef = useRef<HTMLDivElement>(null)
-    const [, bump] = useState(0)
-    const rerender = useCallback(() => bump(n => (n + 1) | 0), [])
+    const [target, setTarget] = useState(0)
+    const position = useAnimatedPosition(target, { duration, ease })
 
-    const stateRef = useRef({
-        /** Animated, displayed position (float). */
-        position: 0,
-        /** Integer page we're transitioning toward. Equals `position` at rest. */
-        target: 0,
-        rafId: 0,
-        animFrom: 0,
-        animTo: 0,
-        animStart: 0,
-    })
+    useEffect(() => {
+        onPositionChange?.(position)
+    }, [position, onPositionChange])
 
-    const notify = () => {
-        onPositionChange?.(stateRef.current.position)
-        rerender()
-    }
-
-    /** Start (or restart, if target changed) the tween from current `position` toward `target`. */
-    const playToTarget = () => {
-        const s = stateRef.current
-        if (s.rafId) cancelAnimationFrame(s.rafId)
-        s.animFrom = s.position
-        s.animTo = s.target
-        s.animStart = performance.now()
-
-        const tick = (now: number) => {
-            const cur = stateRef.current
-            // If the target was bumped mid-tween, restart from the current visual position.
-            if (cur.animTo !== cur.target) {
-                cur.animFrom = cur.position
-                cur.animTo = cur.target
-                cur.animStart = now
-            }
-            const t = Math.min(1, (now - cur.animStart) / duration)
-            cur.position = cur.animFrom + (cur.animTo - cur.animFrom) * ease(t)
-            notify()
-            if (t < 1 || cur.animTo !== cur.target) {
-                cur.rafId = requestAnimationFrame(tick)
-            } else {
-                cur.rafId = 0
-            }
-        }
-        s.rafId = requestAnimationFrame(tick)
-    }
-
-    /** Bump the target by ±1 (clamped) and play toward it. No-op at boundaries. */
-    const step = (dir: 1 | -1) => {
-        const s = stateRef.current
-        const next = Math.max(0, Math.min(pages.length - 1, s.target + dir))
-        if (next === s.target) return
-        s.target = next
-        playToTarget()
-    }
+    const step = useCallback((dir: 1 | -1) => {
+        setTarget(t => Math.max(0, Math.min(pages.length - 1, t + dir)))
+    }, [pages.length])
 
     const goToPage = useCallback((idx: number) => {
-        const s = stateRef.current
-        const clamped = Math.max(0, Math.min(pages.length - 1, idx))
-        if (clamped === s.target && s.position === clamped) return
-        s.target = clamped
-        playToTarget()
-    }, [pages.length, duration, ease])
+        setTarget(Math.max(0, Math.min(pages.length - 1, idx)))
+    }, [pages.length])
 
     useImperativeHandle(ref, () => ({
         goToPage,
-        get position() { return stateRef.current.position },
-    }), [goToPage])
+        get position() { return position },
+    }), [goToPage, position])
 
     useEffect(() => {
         const el = containerRef.current
         if (!el) return
 
-        // Wheel: accumulate deltaY until past threshold, then step. Cooldown after each step
-        // so a single trackpad gesture doesn't trigger multiple steps mid-flight.
         let wheelAccum = 0
         let wheelResetTimer: ReturnType<typeof setTimeout> | null = null
         let cooldownUntil = 0
@@ -158,7 +111,6 @@ export const PageDeck = forwardRef<PageDeckHandle, PageDeckProps>(function PageD
             }
         }
 
-        // Touch: total dy from start to end. One trigger per gesture.
         let touchStartY = 0
         const onTouchStart = (e: TouchEvent) => {
             touchStartY = e.touches[0].clientY
@@ -180,25 +132,30 @@ export const PageDeck = forwardRef<PageDeckHandle, PageDeckProps>(function PageD
             el.removeEventListener('touchend', onTouchEnd)
             el.removeEventListener('touchcancel', onTouchEnd)
             if (wheelResetTimer) clearTimeout(wheelResetTimer)
-            if (stateRef.current.rafId) cancelAnimationFrame(stateRef.current.rafId)
         }
-    }, [duration, ease, wheelThreshold, swipeThreshold, pages.length])
-
-    const position = stateRef.current.position
+    }, [duration, step, wheelThreshold, swipeThreshold])
 
     return (
         <div ref={containerRef} className={`page-deck ${className}`}>
             {pages.map((render, i) => {
-                const progress = position - i
-                if (Math.abs(progress) > 1.25) return null
+                const innerProgress = position - i
+                if (Math.abs(innerProgress) > 1.25) return null
+
+                // Active page gets shell-level exit progress folded in so its
+                // own intrinsic exit animation plays during shell transitions.
+                const isActive = Math.abs(innerProgress) < 0.5
+                const effectiveProgress = isActive
+                    ? Math.sign(innerProgress || 1) * Math.max(Math.abs(innerProgress), outerProgress)
+                    : innerProgress
+
                 const style: CSSProperties = {
-                    ...pageTransform(progress),
-                    pointerEvents: Math.abs(progress) < 0.5 ? 'auto' : 'none',
-                    zIndex: Math.abs(progress) < 0.5 ? 2 : 1,
+                    ...pageTransform(innerProgress),
+                    pointerEvents: isActive && outerProgress < 0.5 ? 'auto' : 'none',
+                    zIndex: isActive ? 2 : 1,
                 }
                 return (
                     <div key={i} className="page-deck-page" style={style}>
-                        {render(progress)}
+                        {render(effectiveProgress)}
                     </div>
                 )
             })}
