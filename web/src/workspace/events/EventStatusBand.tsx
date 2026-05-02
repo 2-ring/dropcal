@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CheckCircle, CloudCheck, ArrowsClockwise, Warning } from '@phosphor-icons/react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { CheckCircle, CloudCheck, ArrowsClockwise, Warning, ArrowSquareOut } from '@phosphor-icons/react'
 import type { Icon } from '@phosphor-icons/react'
 import type { CalendarEvent } from './types'
 import { getEventSyncStatus } from './types'
@@ -16,6 +17,10 @@ import type { ConflictInfo } from '../../api/backend-client'
  * Internal state: when an event transitions into the synced state during the
  * component's lifetime, we briefly flash the "Created" state before settling
  * into the resting "Synced" state.
+ *
+ * Animation: when the band first appears, the wrapper grows from 0 height,
+ * and once fully grown the icon+message do a text-flip in. Subsequent state
+ * changes flip the icon+message in place.
  */
 
 export type EventStatusKind = 'hidden' | 'created' | 'synced' | 'pending' | 'conflict'
@@ -27,13 +32,15 @@ export type EventStatusState =
   | { kind: 'pending' }
   | { kind: 'conflict'; message: string }
 
+type VisibleStatusState = Exclude<EventStatusState, { kind: 'hidden' }>
+
 interface StatusVisualConfig {
   label: string
   Icon: Icon
   className: string
 }
 
-const STATUS_CONFIG: Record<Exclude<EventStatusKind, 'hidden'>, StatusVisualConfig> = {
+const STATUS_CONFIG: Record<VisibleStatusState['kind'], StatusVisualConfig> = {
   created: { label: 'Created', Icon: CheckCircle, className: 'status-created' },
   synced: { label: 'Synced', Icon: CloudCheck, className: 'status-synced' },
   pending: { label: 'Changes pending', Icon: ArrowsClockwise, className: 'status-apply-edits' },
@@ -42,6 +49,11 @@ const STATUS_CONFIG: Record<Exclude<EventStatusKind, 'hidden'>, StatusVisualConf
 
 /** How long to flash the "Created" state before settling into "Synced". */
 const CREATED_FLASH_MS = 3000
+
+/** Animation timing knobs — kept here so the JSX stays declarative. */
+const HEIGHT_DURATION = 0.25
+const FLIP_DURATION = 0.25
+const FLIP_EASE = [0.22, 1, 0.36, 1] as const
 
 function buildConflictMessage(
   conflictInfo: ConflictInfo[],
@@ -52,6 +64,52 @@ function buildConflictMessage(
     return `Conflict with ${c.summary} (${formatTimeRange(c.start_time, c.end_time)})`
   }
   return 'Conflict with multiple events'
+}
+
+/**
+ * Extract the event's day parts in the user's local frame. All-day events
+ * carry only a YYYY-MM-DD string, which we parse manually to avoid the
+ * timezone shift `new Date('YYYY-MM-DD')` introduces (UTC midnight).
+ */
+function getEventDayParts(event: CalendarEvent): { y: number; m: number; d: number } | null {
+  if (event.start.date) {
+    const parts = event.start.date.split('-').map(Number)
+    if (parts.length === 3 && parts.every(n => Number.isFinite(n))) {
+      return { y: parts[0], m: parts[1], d: parts[2] }
+    }
+    return null
+  }
+  if (event.start.dateTime) {
+    const dt = new Date(event.start.dateTime)
+    if (Number.isNaN(dt.getTime())) return null
+    return { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() }
+  }
+  return null
+}
+
+/**
+ * Build a deep link to the user's calendar provider on the event's day.
+ * Returns null when the provider has no usable web URL (e.g. Apple).
+ */
+export function getProviderDayUrl(
+  provider: string | undefined,
+  event: CalendarEvent,
+): string | null {
+  if (!provider) return null
+  const parts = getEventDayParts(event)
+  if (!parts) return null
+  const { y, m, d } = parts
+
+  switch (provider) {
+    case 'google':
+      return `https://calendar.google.com/calendar/u/0/r/day/${y}/${m}/${d}`
+    case 'microsoft': {
+      const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      return `https://outlook.office.com/calendar/view/day/${iso}`
+    }
+    default:
+      return null
+  }
 }
 
 /**
@@ -117,16 +175,87 @@ export function EventStatusBand({
     [event, activeProvider, conflictInfo, formatTimeRange, justCreated],
   )
 
-  if (status.kind === 'hidden') return null
+  return (
+    <AnimatePresence initial={false}>
+      {status.kind !== 'hidden' && (
+        <StatusBandShell
+          key="shell"
+          status={status}
+          event={event}
+          activeProvider={activeProvider}
+        />
+      )}
+    </AnimatePresence>
+  )
+}
+
+/**
+ * The shell handles the two-phase appear: first grow the wrapper to natural
+ * height, then let the inner content text-flip in. Once `grown` is true,
+ * subsequent state swaps flip in place via the inner AnimatePresence.
+ */
+function StatusBandShell({
+  status,
+  event,
+  activeProvider,
+}: {
+  status: VisibleStatusState
+  event: CalendarEvent
+  activeProvider: string | undefined
+}) {
+  const [grown, setGrown] = useState(false)
 
   const visual = STATUS_CONFIG[status.kind]
   const label = status.kind === 'conflict' ? status.message : visual.label
-  const { Icon: StatusIcon, className } = visual
+  const StatusIcon = visual.Icon
+
+  // Only the resting "Synced" state offers a deep-link to the provider.
+  const providerUrl = status.kind === 'synced' ? getProviderDayUrl(activeProvider, event) : null
 
   return (
-    <div className={`event-status-bar ${className}`}>
-      <StatusIcon size={14} weight="bold" />
-      <span>{label}</span>
-    </div>
+    <motion.div
+      className="event-status-band-wrapper"
+      initial={{ height: 0 }}
+      animate={{ height: 'auto' }}
+      exit={{ height: 0 }}
+      transition={{ duration: HEIGHT_DURATION, ease: FLIP_EASE }}
+      onAnimationComplete={(definition) => {
+        // Mark grown only after the open animation reaches its target.
+        if (
+          typeof definition === 'object'
+          && definition !== null
+          && 'height' in definition
+          && definition.height !== 0
+        ) {
+          setGrown(true)
+        }
+      }}
+    >
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={status.kind}
+          className={`event-status-bar ${visual.className}`}
+          initial={{ y: 14, scale: 0.95, opacity: 0 }}
+          animate={grown ? { y: 0, scale: 1, opacity: 1 } : { y: 14, scale: 0.95, opacity: 0 }}
+          exit={{ y: -14, scale: 0.95, opacity: 0 }}
+          transition={{ duration: FLIP_DURATION, ease: FLIP_EASE }}
+        >
+          <StatusIcon size={14} weight="bold" />
+          <span>{label}</span>
+          {providerUrl && (
+            <a
+              className="event-status-bar-link"
+              href={providerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Open in calendar"
+            >
+              <ArrowSquareOut size={14} weight="bold" />
+            </a>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </motion.div>
   )
 }

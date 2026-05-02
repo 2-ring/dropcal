@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     List, X, Mailbox, FingerprintSimple, Flask,
@@ -11,10 +11,9 @@ import { Link } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
 import { FlowPath } from '../full/components/FlowPath'
 import { CTAButton } from '../full/components/CTAButton'
+import { PageDeck, type PageDeckHandle, type PageRender } from './PageDeck'
 import phoneDemoLight from '../../assets/demo/phone-light.png'
 import './Welcome.css'
-
-const PAGE_COUNT = 2
 
 function GoogleLogo({ className }: { className?: string }) {
     return (
@@ -49,26 +48,10 @@ function MicrosoftLogo({ className }: { className?: string }) {
 export function Welcome() {
     const navigate = useNavigate()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-    const [scrollProgress, setScrollProgress] = useState(0)
-    const scrollRef = useRef<HTMLDivElement>(null)
+    const [position, setPosition] = useState(0)
+    const deckRef = useRef<PageDeckHandle>(null)
 
-    const handleScroll = useCallback(() => {
-        const el = scrollRef.current
-        if (!el) return
-        const pageHeight = el.clientHeight
-        if (pageHeight === 0) return
-        setScrollProgress(el.scrollTop / pageHeight)
-    }, [])
-
-    useEffect(() => {
-        handleScroll()
-    }, [handleScroll])
-
-    const goToPage = (index: number) => {
-        const el = scrollRef.current
-        if (!el) return
-        el.scrollTo({ top: index * el.clientHeight, behavior: 'smooth' })
-    }
+    const goToPage = (index: number) => deckRef.current?.goToPage(index)
 
     const iconSource = [
         Envelope, ChatCircleText, Camera, FileText, Microphone, LinkIcon,
@@ -81,6 +64,73 @@ export function Welcome() {
             <Icon weight="duotone" style={{ color: 'var(--text-secondary)' }} />
         </div>
     ))
+
+    const pages: PageRender[] = [
+        () => (
+            <section className="welcome-page omnipresence-page">
+                <FlowPath
+                    icons={iconNodes}
+                    iconSize={80}
+                    gap={20}
+                    path="M -400 650 C 0 950, 1000 50, 2000 350"
+                    pathLength={2600}
+                    duration={45}
+                />
+                <div className="omnipresence-container">
+                    <div className="omnipresence-content">
+                        <div className="platform-chips">
+                            <div className="platform-chip">
+                                <GoogleLogo className="platform-icon" /> Google
+                            </div>
+                            <div className="platform-chip">
+                                <AppleLogo className="platform-icon" /> Apple
+                            </div>
+                            <div className="platform-chip">
+                                <MicrosoftLogo className="platform-icon" /> Microsoft
+                            </div>
+                        </div>
+                        <h2 className="omnipresence-title">Never schedule<br />manually again</h2>
+                        <p className="omnipresence-subtext">
+                            DropCal lives wherever scheduling information exists. Share a screenshot, forward an email, text a photo, paste a link. Your preferences sync across every surface.
+                        </p>
+                        <CTAButton
+                            text="See how it works"
+                            to="/"
+                            backgroundColor="#ffffff"
+                            textColor="var(--primary-color)"
+                            className="see-how-cta-desktop"
+                            iconLeft={<EyesIcon size={22} weight="duotone" />}
+                            iconRight={<ArrowSquareOut size={20} weight="duotone" />}
+                        />
+                    </div>
+                    <div className="omnipresence-visual">
+                        <div className="phone-mockup">
+                            <div className="phone-notch"></div>
+                            <div className="phone-screen">
+                                <img
+                                    src={phoneDemoLight}
+                                    alt="DropCal app demo"
+                                    className="phone-demo-img"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <CTAButton
+                    text="See how it works"
+                    to="/"
+                    backgroundColor="#ffffff"
+                    textColor="var(--primary-color)"
+                    className="see-how-cta-mobile"
+                    iconLeft={<EyesIcon size={22} weight="duotone" />}
+                    iconRight={<ArrowSquareOut size={20} weight="duotone" />}
+                />
+            </section>
+        ),
+        () => <section className="welcome-page blank-page" />,
+    ]
+
+    const PAGE_COUNT = pages.length
 
     return (
         <div className="welcome-simple">
@@ -142,11 +192,11 @@ export function Welcome() {
                 />
             </div>
 
-            {/* Rounded frame — fixed border, scrolling content inside */}
+            {/* Rounded frame — fixed border, transitioning content inside */}
             <div className="welcome-frame">
                 <div className="welcome-page-dots" role="tablist" aria-label="Page navigation">
                     {Array.from({ length: PAGE_COUNT }).map((_, i) => {
-                        const fill = Math.max(0, 1 - Math.abs(scrollProgress - i))
+                        const fill = Math.max(0, 1 - Math.abs(position - i))
                         return (
                             <button
                                 key={i}
@@ -154,7 +204,7 @@ export function Welcome() {
                                 className="page-dot"
                                 onClick={() => goToPage(i)}
                                 aria-label={`Go to page ${i + 1}`}
-                                aria-current={Math.round(scrollProgress) === i ? 'page' : undefined}
+                                aria-current={Math.round(position) === i ? 'page' : undefined}
                             >
                                 <span
                                     className="page-dot-fill"
@@ -168,75 +218,11 @@ export function Welcome() {
                     })}
                 </div>
 
-                <div
-                    className="welcome-pages-scroll"
-                    ref={scrollRef}
-                    onScroll={handleScroll}
-                >
-                    {/* Page 1 — Omnipresence */}
-                    <section className="welcome-page omnipresence-page">
-                        <FlowPath
-                            icons={iconNodes}
-                            iconSize={80}
-                            gap={20}
-                            path="M -400 650 C 0 950, 1000 50, 2000 350"
-                            pathLength={2600}
-                            duration={45}
-                        />
-                        <div className="omnipresence-container">
-                            <div className="omnipresence-content">
-                                <div className="platform-chips">
-                                    <div className="platform-chip">
-                                        <GoogleLogo className="platform-icon" /> Google
-                                    </div>
-                                    <div className="platform-chip">
-                                        <AppleLogo className="platform-icon" /> Apple
-                                    </div>
-                                    <div className="platform-chip">
-                                        <MicrosoftLogo className="platform-icon" /> Microsoft
-                                    </div>
-                                </div>
-                                <h2 className="omnipresence-title">Never<br />schedule again</h2>
-                                <p className="omnipresence-subtext">
-                                    DropCal lives wherever scheduling information exists. Share a screenshot, forward an email, text a photo, paste a link. Your preferences sync across every surface.
-                                </p>
-                                <CTAButton
-                                    text="See how it works"
-                                    to="/"
-                                    backgroundColor="#ffffff"
-                                    textColor="var(--primary-color)"
-                                    className="see-how-cta-desktop"
-                                    iconLeft={<EyesIcon size={22} weight="duotone" />}
-                                    iconRight={<ArrowSquareOut size={20} weight="duotone" />}
-                                />
-                            </div>
-                            <div className="omnipresence-visual">
-                                <div className="phone-mockup">
-                                    <div className="phone-notch"></div>
-                                    <div className="phone-screen">
-                                        <img
-                                            src={phoneDemoLight}
-                                            alt="DropCal app demo"
-                                            className="phone-demo-img"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <CTAButton
-                            text="See how it works"
-                            to="/"
-                            backgroundColor="#ffffff"
-                            textColor="var(--primary-color)"
-                            className="see-how-cta-mobile"
-                            iconLeft={<EyesIcon size={22} weight="duotone" />}
-                            iconRight={<ArrowSquareOut size={20} weight="duotone" />}
-                        />
-                    </section>
-
-                    {/* Page 2 — Blank placeholder */}
-                    <section className="welcome-page blank-page" />
-                </div>
+                <PageDeck
+                    ref={deckRef}
+                    pages={pages}
+                    onPositionChange={setPosition}
+                />
             </div>
 
             <div className="welcome-legal">
