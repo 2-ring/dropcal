@@ -1,34 +1,3 @@
-/* Always-visible sidebar collapse/expand toggle (desktop).
-   Sits at the workspace's top-left and vertically centers on the events
-   TopBar (1rem from top, 56px tall) — so it shifts right with the content
-   when the sidebar opens, matching the .content margin-left transition. */
-.sidebar-collapse-toggle {
-  position: fixed;
-  top: calc(var(--page-padding-x, 1rem) + (var(--dock-height, 56px) - 40px) / 2);
-  left: var(--page-padding-x, 1rem);
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: transparent;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  color: var(--text-tertiary);
-  z-index: 1001;
-  padding: 0;
-  transition: color 0.15s ease, background-color 0.15s ease, left 0.3s ease;
-}
-
-.sidebar-collapse-toggle.sidebar-open {
-  left: calc(280px + var(--page-padding-x, 1rem));
-}
-
-.sidebar-collapse-toggle:hover {
-  color: var(--text-secondary);
-}
-
 /* Menu mark logo - inside sidebar, visible when sidebar is open */
 .menu-mark-logo {
   position: fixed;
@@ -285,11 +254,6 @@
 
 /* Mobile responsiveness */
 @media (max-width: 768px) {
-  /* Mobile uses its own header (mobile-input-header) — hide the desktop toggle */
-  .sidebar-collapse-toggle {
-    display: none;
-  }
-
   .menu-mark-logo {
     top: 1rem;
     left: 1rem;

@@ -33,6 +33,10 @@ const MAX_HISTORY_SESSIONS = 50;
 const OPTIMISTIC_GRACE_MS = 30_000;
 // Mirrors the website's polling cadence while any session is in-progress.
 const LIST_REFRESH_INTERVAL_MS = 3_000;
+// If the cache was refreshed within this window AND no session is in-progress,
+// skip the server fetch on popup open. Active work (any session 'polling')
+// always bypasses the TTL — we need fresh status during processing.
+const SESSIONS_REFRESH_TTL_MS = 30_000;
 const CONTEXT_MENU_ID = 'send-to-dropcal';
 const DROPCAL_URL = 'https://dropcal.ai';
 const FEEDBACK_EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -115,7 +119,13 @@ async function wipeUserData(): Promise<void> {
   }
   await new Promise<void>((resolve) => {
     storage.local.remove(
-      ['sessionHistory', 'notificationQueue', 'themeMode', 'isLoadingSessions'],
+      [
+        'sessionHistory',
+        'notificationQueue',
+        'themeMode',
+        'isLoadingSessions',
+        'sessionsRefreshedAt',
+      ],
       resolve,
     );
   });
@@ -266,6 +276,19 @@ async function refreshSessions(): Promise<void> {
     if (!(await ensureAuth())) return;
     const expectedUserId = (await getAuth())?.userId ?? null;
 
+    // Skip the network call if the cache is recent AND nothing is processing.
+    // Any in-flight session forces a fetch so its status stays current.
+    const cached = await getHistory();
+    const hasPolling = cached.sessions.some((s) => s.status === 'polling');
+    if (!hasPolling) {
+      const lastAt: number = await new Promise((resolve) => {
+        storage.local.get('sessionsRefreshedAt', (r) =>
+          resolve((r.sessionsRefreshedAt as number | undefined) ?? 0),
+        );
+      });
+      if (Date.now() - lastAt < SESSIONS_REFRESH_TTL_MS) return;
+    }
+
     await new Promise<void>((resolve) => {
       storage.local.set({ isLoadingSessions: true }, resolve);
     });
@@ -296,37 +319,33 @@ async function refreshSessions(): Promise<void> {
         }
 
         merged.sort((a, b) => b.createdAt - a.createdAt);
+        const finalSessions = merged.slice(0, MAX_HISTORY_SESSIONS);
+
+        // Write sessionHistory first so any storage listeners that fire on
+        // the subsequent notification-queue update see a consistent list.
+        await new Promise<void>((resolve) => {
+          storage.local.set({ sessionHistory: { sessions: finalSessions } }, resolve);
+        });
 
         // Detect transitions for sessions the user submitted via this
         // extension. Only those should bump the badge / pop the popup —
         // surfacing a freshly-processed mobile session shouldn't notify.
-        for (const next of merged) {
+        for (const next of finalSessions) {
           const prev = oldById.get(next.sessionId);
           if (!prev) continue;
           if (prev.status === 'polling' && next.status !== 'polling') {
-            await pushNotificationInternal(next.sessionId, merged);
+            await pushNotificationInternal(next.sessionId, finalSessions);
             if (next.status === 'processed') action.tryOpenPopup();
           }
         }
 
         // For sessions that just transitioned to processed AND we don't have
         // events cached, fetch them so the sidebar can render without a
-        // round-trip. Skip if there are too many to avoid burst calls.
-        const needsEvents = merged.filter(
+        // round-trip. Cap auto-fetch to avoid bursts on first sign-in.
+        const needsEvents = finalSessions.filter(
           (s) => s.status === 'processed' && s.events.length === 0 && s.eventCount > 0,
         );
-        // Only auto-fetch for the most recent few; older ones can be lazy-loaded
-        // when the sidebar opens.
-        const toFetch = needsEvents.slice(0, 3);
-
-        await new Promise<void>((resolve) => {
-          storage.local.set(
-            { sessionHistory: { sessions: merged.slice(0, MAX_HISTORY_SESSIONS) } },
-            resolve,
-          );
-        });
-
-        for (const s of toFetch) {
+        for (const s of needsEvents.slice(0, 3)) {
           getSessionEvents(s.sessionId)
             .then(({ events, count }) => {
               updateSessionRecord(s.sessionId, {
@@ -343,8 +362,14 @@ async function refreshSessions(): Promise<void> {
 
       ensureListRefreshLoop();
       syncBadge();
+
+      await new Promise<void>((resolve) => {
+        storage.local.set({ sessionsRefreshedAt: Date.now() }, resolve);
+      });
     } catch (err) {
       console.error('DropCal: refreshSessions failed', err);
+      // Don't record sessionsRefreshedAt on failure — we want the next popup
+      // open to retry rather than honor a stale TTL.
     } finally {
       await new Promise<void>((resolve) => {
         storage.local.set({ isLoadingSessions: false }, resolve);
@@ -572,6 +597,7 @@ api.contextMenus.onClicked.addListener(async (info) => {
     await addSessionRecord(record);
 
     startPolling(session.id);
+    ensureListRefreshLoop();
   } catch (error) {
     console.error('DropCal: Failed to create session', error);
     const msg = error instanceof Error ? error.message : 'Unknown error';
@@ -844,6 +870,7 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         };
         await addSessionRecord(record);
         startPolling(session.id);
+        ensureListRefreshLoop();
         sendResponse({ ok: true });
       } catch (error) {
         console.error('DropCal: Submit text failed', error);
@@ -881,6 +908,7 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       };
       await addSessionRecord(record);
       startPolling(sessionId);
+      ensureListRefreshLoop();
       sendResponse({ ok: true });
     })();
     return true;

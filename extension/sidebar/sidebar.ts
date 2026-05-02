@@ -254,6 +254,17 @@ function loadSession(sessionId: string): void {
 
     if (session.events && session.events.length > 0) {
       renderEvents(session.events);
+    } else if (session.eventCount > 0) {
+      // Session was created elsewhere (mobile / website) and the extension
+      // hasn't cached its events yet. Fetch from the server and cache them
+      // so subsequent opens are instant.
+      api.runtime.sendMessage({ type: 'GET_SESSION_EVENTS', sessionId }, (response) => {
+        if (response?.ok && Array.isArray(response.events) && response.events.length > 0) {
+          renderEvents(response.events);
+        } else {
+          showState('empty');
+        }
+      });
     } else {
       showState('empty');
     }

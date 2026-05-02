@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { ArrowLineLeft, Sidebar as SidebarIcon, Baby, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
+import { Baby, CalendarStar, ArrowSquareOut, Images, Files, Pen, Microphone, MicrosoftOutlookLogo, AppleLogo } from '@phosphor-icons/react'
 import { GoogleGLogo } from '../components/GoogleGLogo'
 import type { SessionListItem } from '../sessions'
 import type { InputType } from '../sessions'
@@ -151,21 +151,6 @@ export function Menu({
 
   return (
     <>
-      {/* Always-visible sidebar toggle (desktop only — mobile has its own header) */}
-      <Tooltip content={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}>
-        <button
-          className={`sidebar-collapse-toggle ${isOpen ? 'sidebar-open' : ''}`}
-          onClick={onToggle}
-          title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-        >
-          {isOpen ? (
-            <ArrowLineLeft size={26} weight="duotone" />
-          ) : (
-            <SidebarIcon size={26} weight="duotone" />
-          )}
-        </button>
-      </Tooltip>
-
       {/* Sidebar that slides in next to the mark */}
       <div className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-content">

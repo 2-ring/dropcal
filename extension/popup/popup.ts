@@ -872,11 +872,20 @@ function syncNotifications(sessions: SessionRecord[], queue: string[]): void {
 // ============================================================
 
 function refresh(): void {
-  storage.local.get(['sessionHistory', 'notificationQueue'], (result) => {
+  storage.local.get(['sessionHistory', 'notificationQueue', 'isLoadingSessions'], (result) => {
     const sessions =
       (result.sessionHistory as { sessions: SessionRecord[] } | undefined)?.sessions || [];
     const queue: string[] = result.notificationQueue || [];
-    renderHistory(sessions);
+    const isLoading = !!result.isLoadingSessions;
+
+    // Stale-while-revalidate: if we have cached sessions, render them. If the
+    // cache is empty AND a refresh is in flight, show skeletons so the user
+    // sees activity instead of a blank list.
+    if (sessions.length === 0 && isLoading) {
+      renderSkeletons();
+    } else {
+      renderHistory(sessions);
+    }
     syncNotifications(sessions, queue);
   });
 }
@@ -886,7 +895,7 @@ function refresh(): void {
 // ============================================================
 
 storage.local.onChanged.addListener((changes) => {
-  if (changes.sessionHistory || changes.notificationQueue) {
+  if (changes.sessionHistory || changes.notificationQueue || changes.isLoadingSessions) {
     refresh();
   }
   if (changes.auth) {
@@ -949,6 +958,10 @@ api.runtime.sendMessage({ type: 'GET_AUTH' }, (response) => {
   // Show skeleton while loading initial history
   showView('input');
   renderSkeletons();
+
+  // Stale-while-revalidate: cache is rendered below; meanwhile sync from server
+  // so the extension list matches the website immediately on open.
+  api.runtime.sendMessage({ type: 'REFRESH_SESSIONS' });
 
   storage.local.get(['sessionHistory', 'notificationQueue'], (result) => {
     const sessions =

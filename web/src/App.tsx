@@ -64,7 +64,10 @@ function AppContent() {
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
   const [expectedEventCount, setExpectedEventCount] = useState<number | null>(null)
   const [loadingConfig, setLoadingConfig] = useState<LoadingStateConfig>(LOADING_MESSAGES.READING_FILE)
-  const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem('dropcal_sidebar') !== 'closed')
+  // Sidebar is always expanded on desktop — the minimized state is intentionally
+  // unreachable there (no toggle UI). On mobile the sidebar still opens as an
+  // overlay (e.g. via the events TopBar back button), so init to closed.
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 768)
   const [feedbackMessage, setFeedbackMessage] = useState<string>('')
 
   const [currentSession, setCurrentSession] = useState<BackendSession | null>(null)
@@ -234,10 +237,22 @@ function AppContent() {
   }, [sessionHistory])
 
   const handleSidebarToggle = useCallback(() => {
-    setSidebarOpen(prev => {
-      localStorage.setItem('dropcal_sidebar', prev ? 'closed' : 'open')
-      return !prev
-    })
+    // Desktop has no toggle UI and must stay expanded — bail out so the back
+    // button on the mobile events TopBar (the only remaining caller) can't
+    // close the sidebar at desktop sizes (e.g. user resized after opening).
+    if (window.innerWidth > 768) return
+    setSidebarOpen(prev => !prev)
+  }, [])
+
+  // If the viewport crosses into desktop width with the sidebar closed
+  // (e.g. user rotated or resized from mobile), force it back open — there
+  // is no desktop UI to reopen it.
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth > 768) setSidebarOpen(true)
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
 
   const processText = useCallback(async (text: string) => {
@@ -601,12 +616,6 @@ function AppContent() {
   )
 }
 
-// Redirects legacy /s/:sessionId links (from old emails / extension) to /app/s/:sessionId
-function LegacySessionRedirect() {
-  const { sessionId } = useParams<{ sessionId: string }>()
-  return <Navigate to={`/app/s/${sessionId}`} replace />
-}
-
 // Router wrapper component
 function App() {
   const native = isNativePlatform()
@@ -618,7 +627,6 @@ function App() {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/app" element={<RequireAuth><AppContent /></RequireAuth>} />
         <Route path="/app/s/:sessionId" element={<RequireAuth><AppContent /></RequireAuth>} />
-        <Route path="/s/:sessionId" element={<LegacySessionRedirect />} />
         {/* Web-only routes — skip on native app */}
         {!native && <Route path="/welcome" element={<Welcome />} />}
         {!native && <Route path="/plans" element={<Plans />} />}

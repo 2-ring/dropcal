@@ -69,7 +69,9 @@ export function Workspace({
 
   return (
     <>
-      {/* Mobile Header - only show in input state */}
+      {/* Mobile menu button — only on the input screen; events view has its
+          own back arrow in the TopBar. Hidden on desktop where the sidebar
+          is always expanded. */}
       {appState === 'input' && (
         <div className="mobile-input-header">
           <button className="mobile-header-button" onClick={onMenuToggle} title="Menu">
