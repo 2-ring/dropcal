@@ -169,7 +169,6 @@ class PatternRefreshService:
                 trace_id=f"refresh-{user_id[:8]}",
                 pipeline="Pattern refresh",
                 input_type='pattern_refresh',
-                is_guest=False,
             )
 
             # Look up provider

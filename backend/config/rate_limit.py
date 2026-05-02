@@ -1,5 +1,5 @@
 """
-Rate limiting configuration for guest endpoints.
+Rate limiting configuration.
 Supports both in-memory (development) and Redis (production) storage.
 """
 
@@ -16,10 +16,6 @@ class RateLimitConfig:
 
     # Authenticated user defaults (applied globally by Flask-Limiter)
     AUTHENTICATED_LIMITS = ["2000 per day", "500 per hour"]
-
-    # Rate limits for guest endpoints
-    GUEST_CREATE_LIMIT = "10 per hour"  # Creating guest sessions
-    GUEST_FETCH_LIMIT = "50 per hour"   # Fetching guest sessions
     DEFAULT_LIMITS = ["200 per day", "50 per hour"]
 
     @classmethod

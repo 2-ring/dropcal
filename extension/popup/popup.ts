@@ -110,7 +110,7 @@ for (const btn of allButtons) {
 }
 
 function openDropcalInput(mode: string): void {
-  api.tabs.create({ url: `https://dropcal.ai?input=${mode}` });
+  api.tabs.create({ url: `https://dropcal.ai/app?input=${mode}` });
   window.close();
 }
 
@@ -689,7 +689,7 @@ function renderProviders(): void {
     } else if (!inDisconnect) {
       // Not connected — open dropcal.ai to connect
       row.addEventListener('click', () => {
-        api.tabs.create({ url: 'https://dropcal.ai' });
+        api.tabs.create({ url: 'https://dropcal.ai/app' });
       });
     }
 
@@ -734,7 +734,7 @@ settingsThemeBtn.addEventListener('click', () => {
 });
 
 settingsIntegrationsBtn.addEventListener('click', () => {
-  api.tabs.create({ url: 'https://dropcal.ai/?settings=integrations' });
+  api.tabs.create({ url: 'https://dropcal.ai/app?settings=integrations' });
   window.close();
 });
 

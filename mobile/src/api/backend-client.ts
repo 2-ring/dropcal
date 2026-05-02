@@ -46,9 +46,6 @@ export const {
   createCheckoutSession,
   createPortalSession,
   getBillingStatus,
-  createGuestTextSession,
-  getGuestSession,
-  migrateGuestSessions,
 } = client;
 
 // ============================================================================
@@ -68,17 +65,6 @@ export async function uploadFile(
   const formData = new FormData();
   formData.append('file', file as any);
   return client.uploadFile(formData);
-}
-
-/**
- * Upload file as guest (no auth).
- */
-export async function uploadGuestFile(
-  file: File | { uri: string; name: string; type: string },
-): Promise<{ session: Session; file_url: string }> {
-  const formData = new FormData();
-  formData.append('file', file as any);
-  return client.uploadGuestFile(formData);
 }
 
 // ============================================================================

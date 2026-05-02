@@ -433,6 +433,16 @@
   color: var(--text-secondary);
 }
 
+.event-status-bar.status-up-to-date {
+  background-color: var(--success-background);
+  color: var(--success);
+}
+
+.event-status-bar.status-failed {
+  background-color: var(--error-background);
+  color: var(--error);
+}
+
 .event-status-bar-link {
   margin-left: auto;
   display: inline-flex;
@@ -980,38 +990,6 @@
   opacity: 0.6;
 }
 
-/* Save Button */
-.event-confirmation-save-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  height: var(--dock-height);
-  padding: 0 1.25rem;
-  flex: 1;
-  background-color: var(--background-elevated);
-  border-radius: var(--dock-border-radius);
-  box-shadow: var(--shadow-medium);
-  border: 1px solid var(--border-light);
-  color: var(--primary);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.event-confirmation-save-button:hover {
-  background-color: var(--background-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-medium), var(--shadow-heavy);
-}
-
-.event-confirmation-save-button:active {
-  transform: translateY(0);
-  box-shadow: var(--shadow-medium);
-}
-
 /* Swipeable Event */
 .swipeable-event-container {
   position: relative;
@@ -1331,19 +1309,7 @@
     padding: 0 1rem;
   }
 
-  /* Save Button Mobile */
-  .event-confirmation-save-button {
-    height: var(--dock-height);
-    padding: 0 1rem;
-    font-size: 0.875rem;
-  }
-
-  .event-confirmation-save-button svg {
-    width: 16px;
-    height: 16px;
-  }
-
-  /* Send Icon Button Mobile */
+/* Send Icon Button Mobile */
   .event-confirmation-icon-button.send svg {
     width: 20px;
     height: 20px;

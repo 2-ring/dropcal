@@ -272,11 +272,8 @@ class SessionProcessor:
             result['recurrence'] = cal_event.recurrence
         return result
 
-    def _load_personalization_context(self, user_id: str, is_guest: bool):
+    def _load_personalization_context(self, user_id: str):
         """Load personalization context (once per session)."""
-        if is_guest:
-            return None, None
-
         try:
             patterns = self.personalization_service.load_patterns(user_id)
             if not patterns:
@@ -377,9 +374,8 @@ class SessionProcessor:
                 reflects the full user-experienced latency.
         """
         session = DBSession.get_by_id(session_id)
-        is_guest = session.get('guest_mode', False) if session else False
         user_id = session.get('user_id', 'anonymous') if session else 'anonymous'
-        pipeline_label = f"Session: {input_type}{' (guest)' if is_guest else ''}"
+        pipeline_label = f"Session: {input_type}"
         pipeline_start = session_start or _time.time()
 
         try:
@@ -394,7 +390,6 @@ class SessionProcessor:
                 session_id=session_id,
                 pipeline=pipeline_label,
                 input_type=input_type,
-                is_guest=is_guest,
                 parent_id=CLEAR, num_events=CLEAR,
                 has_personalization=CLEAR, event_index=CLEAR,
                 event_description=CLEAR,
@@ -428,10 +423,9 @@ class SessionProcessor:
                         session_id=session_id,
                         pipeline=pipeline_label,
                         input_type=input_type,
-                        is_guest=is_guest,
                     )
                     with stage_span("context_load"):
-                        p, h = self._load_personalization_context(user_id, is_guest)
+                        p, h = self._load_personalization_context(user_id)
                         context_result['patterns'] = p
                         context_result['historical_events'] = h
                         if p is not None:
@@ -439,28 +433,27 @@ class SessionProcessor:
 
                         tz_result['timezone'] = self._get_user_timezone(user_id)
 
-                        if not is_guest:
-                            try:
-                                from database.models import Calendar
-                                cals = Calendar.get_by_user(user_id)
-                                cal_lookup = {}
-                                primary_cal = None
-                                for cal in cals:
-                                    cal_id = cal.get('provider_cal_id')
-                                    if cal_id:
-                                        info = {
-                                            'name': cal.get('name', cal_id),
-                                            'color': cal.get('color', '#1170C5'),
-                                        }
-                                        cal_lookup[cal_id] = info
-                                        if cal.get('is_primary'):
-                                            primary_cal = info
-                                context_result['calendars_lookup'] = cal_lookup
-                                context_result['primary_calendar'] = primary_cal
-                            except Exception as e:
-                                logger.warning(f"Could not load calendars for SSE enrichment: {e}")
-                                context_result['calendars_lookup'] = {}
-                                context_result['primary_calendar'] = None
+                        try:
+                            from database.models import Calendar
+                            cals = Calendar.get_by_user(user_id)
+                            cal_lookup = {}
+                            primary_cal = None
+                            for cal in cals:
+                                cal_id = cal.get('provider_cal_id')
+                                if cal_id:
+                                    info = {
+                                        'name': cal.get('name', cal_id),
+                                        'color': cal.get('color', '#1170C5'),
+                                    }
+                                    cal_lookup[cal_id] = info
+                                    if cal.get('is_primary'):
+                                        primary_cal = info
+                            context_result['calendars_lookup'] = cal_lookup
+                            context_result['primary_calendar'] = primary_cal
+                        except Exception as e:
+                            logger.warning(f"Could not load calendars for SSE enrichment: {e}")
+                            context_result['calendars_lookup'] = {}
+                            context_result['primary_calendar'] = None
 
                 context_thread = threading.Thread(target=_load_context_and_tz, daemon=True)
                 context_thread.start()
@@ -513,7 +506,7 @@ class SessionProcessor:
                 if stream:
                     stream.mark_error("No events found in the provided input")
                 capture_pipeline_trace(
-                    session_id, input_type, is_guest, 'no_events',
+                    session_id, input_type, 'no_events',
                     duration_ms=(_time.time() - pipeline_start) * 1000,
                 )
                 flush_posthog()
@@ -576,7 +569,7 @@ class SessionProcessor:
                 if stream:
                     stream.mark_error("No events could be resolved")
                 capture_pipeline_trace(
-                    session_id, input_type, is_guest, 'error',
+                    session_id, input_type, 'error',
                     duration_ms=(_time.time() - pipeline_start) * 1000,
                     error_message="All temporal resolutions failed",
                 )
@@ -676,7 +669,7 @@ class SessionProcessor:
 
             logger.info(f"[timing] total_pipeline: {_time.time() - pipeline_start:.2f}s")
             capture_pipeline_trace(
-                session_id, input_type, is_guest, 'success',
+                session_id, input_type, 'success',
                 num_events=len(calendar_events),
                 has_personalization=use_personalization,
                 duration_ms=(_time.time() - pipeline_start) * 1000,
@@ -709,7 +702,7 @@ class SessionProcessor:
             if stream:
                 stream.mark_error(error_message)
             capture_pipeline_trace(
-                session_id, input_type, is_guest, 'error',
+                session_id, input_type, 'error',
                 duration_ms=(_time.time() - pipeline_start) * 1000,
                 error_message=error_message,
             )
@@ -751,7 +744,6 @@ class SessionProcessor:
         try:
             # Determine user info for context preloading
             session = DBSession.get_by_id(session_id)
-            is_guest = session.get('guest_mode', False) if session else False
             user_id = session.get('user_id', 'anonymous') if session else 'anonymous'
 
             # Set tracking context early so preprocessing span is in the trace
@@ -760,7 +752,6 @@ class SessionProcessor:
                 trace_id=session_id,
                 session_id=session_id,
                 input_type=file_type,
-                is_guest=is_guest,
             )
 
             # Start context loading in parallel with file preprocessing
@@ -774,10 +765,9 @@ class SessionProcessor:
                     trace_id=session_id,
                     session_id=session_id,
                     input_type=file_type,
-                    is_guest=is_guest,
                 )
                 with stage_span("context_load"):
-                    p, h = self._load_personalization_context(user_id, is_guest)
+                    p, h = self._load_personalization_context(user_id)
                     context_result['patterns'] = p
                     context_result['historical_events'] = h
                     if p is not None:
@@ -785,28 +775,27 @@ class SessionProcessor:
 
                     tz_result['timezone'] = self._get_user_timezone(user_id)
 
-                    if not is_guest:
-                        try:
-                            from database.models import Calendar
-                            cals = Calendar.get_by_user(user_id)
-                            cal_lookup = {}
-                            primary_cal = None
-                            for cal in cals:
-                                cal_id = cal.get('provider_cal_id')
-                                if cal_id:
-                                    info = {
-                                        'name': cal.get('name', cal_id),
-                                        'color': cal.get('color', '#1170C5'),
-                                    }
-                                    cal_lookup[cal_id] = info
-                                    if cal.get('is_primary'):
-                                        primary_cal = info
-                            context_result['calendars_lookup'] = cal_lookup
-                            context_result['primary_calendar'] = primary_cal
-                        except Exception as e:
-                            logger.warning(f"Could not load calendars for SSE enrichment: {e}")
-                            context_result['calendars_lookup'] = {}
-                            context_result['primary_calendar'] = None
+                    try:
+                        from database.models import Calendar
+                        cals = Calendar.get_by_user(user_id)
+                        cal_lookup = {}
+                        primary_cal = None
+                        for cal in cals:
+                            cal_id = cal.get('provider_cal_id')
+                            if cal_id:
+                                info = {
+                                    'name': cal.get('name', cal_id),
+                                    'color': cal.get('color', '#1170C5'),
+                                }
+                                cal_lookup[cal_id] = info
+                                if cal.get('is_primary'):
+                                    primary_cal = info
+                        context_result['calendars_lookup'] = cal_lookup
+                        context_result['primary_calendar'] = primary_cal
+                    except Exception as e:
+                        logger.warning(f"Could not load calendars for SSE enrichment: {e}")
+                        context_result['calendars_lookup'] = {}
+                        context_result['primary_calendar'] = None
 
             preload_thread = threading.Thread(target=_preload_context, daemon=True)
             preload_thread.start()

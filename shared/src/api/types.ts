@@ -5,7 +5,6 @@
 export interface ApiClientConfig {
   baseUrl: string;
   getAccessToken: () => Promise<string | null>;
-  getGuestAccessToken?: (sessionId: string) => string | null;
 }
 
 export interface SyncClientConfig {

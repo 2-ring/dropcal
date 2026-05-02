@@ -31,7 +31,6 @@ The backend client currently uses **stub functions** for authentication. These w
 
 **Current stubs:**
 - `getAccessToken()` - Returns null
-- `GuestSessionManager.getAccessToken()` - Returns null
 
 **After Task 41:**
 Replace the stub imports in [`backend-client.ts`](backend-client.ts):
@@ -39,7 +38,6 @@ Replace the stub imports in [`backend-client.ts`](backend-client.ts):
 ```typescript
 // Remove stubs and uncomment these imports:
 import { getAccessToken } from '../auth/supabase';
-import { GuestSessionManager } from '../auth/GuestSessionManager';
 ```
 
 ## Usage
@@ -71,7 +69,7 @@ await pollSession(session.id, (updatedSession) => {
 - `uploadFile(file, type)` - Upload image or audio file
 - `getSession(sessionId)` - Get single session
 - `getUserSessions(limit?)` - Get user's sessions
-- `pollSession(sessionId, onUpdate?, intervalMs?, isGuest?)` - Poll until processed
+- `pollSession(sessionId, onUpdate?, intervalMs?)` - Poll until processed
 
 ### Authentication & Profile
 - `syncUserProfile()` - Sync user profile after sign-in
@@ -87,12 +85,6 @@ await pollSession(session.id, (updatedSession) => {
 - `getCalendarProviders()` - Get all connected providers
 - `setPrimaryCalendarProvider(provider)` - Set primary provider
 - `disconnectCalendarProvider(provider)` - Disconnect provider
-
-### Guest Mode (No Auth)
-- `createGuestTextSession(text)` - Create guest session
-- `uploadGuestFile(file, type)` - Upload file as guest
-- `getGuestSession(sessionId)` - Get guest session
-- `migrateGuestSessions(sessionIds)` - Migrate guest sessions after sign-in
 
 ## Notes
 

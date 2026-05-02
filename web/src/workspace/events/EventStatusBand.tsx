@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, CloudCheck, ArrowsClockwise, Warning, ArrowSquareOut } from '@phosphor-icons/react'
+import { CheckCircle, CloudCheck, ArrowsClockwise, Warning, ArrowSquareOut, XCircle } from '@phosphor-icons/react'
 import type { Icon } from '@phosphor-icons/react'
 import type { CalendarEvent } from './types'
 import { getEventSyncStatus } from './types'
 import type { ConflictInfo } from '../../api/backend-client'
+
+/**
+ * Parent-controlled transient overrides — set by the workspace after a sync
+ * action and cleared after a TTL. These take priority over the natural state
+ * derived from event/sync data.
+ */
+export type EventTransientStatus = 'failed' | 'up-to-date'
 
 /**
  * The status band shown at the bottom of an event card.
@@ -23,14 +30,16 @@ import type { ConflictInfo } from '../../api/backend-client'
  * changes flip the icon+message in place.
  */
 
-export type EventStatusKind = 'hidden' | 'created' | 'synced' | 'pending' | 'conflict'
+export type EventStatusKind = 'hidden' | 'created' | 'synced' | 'up-to-date' | 'pending' | 'conflict' | 'failed'
 
 export type EventStatusState =
   | { kind: 'hidden' }
   | { kind: 'created' }
   | { kind: 'synced' }
+  | { kind: 'up-to-date' }
   | { kind: 'pending' }
   | { kind: 'conflict'; message: string }
+  | { kind: 'failed' }
 
 type VisibleStatusState = Exclude<EventStatusState, { kind: 'hidden' }>
 
@@ -43,8 +52,10 @@ interface StatusVisualConfig {
 const STATUS_CONFIG: Record<VisibleStatusState['kind'], StatusVisualConfig> = {
   created: { label: 'Created', Icon: CheckCircle, className: 'status-created' },
   synced: { label: 'Synced', Icon: CloudCheck, className: 'status-synced' },
+  'up-to-date': { label: 'Up to date', Icon: CheckCircle, className: 'status-up-to-date' },
   pending: { label: 'Changes pending', Icon: ArrowsClockwise, className: 'status-apply-edits' },
   conflict: { label: '', Icon: Warning, className: 'status-conflict' },
+  failed: { label: 'Failed', Icon: XCircle, className: 'status-failed' },
 }
 
 /** How long to flash the "Created" state before settling into "Synced". */
@@ -113,9 +124,13 @@ export function getProviderDayUrl(
 }
 
 /**
- * Pure reducer: event + context → status state. Sync status takes priority
- * over conflict info (matches existing behavior). The `justCreated` flag is
- * the time-bounded "fresh sync" signal owned by the component.
+ * Pure reducer: event + context → status state.
+ *
+ * Precedence (highest first):
+ *   1. parent-controlled `transientStatus` ('failed' / 'up-to-date')
+ *   2. internal `justCreated` flash (fresh sync transition)
+ *   3. natural sync state (applied / edited / draft)
+ *   4. conflict info (only when draft)
  */
 export function deriveStatus(
   event: CalendarEvent,
@@ -123,7 +138,11 @@ export function deriveStatus(
   conflictInfo: ConflictInfo[] | undefined,
   formatTimeRange: (start: string, end: string) => string,
   justCreated: boolean,
+  transientStatus: EventTransientStatus | null | undefined,
 ): EventStatusState {
+  if (transientStatus === 'failed') return { kind: 'failed' }
+  if (transientStatus === 'up-to-date') return { kind: 'up-to-date' }
+
   const syncStatus = getEventSyncStatus(event, activeProvider)
 
   if (syncStatus === 'applied') return { kind: justCreated ? 'created' : 'synced' }
@@ -141,6 +160,7 @@ interface EventStatusBandProps {
   activeProvider?: string
   conflictInfo?: ConflictInfo[]
   formatTimeRange: (start: string, end: string) => string
+  transientStatus?: EventTransientStatus | null
 }
 
 export function EventStatusBand({
@@ -148,6 +168,7 @@ export function EventStatusBand({
   activeProvider,
   conflictInfo,
   formatTimeRange,
+  transientStatus,
 }: EventStatusBandProps) {
   const syncStatus = getEventSyncStatus(event, activeProvider)
   const [justCreated, setJustCreated] = useState(false)
@@ -171,8 +192,8 @@ export function EventStatusBand({
   }, [syncStatus])
 
   const status = useMemo(
-    () => deriveStatus(event, activeProvider, conflictInfo, formatTimeRange, justCreated),
-    [event, activeProvider, conflictInfo, formatTimeRange, justCreated],
+    () => deriveStatus(event, activeProvider, conflictInfo, formatTimeRange, justCreated, transientStatus),
+    [event, activeProvider, conflictInfo, formatTimeRange, justCreated, transientStatus],
   )
 
   // The appear animation should only play on a real hidden→visible

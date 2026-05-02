@@ -3,7 +3,6 @@ Database models for User and Session operations.
 Provides CRUD operations for Supabase tables.
 """
 
-import secrets
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from .supabase_client import get_supabase
@@ -756,18 +755,17 @@ class Session:
     """Session model for database operations."""
 
     @staticmethod
-    def create(user_id: str, input_type: str, input_content: str, guest_mode: bool = False) -> Dict[str, Any]:
+    def create(user_id: str, input_type: str, input_content: str) -> Dict[str, Any]:
         """
         Create a new session.
 
         Args:
-            user_id: User's UUID (or guest_<uuid> for guest sessions)
+            user_id: User's UUID
             input_type: Type of input ('text', 'image', 'audio', 'email')
             input_content: Original text or file path
-            guest_mode: Whether this is a guest session (default: False)
 
         Returns:
-            Dict containing the created session data (includes access_token for guest sessions)
+            Dict containing the created session data
         """
         supabase = get_supabase()
 
@@ -776,12 +774,7 @@ class Session:
             "input_type": input_type,
             "input_content": input_content,
             "status": "pending",
-            "guest_mode": guest_mode
         }
-
-        # Generate secure access token for guest sessions
-        if guest_mode:
-            data["access_token"] = secrets.token_hex(QueryLimits.GUEST_TOKEN_BYTES)
 
         response = supabase.table("sessions").insert(data).execute()
         return response.data[0]
@@ -808,7 +801,7 @@ class Session:
         Skips processed_events and input_content blobs for faster reads.
         """
         supabase = get_supabase()
-        lite_columns = "id,user_id,title,icon,input_type,status,event_ids,created_at,added_to_calendar,guest_mode,error_message"
+        lite_columns = "id,user_id,title,icon,input_type,status,event_ids,created_at,added_to_calendar,error_message"
         response = supabase.table("sessions").select(lite_columns).eq("id", session_id).execute()
         return response.data[0] if response.data else None
 
@@ -829,7 +822,7 @@ class Session:
         supabase = get_supabase()
         # Select only columns needed for the session list — skip heavy blobs
         # like processed_events and input_content to speed up the query
-        list_columns = "id,user_id,title,icon,input_type,status,event_ids,created_at,added_to_calendar,guest_mode"
+        list_columns = "id,user_id,title,icon,input_type,status,event_ids,created_at,added_to_calendar"
         response = supabase.table("sessions").select(list_columns)\
             .eq("user_id", user_id)\
             .neq("status", "error")\
@@ -1041,28 +1034,6 @@ class Session:
 
         response = supabase.table("sessions").update(data).eq("id", session_id).execute()
         return response.data[0]
-
-    @staticmethod
-    def verify_guest_token(session_id: str, access_token: str) -> Optional[Dict[str, Any]]:
-        """
-        Verify guest session access token and return session if valid.
-
-        Args:
-            session_id: Session's UUID
-            access_token: Access token to verify
-
-        Returns:
-            Dict containing session data if token is valid, None otherwise
-        """
-        supabase = get_supabase()
-
-        response = supabase.table("sessions").select("*")\
-            .eq("id", session_id)\
-            .eq("guest_mode", True)\
-            .eq("access_token", access_token)\
-            .execute()
-
-        return response.data[0] if response.data else None
 
     @staticmethod
     def delete(session_id: str) -> bool:

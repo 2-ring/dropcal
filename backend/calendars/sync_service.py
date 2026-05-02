@@ -555,7 +555,6 @@ class SmartSyncService:
                 trace_id=f"enrich-{user_id[:8]}",
                 pipeline="Sync enrichment",
                 input_type='sync_enrichment',
-                is_guest=False,
             )
 
             # Lazy import — initialized in app.py

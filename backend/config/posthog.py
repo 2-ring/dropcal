@@ -87,7 +87,6 @@ def init_posthog():
 # → every $ai_generation, $ai_trace, and $ai_span event in PostHog.
 _AUTO_INCLUDE_ATTRS = (
     'input_type',           # text, image, audio, pdf, document, email, modification, ...
-    'is_guest',             # True/False
     'num_events',           # total events identified in session
     'has_personalization',  # whether PERSONALIZE stage ran
     'event_index',          # which event in the batch (0-indexed)
@@ -109,7 +108,6 @@ def set_tracking_context(
     session_id=None,
     pipeline=None,
     input_type=None,
-    is_guest=None,
     num_events=None,
     has_personalization=None,
     event_index=None,
@@ -142,7 +140,6 @@ def set_tracking_context(
 
     # Extended context
     _set('input_type', input_type)
-    _set('is_guest', is_guest)
     _set('num_events', num_events)
     _set('has_personalization', has_personalization)
     _set('event_index', event_index)
@@ -240,8 +237,8 @@ def get_invoke_config(agent_name=None, properties=None):
     Get LangChain invoke config with PostHog callback.
     Returns empty dict if PostHog is not configured.
 
-    Automatically merges thread-local context (input_type, is_guest,
-    num_events, event_index, etc.) into every event's properties.
+    Automatically merges thread-local context (input_type, num_events,
+    event_index, etc.) into every event's properties.
 
     If parent_id is set in the tracking context, the LangChain callback
     will nest under that parent (e.g., an event span) while still grouping
@@ -344,7 +341,6 @@ def get_invoke_config(agent_name=None, properties=None):
 def capture_pipeline_trace(
     session_id,
     input_type,
-    is_guest,
     outcome,
     num_events=0,
     has_personalization=False,
@@ -360,7 +356,6 @@ def capture_pipeline_trace(
     Args:
         session_id: Session/trace ID (groups all events in this pipeline)
         input_type: Input modality ('text', 'image', 'audio', etc.)
-        is_guest: Whether this is a guest session
         outcome: 'success', 'error', or 'no_events'
         num_events: Number of events created
         has_personalization: Whether PERSONALIZE stage ran
@@ -373,20 +368,18 @@ def capture_pipeline_trace(
 
     try:
         distinct_id = getattr(_local, 'distinct_id', None) or 'anonymous'
-        guest_suffix = ' (guest)' if is_guest else ''
         display_type = _INPUT_TYPE_DISPLAY.get(input_type, input_type.title())
 
         event_properties = {
             '$ai_trace_id': session_id,
             '$ai_session_id': str(session_id),
             '$ai_span_id': str(session_id),
-            '$ai_span_name': f"Pipeline: {display_type}{guest_suffix}",
+            '$ai_span_name': f"Pipeline: {display_type}",
             '$ai_latency': duration_ms / 1000,
             '$ai_framework': 'dropcal',
             'environment': _ENVIRONMENT,
-            'pipeline': f"Session: {input_type}{guest_suffix}",
+            'pipeline': f"Session: {input_type}",
             'input_type': input_type,
-            'is_guest': is_guest,
             'outcome': outcome,
             'num_events': num_events,
             'has_personalization': has_personalization,

@@ -1,9 +1,8 @@
 /**
  * Backend API client for DropCal.
  *
- * Creates a shared API client with platform-specific config (Vite env, Supabase auth,
- * localStorage guest tokens), then re-exports all methods so existing import paths
- * continue to work unchanged.
+ * Creates a shared API client with platform-specific config (Vite env, Supabase auth),
+ * then re-exports all methods so existing import paths continue to work unchanged.
  *
  * Platform-specific functions (streamSession, File-based uploads) are defined locally.
  */
@@ -13,14 +12,12 @@ import type { ConflictInfo } from '@dropcal/shared';
 import type { CalendarEvent } from '../workspace/events/types';
 import type { Session } from './types';
 import { getAccessToken } from '../auth/supabase';
-import { GuestSessionManager } from '../auth/GuestSessionManager';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const client = createApiClient({
   baseUrl: API_URL,
   getAccessToken,
-  getGuestAccessToken: (sessionId: string) => GuestSessionManager.getAccessToken(sessionId),
 });
 
 // Re-export all shared client methods
@@ -52,9 +49,6 @@ export const {
   createCheckoutSession,
   createPortalSession,
   getBillingStatus,
-  createGuestTextSession,
-  getGuestSession,
-  migrateGuestSessions,
 } = client;
 
 // Re-export types
@@ -73,17 +67,6 @@ export async function uploadFile(
   const formData = new FormData();
   formData.append('file', file);
   return client.uploadFile(formData);
-}
-
-/**
- * Upload file as guest (no auth). Backend auto-detects file type.
- */
-export async function uploadGuestFile(
-  file: File,
-): Promise<{ session: Session; file_url: string }> {
-  const formData = new FormData();
-  formData.append('file', file);
-  return client.uploadGuestFile(formData);
 }
 
 // ============================================================================

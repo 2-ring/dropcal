@@ -83,7 +83,6 @@ CORS(app,
 
 # Configure rate limiting
 # Default limits are generous (authenticated users make many calls on page load).
-# Guest endpoints have stricter explicit @limiter.limit() decorators.
 # OPTIONS is always exempt (CORS preflight).
 limiter = Limiter(
     app=app,
@@ -292,11 +291,10 @@ def process_input():
     requires_vision = metadata.get('requires_vision', False)
     input_type = 'image' if requires_vision else 'text'
     set_tracking_context(
-        distinct_id=locals().get('user_id', 'guest'),
+        distinct_id=locals().get('user_id', 'anonymous'),
         trace_id=f"process-{uuid.uuid4().hex[:8]}",
-        pipeline="Guest processing",
+        pipeline="Stateless processing",
         input_type=input_type,
-        is_guest=True,
     )
 
     # Step 3: EXTRACT → RESOLVE
@@ -378,7 +376,6 @@ def edit_event():
             session_id=edit_session_id,
             pipeline="Edit event",
             input_type='modification',
-            is_guest=edit_user_id == 'anonymous',
         )
 
         # Use the MODIFY agent
@@ -731,7 +728,6 @@ def apply_preferences_endpoint():
             trace_id=f"prefs-{uuid.uuid4().hex[:8]}",
             pipeline="Apply preferences",
             input_type='personalization',
-            is_guest=False,
         )
 
         # Load patterns from DB (style_stats + calendar patterns)
@@ -1099,237 +1095,6 @@ def get_user_sessions():
 
     except Exception as e:
         return jsonify({'error': f'Failed to get sessions: {str(e)}'}), 500
-
-
-# ============================================================================
-# Guest Mode Endpoints (No Authentication Required)
-# ============================================================================
-
-@app.route('/sessions/guest', methods=['POST'])
-@limiter.limit("10 per hour")
-def create_guest_text_session():
-    """
-    Create a guest session with text input (no authentication required).
-
-    Allows users to process up to 3 sessions before requiring sign-in.
-    Rate limited to 10 requests per hour per IP address.
-
-    Expects JSON body:
-    {
-        "input_type": "text",
-        "input_content": "Meeting tomorrow at 2pm"
-    }
-
-    Returns the created session object with guest_mode=True.
-    """
-    try:
-        data = request.get_json()
-
-        input_type = data.get('input_type', 'text')
-        input_content = data.get('input_content')
-
-        if not input_content:
-            return jsonify({'error': 'No input content provided'}), 400
-
-        if input_type == 'text' and len(input_content) > ProcessingConfig.MAX_TEXT_INPUT_LENGTH:
-            return jsonify({
-                'error': ProcessingConfig.get_text_limit_error_message(len(input_content)),
-                'error_type': 'input_too_large'
-            }), 413
-
-        # Generate anonymous guest ID (must be valid UUID for DB column)
-        guest_id = str(uuid.uuid4())
-
-        # Create session in database with guest_mode=True
-        session = DBSession.create(
-            user_id=guest_id,
-            input_type=input_type,
-            input_content=input_content,
-            guest_mode=True
-        )
-
-        # Init SSE stream before spawning pipeline
-        from pipeline.stream import init_stream
-        init_stream(session['id'])
-
-        # Start processing in background thread
-        thread = threading.Thread(
-            target=session_processor.process_text_session,
-            args=(session['id'], input_content)
-        )
-        thread.daemon = True
-        thread.start()
-
-        return jsonify({
-            'success': True,
-            'session': session,
-            'message': 'Guest session created, processing started'
-        }), 201
-
-    except Exception as e:
-        logger.error(f"Failed to create guest text session: {e}")
-        return jsonify({'error': f'Failed to create guest session: {str(e)}'}), 500
-
-
-@app.route('/upload/guest', methods=['POST'])
-@limiter.limit("10 per hour")
-def upload_guest_file():
-    """
-    Upload a file as guest (no authentication required).
-
-    Allows users to process up to 3 sessions before requiring sign-in.
-    Rate limited to 10 requests per hour per IP address.
-    File type is auto-detected from MIME type / extension.
-
-    Expects multipart/form-data with:
-    - file: The file to upload
-
-    Returns the created session object with guest_mode=True and file path.
-    """
-    try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file provided'}), 400
-
-        file = request.files['file']
-
-        if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
-
-        # Auto-detect file type from MIME type / extension
-        file_type = FileStorage.detect_file_type(file.content_type, file.filename)
-        if not file_type:
-            return jsonify({
-                'error': f'Unsupported file type: {file.content_type} ({file.filename})'
-            }), 400
-
-        # Generate anonymous guest ID (must be valid UUID for DB column)
-        guest_id = str(uuid.uuid4())
-
-        # Upload to Supabase Storage (uses guest_id as user_id)
-        file_path = FileStorage.upload_file(
-            file=file,
-            filename=file.filename,
-            user_id=guest_id,
-            file_type=file_type
-        )
-
-        try:
-            # Create session in database with guest_mode=True
-            session = DBSession.create(
-                user_id=guest_id,
-                input_type=file_type,
-                input_content=file_path,
-                guest_mode=True
-            )
-        except Exception:
-            FileStorage.delete_file(file_path)
-            raise
-
-        # Init SSE stream before spawning pipeline
-        from pipeline.stream import init_stream
-        init_stream(session['id'])
-
-        # Start processing in background thread
-        thread = threading.Thread(
-            target=session_processor.process_file_session,
-            args=(session['id'], file_path, file_type)
-        )
-        thread.daemon = True
-        thread.start()
-
-        return jsonify({
-            'success': True,
-            'session': session,
-            'file_url': file_path,
-            'message': 'Guest file uploaded, processing started'
-        }), 201
-
-    except Exception as e:
-        logger.error(f"Failed to upload guest file: {e}")
-        return jsonify({'error': f'Guest file upload failed: {str(e)}'}), 500
-
-
-@app.route('/sessions/guest/<session_id>', methods=['GET'])
-@limiter.limit("50 per hour")
-def get_guest_session(session_id):
-    """
-    Get a guest session by ID with access token verification.
-
-    Requires access_token query parameter for security.
-    Only returns sessions with guest_mode=True and matching access token.
-    Authenticated sessions require the regular /api/sessions/<id> endpoint.
-    Rate limited to 50 requests per hour per IP address.
-
-    Query params:
-        access_token: The access token returned when the session was created
-
-    Returns the session object if token is valid, error otherwise.
-    """
-    try:
-        # Get access token from query parameter
-        access_token = request.args.get('access_token')
-
-        if not access_token:
-            return jsonify({
-                'error': 'Access token required',
-                'message': 'Please provide access_token query parameter'
-            }), 401
-
-        # Verify token and retrieve session in one query
-        session = DBSession.verify_guest_token(session_id, access_token)
-
-        if not session:
-            return jsonify({
-                'error': 'Invalid session or access token',
-                'message': 'Session not found or access token is incorrect'
-            }), 403
-
-        return jsonify({
-            'success': True,
-            'session': session
-        })
-
-    except Exception as e:
-        logger.error(f"Failed to get guest session: {e}")
-        return jsonify({'error': f'Failed to get session: {str(e)}'}), 500
-
-
-@app.route('/sessions/guest/<session_id>/events', methods=['GET'])
-@limiter.limit("50 per hour")
-def get_guest_session_events(session_id):
-    """
-    Get events for a guest session from the events table.
-
-    Requires access_token query parameter for security.
-    Falls back to session.processed_events for backward compat.
-    """
-    try:
-        access_token = request.args.get('access_token')
-        if not access_token:
-            return jsonify({'error': 'Access token required'}), 401
-
-        session = DBSession.verify_guest_token(session_id, access_token)
-        if not session:
-            return jsonify({'error': 'Invalid session or access token'}), 403
-
-        # Try events table first (pass event_ids to skip redundant session lookup)
-        event_ids = session.get('event_ids') or []
-        events = EventService.get_events_by_session(session_id, event_ids=event_ids)
-
-        # Backward compat: fall back to processed_events blob
-        if not events:
-            processed = session.get('processed_events') or []
-            if processed:
-                events = processed
-
-        return jsonify({
-            'success': True,
-            'events': events,
-            'count': len(events)
-        })
-
-    except Exception as e:
-        return jsonify({'error': f'Failed to get events: {str(e)}'}), 500
 
 
 # ============================================================================

@@ -45,14 +45,6 @@ export function Privacy() {
           access your session history.
         </p>
 
-        <h3>Guest Sessions</h3>
-        <p>
-          You can use DropCal without an account. Guest sessions are stored
-          with an anonymous identifier and are not linked to any personal
-          information. Guest sessions can be migrated to a full account if you
-          later sign in.
-        </p>
-
         <h2>How We Use Your Information</h2>
         <ul>
           <li>To extract calendar events from your input using AI</li>

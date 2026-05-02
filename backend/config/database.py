@@ -25,9 +25,6 @@ class QueryLimits:
     LOCATION_HISTORY_FETCH_LIMIT: int = 200
     LOCATION_SEARCH_RESULTS_LIMIT: int = 5
 
-    # Guest sessions
-    GUEST_TOKEN_BYTES: int = 32  # produces 64-char hex string
-
 
 class StreamConfig:
     """Server-sent event stream polling configuration."""

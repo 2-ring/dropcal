@@ -21,7 +21,6 @@ import {
 } from './supabase';
 import { syncUserProfile, getUserProfile, storeGoogleCalendarTokens, sendMicrosoftTokens } from '../api/backend-client';
 import { sessionCache } from '../sessions/cache';
-import { GuestSessionManager } from './GuestSessionManager';
 
 export interface UserPreferences {
   theme_mode?: 'light' | 'dark' | 'auto';
@@ -299,11 +298,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 5. Clear all user-specific localStorage
       localStorage.removeItem('dropcal_calendars');
 
-      // 6. Clear guest session data
-      GuestSessionManager.clearGuestSessions();
-      localStorage.removeItem('dropcal_guest_toast_dismissed');
-
-      // 7. Hard reload to wipe all in-memory state
+      // 6. Hard reload to wipe all in-memory state
       window.location.replace('/');
     } catch (error) {
       console.error('Sign out failed:', error);

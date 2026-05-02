@@ -23,9 +23,9 @@ export function Terms() {
 
         <h2>Your Account</h2>
         <p>
-          You can use DropCal as a guest with limited functionality, or sign in
-          with Google for full access. You are responsible for maintaining the
-          security of your account and for all activity under your account.
+          DropCal requires an account. You can sign in with Google, Microsoft,
+          or Apple. You are responsible for maintaining the security of your
+          account and for all activity under your account.
         </p>
 
         <h2>Acceptable Use</h2>

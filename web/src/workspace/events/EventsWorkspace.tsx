@@ -20,13 +20,7 @@ import type { ConflictInfo } from '../../api/backend-client'
 import type { SyncCalendar } from '../../api/sync'
 import { useAuth } from '../../auth/AuthContext'
 import { getAccessToken } from '../../auth/supabase'
-import {
-  useNotificationQueue,
-  createSuccessNotification,
-  createWarningNotification,
-  createErrorNotification,
-  getFriendlyErrorMessage,
-} from '../input/notifications'
+import type { EventTransientStatus } from './EventStatusBand'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
@@ -63,9 +57,26 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
   const [isScrollable, setIsScrollable] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const pendingEditRef = useRef<CalendarEvent | null>(null)
-  const { currentNotification, addNotification, dismissNotification } = useNotificationQueue()
   const [eventConflicts, setEventConflicts] = useState<Record<string, ConflictInfo[]>>({})
   const { user, primaryCalendarProvider } = useAuth()
+
+  // Per-event transient statuses (e.g. 'Failed' / 'Up to date') shown on the
+  // event status band after a sync action. Each entry carries a token so that
+  // a stale TTL timer doesn't wipe out a newer transient on the same event.
+  type TransientEntry = { kind: EventTransientStatus; token: number }
+  const [transientStatuses, setTransientStatuses] = useState<Record<string, TransientEntry>>({})
+  const transientTokenRef = useRef(0)
+  const setEventTransient = (eventId: string, kind: EventTransientStatus, ttl: number = 3500) => {
+    const token = ++transientTokenRef.current
+    setTransientStatuses(prev => ({ ...prev, [eventId]: { kind, token } }))
+    setTimeout(() => {
+      setTransientStatuses(prev => {
+        if (prev[eventId]?.token !== token) return prev
+        const { [eventId]: _stale, ...rest } = prev
+        return rest
+      })
+    }, ttl)
+  }
 
   const calendars = propCalendars && propCalendars.length > 0 ? propCalendars : DEFAULT_CALENDARS
 
@@ -140,10 +151,6 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
         if (result.updated > 0 || result.deleted > 0) {
           setEditedEvents(result.events)
           onEventsChanged?.(result.events)
-          const count = result.updated + result.deleted
-          addNotification(createSuccessNotification(
-            `Updated ${count} event${count !== 1 ? 's' : ''} from calendar`
-          ))
         }
       })
       .catch(err => {
@@ -256,7 +263,8 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
 
     // Persist to backend if event has an id (exists in events table)
     if (updatedEvent.id) {
-      updateEvent(updatedEvent.id, updatedEvent)
+      const eventId = updatedEvent.id
+      updateEvent(eventId, updatedEvent)
         .then(persisted => {
           // Update with server response (has bumped version)
           setEditedEvents(prev => {
@@ -266,7 +274,6 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
             onEventsChanged?.(validEvents)
             return updated
           })
-          addNotification(createSuccessNotification('Got it, changes saved!'))
           // Auto-push to calendar if event is published
           if (persisted.id && persisted.provider_syncs?.length) {
             scheduleDebouncedPush(persisted.id, persisted.provider_syncs)
@@ -274,7 +281,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
         })
         .catch(err => {
           console.error('Failed to persist event edit:', err)
-          addNotification(createErrorNotification("Couldn't save that change. Mind trying again?"))
+          setEventTransient(eventId, 'failed')
         })
     }
   }
@@ -409,10 +416,9 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
             .catch(err => console.error('Failed to persist modifications:', err))
         }
 
-        addNotification(createSuccessNotification(result.message || 'Done, changes applied!'))
         runConflictCheck()
       } catch (error) {
-        addNotification(createErrorNotification(getFriendlyErrorMessage(error)))
+        console.error('AI edit request failed:', error)
       } finally {
         setActiveLoading(null)
       }
@@ -439,13 +445,17 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
       try {
         const result = await onConfirm(validEditedEvents)
 
-        // Build notification from sync result
-        if (result?.has_conflicts) {
-          addNotification(createWarningNotification(
-            `${result.message}`
-          ))
-        } else if (result?.message) {
-          addNotification(createSuccessNotification(result.message))
+        // Map per-event push results to per-event transient statuses. The
+        // 'created' / 'updated' cases are surfaced naturally by the band's
+        // own flash on the sync transition; only 'skipped' and unknown (=
+        // failed) need explicit transients here.
+        const skipped: string[] = result?.skipped ?? []
+        const created: string[] = result?.created ?? []
+        const updated: string[] = result?.updated ?? []
+        const succeeded = new Set([...created, ...updated, ...skipped])
+        for (const id of skipped) setEventTransient(id, 'up-to-date')
+        for (const evt of validEditedEvents) {
+          if (evt.id && !succeeded.has(evt.id)) setEventTransient(evt.id, 'failed', 5000)
         }
 
         // Re-fetch events to get updated provider_syncs/version (badges update)
@@ -459,7 +469,11 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
           }
         }
       } catch (error) {
-        addNotification(createErrorNotification(getFriendlyErrorMessage(error)))
+        console.error('Bulk push failed:', error)
+        // No specific event mapping — mark every event being confirmed as failed.
+        for (const evt of validEditedEvents) {
+          if (evt.id) setEventTransient(evt.id, 'failed', 5000)
+        }
       } finally {
         setActiveLoading(null)
       }
@@ -479,15 +493,13 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
     setActiveLoading(LOADING_MESSAGES.ADDING_TO_CALENDAR)
     try {
       const result = await pushEvents([eventId])
-      if (result.created.includes(eventId)) {
-        addNotification(createSuccessNotification(`"${event.summary}" added to your calendar!`))
-      } else if (result.updated.includes(eventId)) {
-        addNotification(createSuccessNotification(`"${event.summary}" updated in your calendar!`))
-      } else if (result.skipped.includes(eventId)) {
-        addNotification(createSuccessNotification(`"${event.summary}" is already up to date!`))
-      } else {
-        addNotification(createErrorNotification(`Hmm, couldn't sync "${event.summary}". Give it another try!`))
+      if (result.skipped.includes(eventId)) {
+        setEventTransient(eventId, 'up-to-date')
+      } else if (!result.created.includes(eventId) && !result.updated.includes(eventId)) {
+        setEventTransient(eventId, 'failed', 5000)
       }
+      // For created/updated, the band's natural 'created' flash covers it.
+
       // Re-fetch events to get updated provider_syncs (badges update)
       if (sessionId) {
         try {
@@ -499,7 +511,8 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
         }
       }
     } catch (error) {
-      addNotification(createErrorNotification(getFriendlyErrorMessage(error)))
+      console.error('Single-event push failed:', error)
+      setEventTransient(eventId, 'failed', 5000)
     } finally {
       setActiveLoading(null)
     }
@@ -530,19 +543,20 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
         const result = await deleteEvent(event.id)
         onEventDeleted?.(event.id, result.session_id, result.remaining_event_count)
       } catch (error) {
-        // Re-add at original position on failure
+        // Re-add at original position on failure and surface the failure on
+        // the restored event's own status band.
+        console.error('Delete failed:', error)
         setEditedEvents(prev => {
           const restored = [...prev]
           const insertAt = Math.min(originalIndex, restored.length)
           restored.splice(insertAt, 0, event)
           return restored
         })
-        addNotification(createErrorNotification(getFriendlyErrorMessage(error)))
+        if (event.id) setEventTransient(event.id, 'failed', 5000)
         return
       }
     }
-
-    addNotification(createSuccessNotification(`"${event.summary}" removed!`))
+    // Successful delete: the event is gone from the list — that's the feedback.
   }
 
   const formatDate = (dateTime: string, endDateTime?: string): string => {

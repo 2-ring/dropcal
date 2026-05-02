@@ -2,10 +2,10 @@
  * Shared API client factory.
  *
  * Creates a fully-typed API client given platform-specific config
- * (base URL, auth token getter, guest token getter).
+ * (base URL, auth token getter).
  *
  * Excludes streamSession (browser EventSource-dependent) — that stays platform-specific.
- * uploadFile/uploadGuestFile accept FormData so each platform constructs it natively.
+ * uploadFile accepts FormData so each platform constructs it natively.
  */
 
 import type { ApiClientConfig, ConflictInfo } from './types';
@@ -20,7 +20,7 @@ import type {
 import type { CalendarEvent } from '../types/events';
 
 export function createApiClient(config: ApiClientConfig) {
-  const { baseUrl, getAccessToken, getGuestAccessToken } = config;
+  const { baseUrl, getAccessToken } = config;
 
   async function getAuthHeaders(): Promise<HeadersInit> {
     const token = await getAccessToken();
@@ -103,7 +103,6 @@ export function createApiClient(config: ApiClientConfig) {
     sessionId: string,
     onUpdate?: (session: Session) => void,
     intervalMs: number = 2000,
-    isGuest: boolean = false,
     maxWaitMs: number = 5 * 60 * 1000
   ): Promise<Session> {
     return new Promise((resolve, reject) => {
@@ -116,9 +115,7 @@ export function createApiClient(config: ApiClientConfig) {
             return;
           }
 
-          const session = isGuest
-            ? await getGuestSession(sessionId)
-            : await getSession(sessionId);
+          const session = await getSession(sessionId);
 
           if (onUpdate) {
             onUpdate(session);
@@ -335,23 +332,7 @@ export function createApiClient(config: ApiClientConfig) {
   // Events API
   // ============================================================================
 
-  async function getSessionEvents(
-    sessionId: string,
-    isGuest: boolean = false
-  ): Promise<CalendarEvent[]> {
-    if (isGuest && getGuestAccessToken) {
-      const accessToken = getGuestAccessToken(sessionId);
-      if (!accessToken) {
-        throw new Error('Access token not found for guest session.');
-      }
-      const response = await fetch(
-        `${baseUrl}/sessions/guest/${sessionId}/events?access_token=${encodeURIComponent(accessToken)}`,
-        { method: 'GET', headers: { 'Content-Type': 'application/json' } }
-      );
-      const data = await handleResponse<{ events: CalendarEvent[] }>(response);
-      return data.events;
-    }
-
+  async function getSessionEvents(sessionId: string): Promise<CalendarEvent[]> {
     const headers = await getAuthHeaders();
     const response = await fetch(`${baseUrl}/sessions/${sessionId}/events`, {
       method: 'GET',
@@ -588,62 +569,6 @@ export function createApiClient(config: ApiClientConfig) {
     return handleResponse(response);
   }
 
-  // ============================================================================
-  // Guest Mode
-  // ============================================================================
-
-  async function createGuestTextSession(text: string): Promise<Session> {
-    const response = await fetch(`${baseUrl}/sessions/guest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        input_type: 'text',
-        input_content: text,
-      }),
-    });
-    const data = await handleResponse<CreateSessionResponse>(response);
-    return data.session;
-  }
-
-  async function uploadGuestFile(
-    formData: FormData,
-  ): Promise<{ session: Session; file_url: string }> {
-    const response = await fetch(`${baseUrl}/upload/guest`, {
-      method: 'POST',
-      body: formData,
-    });
-    const data = await handleResponse<UploadFileResponse>(response);
-    return { session: data.session, file_url: data.file_url };
-  }
-
-  async function getGuestSession(sessionId: string): Promise<Session> {
-    if (!getGuestAccessToken) {
-      throw new Error('Guest access token getter not configured.');
-    }
-    const accessToken = getGuestAccessToken(sessionId);
-    if (!accessToken) {
-      throw new Error('Access token not found for guest session. Please create a new session.');
-    }
-    const response = await fetch(
-      `${baseUrl}/sessions/guest/${sessionId}?access_token=${encodeURIComponent(accessToken)}`,
-      {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
-    const data = await handleResponse<GetSessionResponse>(response);
-    return data.session;
-  }
-
-  async function migrateGuestSessions(sessionIds: string[]): Promise<void> {
-    const headers = await getAuthHeaders();
-    await fetch(`${baseUrl}/auth/sync-profile`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ guest_session_ids: sessionIds }),
-    });
-  }
-
   return {
     // Session CRUD
     createTextSession,
@@ -694,12 +619,6 @@ export function createApiClient(config: ApiClientConfig) {
     createCheckoutSession,
     createPortalSession,
     getBillingStatus,
-
-    // Guest Mode
-    createGuestTextSession,
-    uploadGuestFile,
-    getGuestSession,
-    migrateGuestSessions,
   };
 }
 

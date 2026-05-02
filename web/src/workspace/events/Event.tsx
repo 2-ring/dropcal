@@ -4,6 +4,7 @@ import type { CalendarEvent } from './types'
 import { isAllDay } from './types'
 import { formatRecurrence } from './recurrence'
 import { EventStatusBand } from './EventStatusBand'
+import type { EventTransientStatus } from './EventStatusBand'
 import type { ConflictInfo } from '../../api/backend-client'
 import type { SyncCalendar } from '../../api/sync'
 
@@ -23,6 +24,7 @@ interface EventProps {
   // Sync status
   activeProvider?: string
   conflictInfo?: ConflictInfo[]
+  transientStatus?: EventTransientStatus | null
 
   // Event handlers
   onClick?: () => void
@@ -38,6 +40,7 @@ export function Event({
   getCalendarColor,
   activeProvider,
   conflictInfo,
+  transientStatus,
   onClick,
 }: EventProps) {
   // Loading skeleton - simple grey box with fade effect like session skeletons
@@ -132,6 +135,7 @@ export function Event({
         activeProvider={activeProvider}
         conflictInfo={conflictInfo}
         formatTimeRange={formatTimeRange}
+        transientStatus={transientStatus}
       />
     </div>
   )

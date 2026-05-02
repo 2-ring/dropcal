@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { AnimatePresence } from 'framer-motion'
-import { HandWaving, Warning } from '@phosphor-icons/react'
+import { Warning } from '@phosphor-icons/react'
 import { DesktopInputWorkspace } from './desktop/DesktopInputWorkspace'
 import { MobileInputWorkspace } from './mobile/MobileInputWorkspace'
 import { NotificationBar, useNotifications } from './notifications'
@@ -12,7 +12,6 @@ interface InputWorkspaceProps {
   uploadedFile: File | null
   isProcessing: boolean
   feedbackMessage?: string
-  isGuestMode?: boolean
   onFileUpload: (file: File) => void
   onAudioSubmit: (audioBlob: Blob) => void
   onTextSubmit: (text: string) => void
@@ -24,7 +23,6 @@ export function InputWorkspace({
   uploadedFile,
   isProcessing,
   feedbackMessage,
-  isGuestMode,
   onFileUpload,
   onAudioSubmit,
   onTextSubmit,
@@ -37,21 +35,6 @@ export function InputWorkspace({
     addNotification,
     dismissNotification,
   } = useNotifications()
-
-  // Add guest mode notification (persistent)
-  useEffect(() => {
-    if (isGuestMode) {
-      addNotification({
-        id: 'guest-mode',
-        icon: HandWaving,
-        iconWeight: 'duotone',
-        message: 'Hey! Welcome to DropCal. Keep in mind you need an account to sync your calendar.',
-        variant: 'info',
-        persistent: true,
-        priority: -1, // Low priority, shows when no other notifications
-      })
-    }
-  }, [isGuestMode, addNotification])
 
   // Add feedback message notification (temporary)
   useEffect(() => {

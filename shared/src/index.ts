@@ -24,12 +24,6 @@ export { getEffectiveDateTime, isAllDay, getEventSyncStatus } from './types/even
 // ── Types: Sync ──
 export type { SyncCalendar, SyncResult } from './types/sync'
 
-// ── Storage ──
-export type { StorageAdapter } from './storage/types'
-
-// ── Auth ──
-export { GuestSessionManager } from './auth/guest'
-
 // ── API Client ──
 export type { ApiClientConfig, SyncClientConfig, ConflictInfo } from './api/types'
 export { createApiClient } from './api/client'

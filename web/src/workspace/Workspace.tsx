@@ -117,7 +117,6 @@ export function Workspace({
             uploadedFile={uploadedFile}
             isProcessing={isProcessing}
             feedbackMessage={feedbackMessage}
-            isGuestMode={isGuestMode}
             onFileUpload={onFileUpload}
             onAudioSubmit={onAudioSubmit}
             onTextSubmit={onTextSubmit}

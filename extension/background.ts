@@ -573,14 +573,14 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message.type === 'SIGN_IN') {
     const heading = encodeURIComponent('Sign in to start creating events.');
-    api.tabs.create({ url: `${DROPCAL_URL}/?auth=${heading}` });
+    api.tabs.create({ url: `${DROPCAL_URL}/auth?heading=${heading}` });
     sendResponse({ ok: true });
     return false;
   }
 
   if (message.type === 'OPEN_SESSION') {
     const { sessionId } = message;
-    const url = `${DROPCAL_URL}/s/${sessionId}`;
+    const url = `${DROPCAL_URL}/app/s/${sessionId}`;
     api.tabs.create({ url });
     // Dismiss the notification for this session since the user is viewing it
     removeNotification(sessionId)
