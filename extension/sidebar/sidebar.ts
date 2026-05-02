@@ -346,6 +346,18 @@ storage.local.onChanged.addListener((changes) => {
 
       if (session.status === 'processed' && session.events && session.events.length > 0) {
         renderEvents(session.events);
+      } else if (session.status === 'processed' && session.eventCount > 0) {
+        // Just transitioned to processed but events haven't been cached yet
+        // (wasn't in the auto-fetch top-3). Lazy-fetch so the sidebar can
+        // render instead of staying on skeletons.
+        api.runtime.sendMessage(
+          { type: 'GET_SESSION_EVENTS', sessionId: currentSessionId },
+          (response) => {
+            if (response?.ok && Array.isArray(response.events) && response.events.length > 0) {
+              renderEvents(response.events);
+            }
+          },
+        );
       } else if (session.status === 'error') {
         errorMessage.textContent = session.errorMessage || 'Processing failed.';
         showState('error');

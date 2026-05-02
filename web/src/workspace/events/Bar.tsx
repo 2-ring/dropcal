@@ -437,21 +437,20 @@ export function BottomBar({
                   /* Default: Request Changes + Confirm */
                   <>
                     <button
-                      className="event-confirmation-request-button"
+                      className="event-confirmation-request-changes-button"
                       onClick={onRequestChanges}
                     >
-                      <ChatIcon size={18} weight="bold" />
+                      <ChatIcon size={16} weight="bold" />
                       <span>Request changes</span>
                     </button>
                     {onConfirm && (
-                      <Tooltip content="Create events">
-                        <button
-                          className="event-confirmation-icon-button confirm"
-                          onClick={onConfirm}
-                        >
-                          <CalendarStarIcon size={24} weight="duotone" />
-                        </button>
-                      </Tooltip>
+                      <button
+                        className="event-confirmation-confirm-button"
+                        onClick={onConfirm}
+                      >
+                        <CalendarStarIcon size={18} weight="duotone" />
+                        <span>Create events</span>
+                      </button>
                     )}
                   </>
                 )}

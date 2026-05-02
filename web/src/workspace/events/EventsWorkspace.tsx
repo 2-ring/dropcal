@@ -708,6 +708,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
                         getCalendarColor={getCalendarColor}
                         activeProvider={primaryCalendarProvider || undefined}
                         conflictInfo={eventConflicts[String(index)]}
+                        transientStatus={editedEvent?.id ? transientStatuses[editedEvent.id]?.kind ?? null : null}
                         onClick={() => handleEventClick(index)}
                       />
                     </motion.div>
@@ -777,6 +778,7 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
                               getCalendarColor={getCalendarColor}
                               activeProvider={primaryCalendarProvider || undefined}
                               conflictInfo={eventConflicts[String(originalIndex)]}
+                              transientStatus={event.id ? transientStatuses[event.id]?.kind ?? null : null}
                               onClick={() => handleEventClick(originalIndex)}
                             />
                           </SwipeableEvent>

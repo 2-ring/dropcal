@@ -8,9 +8,10 @@ import { useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from '@phosphor-icons/react';
 import { useAuth } from './AuthContext';
-import { WordMark } from '../components/WordMark';
+import { Logo } from '../components/Logo';
 import { MenuButton } from '../menu/MenuButton';
 import { isNativePlatform } from '../utils/platform';
+import { getAuthWelcome } from './welcomeMessages';
 import './AuthPage.css';
 
 const GoogleIcon = (
@@ -42,7 +43,7 @@ export function AuthPage() {
   const { user, loading, signIn } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const heading = searchParams.get('heading') || "Let's get you signed in.";
+  const heading = searchParams.get('heading') || getAuthWelcome(searchParams.get('source'));
 
   useEffect(() => {
     if (!loading && user) {
@@ -70,10 +71,10 @@ export function AuthPage() {
 
       <main className="auth-page-main">
         <div className="auth-page-content">
-          <div className="auth-page-logo">
-            <WordMark size={40} />
+          <div className="greeting-row auth-page-greeting">
+            <Logo size={48} className="greeting-logo" />
+            <h1 className="display-text auth-page-heading">{heading}</h1>
           </div>
-          <h1 className="display-text auth-page-heading">{heading}</h1>
           <p className="auth-page-subheading">
             Pick a provider to continue. We'll only ask for the calendar permissions DropCal needs.
           </p>

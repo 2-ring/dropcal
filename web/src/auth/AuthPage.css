@@ -83,12 +83,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px 24px 96px;
+  padding: 24px 24px 96px;
 }
 
 .auth-page-content {
   width: 100%;
-  max-width: 440px;
+  max-width: 420px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -107,32 +107,65 @@
   }
 }
 
-.auth-page-logo {
-  margin-bottom: 28px;
+.auth-page .auth-page-greeting {
+  margin-bottom: 20px;
 }
 
-.auth-page-heading {
-  font-size: clamp(2rem, 5vw, 2.75rem);
-  text-align: center;
-  line-height: 1.05;
-  margin: 0 0 14px;
-  padding: 0 1rem;
+.auth-page .auth-page-heading {
+  font-size: clamp(1.75rem, 4.2vw, 2.25rem);
+  text-align: left;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
 }
 
-.auth-page-subheading {
+.auth-page .auth-page-subheading {
   text-align: center;
   color: var(--text-secondary);
-  font-size: 15px;
-  line-height: 1.5;
-  margin: 0 0 36px;
-  max-width: 360px;
+  font-size: 14px;
+  line-height: 1.55;
+  margin-top: 0;
+  margin-bottom: 56px;
+  padding: 0 8px;
 }
 
+/* Sign-in buttons — modern, subtly elevated tiles. */
 .auth-page-buttons {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
+}
+
+/* Refine the MenuButton signin look on this page: keep the pill shape that
+   matches the brand identity, but use a deeper surface and softer hover lift. */
+.auth-page-buttons .menu-button-signin {
+  background-color: var(--background-elevated);
+  border-color: var(--border);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.auth-page-buttons .menu-button-signin:hover:not(:disabled) {
+  background-color: var(--background-hover);
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
+.auth-page-buttons .menu-button-signin:active:not(:disabled) {
+  transform: translateY(0);
+  background-color: var(--background-active);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* Legal links — anchored to the bottom of the page. */
@@ -168,15 +201,20 @@
     padding: 16px 20px 80px;
   }
 
-  .auth-page-logo {
-    margin-bottom: 24px;
+  .auth-page .auth-page-greeting {
+    margin-bottom: 16px;
   }
 
-  .auth-page-heading {
-    font-size: 1.875rem;
+  .auth-page .auth-page-heading {
+    font-size: 1.75rem;
   }
 
-  .auth-page-subheading {
-    margin-bottom: 28px;
+  .auth-page .auth-page-subheading {
+    font-size: 13.5px;
+    margin-bottom: 44px;
+  }
+
+  .auth-page-buttons .menu-button-signin {
+    font-size: 14.5px;
   }
 }

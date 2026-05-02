@@ -833,6 +833,67 @@
   transform: translateY(0);
 }
 
+.event-confirmation-request-changes-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: var(--dock-height);
+  padding: 0 20px;
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.15s ease,
+              color 0.15s ease;
+}
+
+.event-confirmation-request-changes-button:hover {
+  background: var(--background-hover);
+  color: var(--text-primary);
+}
+
+.event-confirmation-request-changes-button:active {
+  transform: scale(0.98);
+}
+
+.event-confirmation-confirm-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: var(--dock-height);
+  padding: 0 24px;
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 100px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.2s ease;
+}
+
+.event-confirmation-confirm-button:hover {
+  background: var(--primary-hover);
+  transform: scale(1.02) translateY(-1px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.event-confirmation-confirm-button:active {
+  transform: scale(0.98);
+}
+
 /* Chat input wrapper (no send button inside) */
 .event-confirmation-chat-input-wrapper {
   display: flex;
@@ -1225,6 +1286,29 @@
   .event-confirmation-request-button svg {
     width: 16px;
     height: 16px;
+  }
+
+  .event-confirmation-request-changes-button {
+    height: var(--dock-height);
+    padding: 0 1rem;
+    font-size: 0.875rem;
+  }
+
+  .event-confirmation-request-changes-button svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .event-confirmation-confirm-button {
+    height: var(--dock-height);
+    padding: 0 1.125rem;
+    font-size: 0.9375rem;
+    gap: 8px;
+  }
+
+  .event-confirmation-confirm-button svg {
+    width: 18px;
+    height: 18px;
   }
 
   .event-confirmation-chat {

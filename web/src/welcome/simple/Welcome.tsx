@@ -109,7 +109,7 @@ export function Welcome() {
 it ever existed. DropCal schedules it the way you would: your colors, your shorthand, your conventions.                        </p>
                             <CTAButton
                                 text="See how it works"
-                                to="/auth"
+                                to="/auth?source=demo"
                                 backgroundColor="#ffffff"
                                 textColor="var(--primary-color)"
                                 className="see-how-cta-desktop"
@@ -140,7 +140,7 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
                 </div>
                 <CTAButton
                     text="See how it works"
-                    to="/auth"
+                    to="/auth?source=demo"
                     backgroundColor="#ffffff"
                     textColor="var(--primary-color)"
                     className="see-how-cta-mobile"
@@ -169,14 +169,14 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
                             <Mailbox size={20} weight="duotone" />
                             Contact
                         </a>
-                        <button onClick={() => navigate('/auth')} className="nav-secondary-link">
+                        <button onClick={() => navigate('/auth?source=login')} className="nav-secondary-link">
                             <FingerprintSimple size={20} weight="duotone" />
                             Log In
                         </button>
                         <CTAButton
                             text="Join Beta"
                             iconLeft={<Flask size={20} weight="duotone" />}
-                            to="/auth"
+                            to="/auth?source=beta"
                             backgroundColor="var(--primary)"
                             textColor="white"
                             className="nav-cta-button"
@@ -200,7 +200,7 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
                         <Mailbox size={20} weight="duotone" />
                         Contact
                     </a>
-                    <button onClick={() => { setMobileMenuOpen(false); navigate('/auth') }}>
+                    <button onClick={() => { setMobileMenuOpen(false); navigate('/auth?source=login') }}>
                         <FingerprintSimple size={20} weight="duotone" />
                         Log In
                     </button>
@@ -208,7 +208,7 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
                 <CTAButton
                     text="Join Beta"
                     iconLeft={<Flask size={20} weight="duotone" />}
-                    to="/auth"
+                    to="/auth?source=beta"
                     backgroundColor="var(--primary)"
                     textColor="white"
                     className="drawer-cta-button"
