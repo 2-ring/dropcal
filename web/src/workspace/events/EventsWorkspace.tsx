@@ -808,8 +808,6 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
       <BottomBar
         isLoading={isLoading || activeLoading !== null}
         loadingConfig={activeLoading ? [activeLoading] : loadingConfig}
-        notification={currentNotification}
-        onDismissNotification={dismissNotification}
         isEditingEvent={editingEventIndex !== null}
         isChatExpanded={isChatExpanded}
         changeRequest={changeRequest}

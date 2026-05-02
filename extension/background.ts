@@ -185,6 +185,14 @@ async function ensureAuth(): Promise<boolean> {
   return true;
 }
 
+// Capture the current userId, then call this after a network round-trip to
+// confirm the user hasn't switched accounts mid-flight. If it returns false,
+// the caller should abandon the operation rather than leak user A's session
+// into user B's history.
+async function authStillMatches(expectedUserId: string | null): Promise<boolean> {
+  return ((await getAuth())?.userId ?? null) === expectedUserId;
+}
+
 // ===== Storage Serialization =====
 // All read-modify-write operations on sessionHistory and notificationQueue
 // are serialized through this queue to prevent concurrent overwrites when
@@ -326,6 +334,7 @@ api.contextMenus.onClicked.addListener(async (info) => {
 
   const hasAuth = await ensureAuth();
   if (!hasAuth) return;
+  const expectedUserId = (await getAuth())?.userId ?? null;
 
   try {
     let session;
@@ -340,6 +349,13 @@ api.contextMenus.onClicked.addListener(async (info) => {
       session = await uploadImage(info.srcUrl);
       inputType = 'image';
     } else {
+      return;
+    }
+
+    // Account switched mid-request — the session was created under the old
+    // user. Don't write it into the new user's history.
+    if (!(await authStillMatches(expectedUserId))) {
+      syncBadge();
       return;
     }
 
@@ -603,9 +619,19 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         sendResponse({ ok: false, error: 'Not authenticated' });
         return;
       }
+      const expectedUserId = (await getAuth())?.userId ?? null;
       try {
         setBadgeProcessing();
         const session = await createTextSession(text);
+
+        // Account switched during the network call — abandon rather than
+        // attribute this session to the new user.
+        if (!(await authStillMatches(expectedUserId))) {
+          syncBadge();
+          sendResponse({ ok: false, error: 'User changed during request' });
+          return;
+        }
+
         const record: SessionRecord = {
           sessionId: session.id,
           status: 'polling',
@@ -629,25 +655,35 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
-  // Popup uploads files directly via fetch, then sends this to start polling
+  // Popup uploads files directly via fetch, then sends this to start polling.
+  // The popup captures auth.userId before its upload and passes it through
+  // here so we can drop the message if the user switched mid-upload.
   if (message.type === 'TRACK_SESSION') {
-    const { sessionId, inputType } = message;
-    setBadgeProcessing();
-    const record: SessionRecord = {
-      sessionId,
-      status: 'polling',
-      title: null,
-      eventCount: 0,
-      addedToCalendar: false,
-      eventSummaries: [],
-      events: [],
-      createdAt: Date.now(),
-      inputType: inputType || 'file',
-    };
-    addSessionRecord(record).then(() => {
+    const { sessionId, inputType, expectedUserId } = message;
+    (async () => {
+      if (
+        expectedUserId !== undefined &&
+        !(await authStillMatches(expectedUserId ?? null))
+      ) {
+        sendResponse({ ok: false, error: 'User changed during upload' });
+        return;
+      }
+      setBadgeProcessing();
+      const record: SessionRecord = {
+        sessionId,
+        status: 'polling',
+        title: null,
+        eventCount: 0,
+        addedToCalendar: false,
+        eventSummaries: [],
+        events: [],
+        createdAt: Date.now(),
+        inputType: inputType || 'file',
+      };
+      await addSessionRecord(record);
       startPolling(sessionId);
       sendResponse({ ok: true });
-    });
+    })();
     return true;
   }
 

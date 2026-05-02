@@ -108,6 +108,7 @@ export type ExtensionMessage =
   | { type: 'CAPTURE_PAGE' }
   | { type: 'SUBMIT_TEXT'; text: string }
   | { type: 'SUBMIT_FILE'; data: number[]; name: string; mimeType: string } // ArrayBuffer as number[] for messaging
+  | { type: 'TRACK_SESSION'; sessionId: string; inputType?: 'text' | 'image' | 'page' | 'file'; expectedUserId?: string | null }
   // Phase 2 — history
   | { type: 'GET_HISTORY' }
   // Phase 2 — sidebar

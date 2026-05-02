@@ -776,6 +776,9 @@ async function handleFiles(files: FileList): Promise<void> {
     storage.local.get('auth', (items) => resolve(items));
   });
   const token = authResult.auth?.accessToken;
+  // Capture the user the upload is being made under so the background can
+  // drop the TRACK_SESSION if the user switches accounts mid-upload.
+  const expectedUserId: string | null = authResult.auth?.userId ?? null;
   if (!token) {
     showFeedbackError('Not authenticated. Please sign in.');
     return;
@@ -805,6 +808,7 @@ async function handleFiles(files: FileList): Promise<void> {
         type: 'TRACK_SESSION',
         sessionId: session.id,
         inputType: file.type.startsWith('image/') ? 'image' : 'file',
+        expectedUserId,
       });
     } catch {
       showFeedbackError('Failed to upload file');
