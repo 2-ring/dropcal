@@ -42,16 +42,15 @@ const defaultPageTransform: PageTransform = (progress) => ({
     transform: `translate3d(0, ${-progress * 100}%, 0)`,
 })
 
-/** Slow start, fast middle, gentle settle. */
-const easeInOutQuart = (t: number) =>
-    t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2
+/** Fast start, smooth deceleration — the snappy modern page-transition curve. */
+const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4)
 
 export const PageDeck = forwardRef<PageDeckHandle, PageDeckProps>(function PageDeck(
     {
         pages,
         pageTransform = defaultPageTransform,
-        duration = 700,
-        ease = easeInOutQuart,
+        duration = 420,
+        ease = easeOutQuart,
         wheelThreshold = 30,
         swipeThreshold = 50,
         onPositionChange,

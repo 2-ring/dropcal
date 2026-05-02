@@ -322,8 +322,6 @@
 .omnipresence-content {
   flex: 0 0 45%;
   z-index: 12;
-  transform: var(--exit-flip, none);
-  transform-origin: center top;
 }
 
 .platform-chips {
@@ -580,8 +578,7 @@
   }
 
   .omnipresence-content {
-    /* Compose the optional exit flip with the existing mobile scale. */
-    transform: var(--exit-flip, none) scale(0.75);
+    transform: scale(0.75);
     transform-origin: top center;
     text-align: center;
   }

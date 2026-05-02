@@ -351,31 +351,23 @@ export function BottomBar({
                 transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               >
                 {viewState === 'editing' ? (
-                  /* Edit Mode: Cancel + Request Changes + Save */
+                  /* Edit Mode: Back + Done */
                   <>
-                    <Tooltip content="Cancel">
+                    <Tooltip content="Back">
                       <button
                         className="event-confirmation-icon-button cancel"
                         onClick={onCancel}
                       >
-                        <FirstAidIcon size={20} weight="duotone" style={{ transform: 'rotate(45deg)' }} />
+                        <CaretLeft size={20} weight="bold" />
                       </button>
                     </Tooltip>
                     <button
-                      className="event-confirmation-request-button"
-                      onClick={onRequestChanges}
+                      className="event-confirmation-save-button"
+                      onClick={onSave}
                     >
-                      <ChatIcon size={18} weight="bold" />
-                      <span>Request changes</span>
+                      <CheckIcon size={20} weight="bold" />
+                      <span>Done</span>
                     </button>
-                    <Tooltip content="Save changes">
-                      <button
-                        className="event-confirmation-icon-button confirm"
-                        onClick={onSave}
-                      >
-                        <CheckIcon size={24} weight="bold" />
-                      </button>
-                    </Tooltip>
                   </>
                 ) : viewState === 'editing-chat' ? (
                   /* Edit Mode with Chat: Cancel + Input + Send */

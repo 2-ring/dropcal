@@ -69,7 +69,15 @@ export function Welcome() {
         (progress) => {
             // Forward-exit progress: 0 on page 1, 1 on page 2.
             const exitT = Math.max(0, Math.min(1, progress))
-            const fadeOpacity = Math.max(0, 1 - exitT * 1.4)
+
+            // Plain shrink + fade for the whole text block. No rotation.
+            const blockStyle = {
+                transform: `scale(${1 - exitT * 0.2})`,
+                transformOrigin: 'center center' as const,
+                opacity: Math.max(0, 1 - exitT * 1.4),
+                willChange: 'transform, opacity',
+            }
+
             return (
             <section className="welcome-page omnipresence-page">
                 <FlowPath
@@ -82,44 +90,40 @@ export function Welcome() {
                     progress={exitT}
                 />
                 <div className="omnipresence-container">
-                    <div
-                        className="omnipresence-content"
-                        style={{
-                            ['--exit-flip' as string]: `perspective(1400px) rotateX(${exitT * -85}deg)`,
-                            opacity: fadeOpacity,
-                            willChange: 'transform, opacity',
-                        }}
-                    >
-                        <div className="platform-chips">
-                            <div className="platform-chip">
-                                <GoogleLogo className="platform-icon" /> Google
+                    <div className="omnipresence-content">
+                        <div style={blockStyle}>
+                            <div className="platform-chips">
+                                <div className="platform-chip">
+                                    <GoogleLogo className="platform-icon" /> Google
+                                </div>
+                                <div className="platform-chip">
+                                    <AppleLogo className="platform-icon" /> Apple
+                                </div>
+                                <div className="platform-chip">
+                                    <MicrosoftLogo className="platform-icon" /> Microsoft
+                                </div>
                             </div>
-                            <div className="platform-chip">
-                                <AppleLogo className="platform-icon" /> Apple
-                            </div>
-                            <div className="platform-chip">
-                                <MicrosoftLogo className="platform-icon" /> Microsoft
-                            </div>
-                        </div>
-                        <h2 className="omnipresence-title">Never schedule<br />manually again</h2>
-                        <p className="omnipresence-subtext">
-                        Class syllabus? Flyer? Instagram story? Email? Random PDF a professor sent at midnight? Drop it in from anywhere and forget
+                            <h2 className="omnipresence-title">Never schedule<br />manually again</h2>
+                            <p className="omnipresence-subtext">
+                            Class syllabus? Flyer? Instagram story? Email? Random PDF a professor sent at midnight? Drop it in from anywhere and forget
 it ever existed. DropCal schedules it the way you would: your colors, your shorthand, your conventions.                        </p>
-                        <CTAButton
-                            text="See how it works"
-                            to="/"
-                            backgroundColor="#ffffff"
-                            textColor="var(--primary-color)"
-                            className="see-how-cta-desktop"
-                            iconLeft={<EyesIcon size={22} weight="duotone" />}
-                            iconRight={<ArrowSquareOut size={20} weight="duotone" />}
-                        />
+                            <CTAButton
+                                text="See how it works"
+                                to="/"
+                                backgroundColor="#ffffff"
+                                textColor="var(--primary-color)"
+                                className="see-how-cta-desktop"
+                                iconLeft={<EyesIcon size={22} weight="duotone" />}
+                                iconRight={<ArrowSquareOut size={20} weight="duotone" />}
+                            />
+                        </div>
                     </div>
                     <div
                         className="omnipresence-visual"
                         style={{
-                            opacity: fadeOpacity,
-                            willChange: 'opacity',
+                            transform: `translateY(${-exitT * 300}px)`,
+                            opacity: Math.max(0, 1 - exitT * 1.4),
+                            willChange: 'transform, opacity',
                         }}
                     >
                         <div className="phone-mockup">
