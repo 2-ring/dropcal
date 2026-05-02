@@ -61,7 +61,7 @@ interface SessionListItem {
 
 // Main content component that handles all the business logic
 function AppContent() {
-  const { user, loading: authLoading, calendarReady, showAppleCalendarSetup, dismissAppleCalendarSetup } = useAuth()
+  const { user, loading: authLoading, calendarReady, showAppleCalendarSetup, dismissAppleCalendarSetup, signOut } = useAuth()
   const navigate = useNavigate()
   const { sessionId } = useParams<{ sessionId?: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -175,6 +175,18 @@ function AppContent() {
       setSearchParams(searchParams, { replace: true })
     }
   }, [searchParams, user])
+
+  // Sign out from ?logout=1 query param (used by Chrome extension to keep
+  // website + extension auth state in sync when the user signs out from the
+  // extension UI). Strip the param immediately so a refresh doesn't re-trigger.
+  useEffect(() => {
+    if (searchParams.get('logout') !== '1') return
+    searchParams.delete('logout')
+    setSearchParams(searchParams, { replace: true })
+    if (user) {
+      signOut().catch((err) => console.error('Logout from query param failed:', err))
+    }
+  }, [searchParams, user, signOut, setSearchParams])
 
   // Migrate guest sessions after sign-in
   useEffect(() => {

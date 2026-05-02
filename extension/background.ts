@@ -260,6 +260,11 @@ async function saveNotificationQueue(queue: string[]): Promise<void> {
 
 function pushNotification(sessionId: string): Promise<void> {
   return serialized(async () => {
+    // If the session was wiped (account switch / sign-out) while a poll was
+    // in-flight, don't add an orphan queue entry that points at nothing.
+    const history = await getHistory();
+    if (!history.sessions.some((s) => s.sessionId === sessionId)) return;
+
     const queue = await getNotificationQueue();
     if (!queue.includes(sessionId)) {
       queue.push(sessionId);
@@ -801,10 +806,15 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
-  // Settings — sign out (user-initiated). Wipes per-user data; user expects
-  // a clean slate when they explicitly sign out.
+  // Settings — sign out (user-initiated). Mirrors the sign-in pattern: routes
+  // through the website so the user is signed out everywhere. We clear the
+  // extension auth immediately (so the popup updates) AND open dropcal.ai with
+  // ?logout=1 so the website signs out too. If a dropcal.ai tab was already
+  // open, the website's signOut() will fire AUTH_SIGNED_OUT — already a no-op
+  // since extension auth is cleared.
   if (message.type === 'SIGN_OUT') {
     clearAuth({ wipe: true }).then(() => {
+      api.tabs.create({ url: `${DROPCAL_URL}/?logout=1` });
       sendResponse({ ok: true });
     });
     return true;

@@ -66,7 +66,11 @@ export function Welcome() {
     ))
 
     const pages: PageRender[] = [
-        () => (
+        (progress) => {
+            // Forward-exit progress: 0 on page 1, 1 on page 2.
+            const exitT = Math.max(0, Math.min(1, progress))
+            const fadeOpacity = Math.max(0, 1 - exitT * 1.4)
+            return (
             <section className="welcome-page omnipresence-page">
                 <FlowPath
                     icons={iconNodes}
@@ -75,9 +79,17 @@ export function Welcome() {
                     path="M -400 650 C 0 950, 1000 50, 2000 350"
                     pathLength={2600}
                     duration={45}
+                    progress={exitT}
                 />
                 <div className="omnipresence-container">
-                    <div className="omnipresence-content">
+                    <div
+                        className="omnipresence-content"
+                        style={{
+                            ['--exit-flip' as string]: `perspective(1400px) rotateX(${exitT * -85}deg)`,
+                            opacity: fadeOpacity,
+                            willChange: 'transform, opacity',
+                        }}
+                    >
                         <div className="platform-chips">
                             <div className="platform-chip">
                                 <GoogleLogo className="platform-icon" /> Google
@@ -91,8 +103,8 @@ export function Welcome() {
                         </div>
                         <h2 className="omnipresence-title">Never schedule<br />manually again</h2>
                         <p className="omnipresence-subtext">
-                            DropCal lives wherever scheduling information exists. Share a screenshot, forward an email, text a photo, paste a link. Your preferences sync across every surface.
-                        </p>
+                        Class syllabus? Flyer? Instagram story? Email? Random PDF a professor sent at midnight? Drop it in from anywhere and forget
+it ever existed. DropCal schedules it the way you would: your colors, your shorthand, your conventions.                        </p>
                         <CTAButton
                             text="See how it works"
                             to="/"
@@ -103,7 +115,13 @@ export function Welcome() {
                             iconRight={<ArrowSquareOut size={20} weight="duotone" />}
                         />
                     </div>
-                    <div className="omnipresence-visual">
+                    <div
+                        className="omnipresence-visual"
+                        style={{
+                            opacity: fadeOpacity,
+                            willChange: 'opacity',
+                        }}
+                    >
                         <div className="phone-mockup">
                             <div className="phone-notch"></div>
                             <div className="phone-screen">
@@ -126,7 +144,8 @@ export function Welcome() {
                     iconRight={<ArrowSquareOut size={20} weight="duotone" />}
                 />
             </section>
-        ),
+            )
+        },
         () => <section className="welcome-page blank-page" />,
     ]
 
@@ -222,6 +241,7 @@ export function Welcome() {
                     ref={deckRef}
                     pages={pages}
                     onPositionChange={setPosition}
+                    pageTransform={() => ({})}
                 />
             </div>
 

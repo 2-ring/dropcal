@@ -9,7 +9,7 @@ import './PageDeck.css'
  *   progress = 0  → page is fully active
  *   progress = +1 → page has slid one slot "up" (next page is active)
  *   progress = -1 → page is one slot "below" (previous page is active)
- * Values can be fractional during a gesture and reverse mid-flight.
+ * Values are fractional during a transition animation (always eased).
  */
 export type PageRender = (progress: number) => ReactNode
 
@@ -23,21 +23,17 @@ export interface PageDeckHandle {
 
 export interface PageDeckProps {
     pages: PageRender[]
-    /** Custom transform per page (default: vertical slide). */
+    /** Per-page outer transform (default: vertical slide). */
     pageTransform?: PageTransform
-    /** Pixels of wheel/touch travel needed to fully traverse one page. */
-    transitionDistance?: number
-    /** Fraction of a page (0–1) past which release commits forward. */
-    commitThreshold?: number
-    /** Snap-back / commit animation duration in ms. */
-    snapDuration?: number
-    /** Initial slope of the elastic curve at the boundary (higher = more responsive peek). */
-    elasticity?: number
-    /** Hard cap on overscroll past first/last page, as a fraction of a page (0 disables peek). */
-    maxOverscroll?: number
-    /** Easing fn used for snap/commit animations (t in [0,1] → eased [0,1]). */
+    /** Transition duration in ms. */
+    duration?: number
+    /** Easing for every transition (manual or programmatic). */
     ease?: (t: number) => number
-    /** Notified continuously as position changes. */
+    /** Wheel deltaY needed to trigger a step. */
+    wheelThreshold?: number
+    /** Touch dy needed to trigger a step. */
+    swipeThreshold?: number
+    /** Notified continuously as the animated position changes. */
     onPositionChange?: (position: number) => void
     className?: string
 }
@@ -46,7 +42,7 @@ const defaultPageTransform: PageTransform = (progress) => ({
     transform: `translate3d(0, ${-progress * 100}%, 0)`,
 })
 
-/** Strong ease in/out — slow start, fast middle, gentle settle. Feels like a satisfying slot. */
+/** Slow start, fast middle, gentle settle. */
 const easeInOutQuart = (t: number) =>
     t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2
 
@@ -54,12 +50,10 @@ export const PageDeck = forwardRef<PageDeckHandle, PageDeckProps>(function PageD
     {
         pages,
         pageTransform = defaultPageTransform,
-        transitionDistance = 600,
-        commitThreshold = 0.28,
-        snapDuration = 520,
-        elasticity = 0.4,
-        maxOverscroll = 0.05,
+        duration = 700,
         ease = easeInOutQuart,
+        wheelThreshold = 30,
+        swipeThreshold = 50,
         onPositionChange,
         className = '',
     },
@@ -70,168 +64,128 @@ export const PageDeck = forwardRef<PageDeckHandle, PageDeckProps>(function PageD
     const rerender = useCallback(() => bump(n => (n + 1) | 0), [])
 
     const stateRef = useRef({
-        anchor: 0,           // settled page index
-        offset: 0,           // signed displacement from anchor (in pages)
-        phase: 'idle' as 'idle' | 'wheel' | 'touch' | 'animating',
-        touchLastY: 0,
-        wheelEndTimer: 0 as unknown as ReturnType<typeof setTimeout>,
+        /** Animated, displayed position (float). */
+        position: 0,
+        /** Integer page we're transitioning toward. Equals `position` at rest. */
+        target: 0,
         rafId: 0,
         animFrom: 0,
         animTo: 0,
         animStart: 0,
-        animDur: 0,
     })
 
-    const getPosition = () => stateRef.current.anchor + stateRef.current.offset
     const notify = () => {
-        onPositionChange?.(getPosition())
+        onPositionChange?.(stateRef.current.position)
         rerender()
     }
 
-    const cancelAnim = () => {
+    /** Start (or restart, if target changed) the tween from current `position` toward `target`. */
+    const playToTarget = () => {
         const s = stateRef.current
-        if (s.rafId) {
-            cancelAnimationFrame(s.rafId)
-            s.rafId = 0
-        }
-    }
-
-    const applyElastic = (raw: number) => {
-        const s = stateRef.current
-        const minOff = -s.anchor
-        const maxOff = (pages.length - 1) - s.anchor
-        if (raw >= minOff && raw <= maxOff) return raw
-        if (maxOverscroll <= 0) return raw < minOff ? minOff : maxOff
-        // tanh saturation: small inputs scale by `elasticity`, large inputs asymptote to `maxOverscroll`.
-        const past = raw < minOff ? minOff - raw : raw - maxOff
-        const damped = maxOverscroll * Math.tanh((past * elasticity) / maxOverscroll)
-        return raw < minOff ? minOff - damped : maxOff + damped
-    }
-
-    const animateOffsetTo = (target: number, duration: number, onDone?: () => void) => {
-        cancelAnim()
-        const s = stateRef.current
-        s.phase = 'animating'
-        s.animFrom = s.offset
-        s.animTo = target
+        if (s.rafId) cancelAnimationFrame(s.rafId)
+        s.animFrom = s.position
+        s.animTo = s.target
         s.animStart = performance.now()
-        s.animDur = Math.max(1, duration)
 
         const tick = (now: number) => {
-            const t = Math.min(1, (now - s.animStart) / s.animDur)
-            s.offset = s.animFrom + (s.animTo - s.animFrom) * ease(t)
+            const cur = stateRef.current
+            // If the target was bumped mid-tween, restart from the current visual position.
+            if (cur.animTo !== cur.target) {
+                cur.animFrom = cur.position
+                cur.animTo = cur.target
+                cur.animStart = now
+            }
+            const t = Math.min(1, (now - cur.animStart) / duration)
+            cur.position = cur.animFrom + (cur.animTo - cur.animFrom) * ease(t)
             notify()
-            if (t < 1) {
-                s.rafId = requestAnimationFrame(tick)
+            if (t < 1 || cur.animTo !== cur.target) {
+                cur.rafId = requestAnimationFrame(tick)
             } else {
-                s.rafId = 0
-                s.phase = 'idle'
-                onDone?.()
+                cur.rafId = 0
             }
         }
         s.rafId = requestAnimationFrame(tick)
     }
 
-    const release = () => {
+    /** Bump the target by ±1 (clamped) and play toward it. No-op at boundaries. */
+    const step = (dir: 1 | -1) => {
         const s = stateRef.current
-        const off = s.offset
-        // Too small → snap back to current page
-        if (Math.abs(off) < commitThreshold) {
-            animateOffsetTo(0, snapDuration)
-            return
-        }
-        // Pick nearest integer step, but guarantee at least ±1 once past threshold.
-        let step = Math.round(off)
-        if (step === 0) step = off > 0 ? 1 : -1
-        const newAnchor = Math.max(0, Math.min(pages.length - 1, s.anchor + step))
-        const targetOffset = newAnchor - s.anchor
-        animateOffsetTo(targetOffset, snapDuration, () => {
-            s.anchor = newAnchor
-            s.offset = 0
-            notify()
-        })
+        const next = Math.max(0, Math.min(pages.length - 1, s.target + dir))
+        if (next === s.target) return
+        s.target = next
+        playToTarget()
     }
 
-    const goToPage = useCallback((target: number) => {
+    const goToPage = useCallback((idx: number) => {
         const s = stateRef.current
-        const clamped = Math.max(0, Math.min(pages.length - 1, target))
-        if (clamped === s.anchor && s.offset === 0) return
-        cancelAnim()
-        const targetOffset = clamped - s.anchor
-        const dur = snapDuration * Math.max(1, Math.abs(targetOffset) * 0.6)
-        animateOffsetTo(targetOffset, dur, () => {
-            s.anchor = clamped
-            s.offset = 0
-            notify()
-        })
-    }, [pages.length, snapDuration])
+        const clamped = Math.max(0, Math.min(pages.length - 1, idx))
+        if (clamped === s.target && s.position === clamped) return
+        s.target = clamped
+        playToTarget()
+    }, [pages.length, duration, ease])
 
     useImperativeHandle(ref, () => ({
         goToPage,
-        get position() { return getPosition() },
+        get position() { return stateRef.current.position },
     }), [goToPage])
 
     useEffect(() => {
         const el = containerRef.current
         if (!el) return
 
+        // Wheel: accumulate deltaY until past threshold, then step. Cooldown after each step
+        // so a single trackpad gesture doesn't trigger multiple steps mid-flight.
+        let wheelAccum = 0
+        let wheelResetTimer: ReturnType<typeof setTimeout> | null = null
+        let cooldownUntil = 0
+
         const onWheel = (e: WheelEvent) => {
             e.preventDefault()
-            const s = stateRef.current
-            // If a snap animation was running, stop it and adopt current offset.
-            if (s.phase === 'animating') cancelAnim()
-            s.phase = 'wheel'
-            s.offset = applyElastic(s.offset + e.deltaY / transitionDistance)
-            notify()
+            const now = performance.now()
+            if (now < cooldownUntil) return
 
-            clearTimeout(s.wheelEndTimer)
-            s.wheelEndTimer = setTimeout(() => {
-                if (s.phase === 'wheel') release()
-            }, 130)
+            wheelAccum += e.deltaY
+            if (wheelResetTimer) clearTimeout(wheelResetTimer)
+            wheelResetTimer = setTimeout(() => { wheelAccum = 0 }, 250)
+
+            if (wheelAccum >= wheelThreshold) {
+                step(1)
+                wheelAccum = 0
+                cooldownUntil = now + duration * 0.6
+            } else if (wheelAccum <= -wheelThreshold) {
+                step(-1)
+                wheelAccum = 0
+                cooldownUntil = now + duration * 0.6
+            }
         }
 
+        // Touch: total dy from start to end. One trigger per gesture.
+        let touchStartY = 0
         const onTouchStart = (e: TouchEvent) => {
-            const s = stateRef.current
-            if (s.phase === 'animating') cancelAnim()
-            s.phase = 'touch'
-            s.touchLastY = e.touches[0].clientY
+            touchStartY = e.touches[0].clientY
         }
-
-        const onTouchMove = (e: TouchEvent) => {
-            const s = stateRef.current
-            if (s.phase !== 'touch') return
-            e.preventDefault()
-            const y = e.touches[0].clientY
-            const dy = s.touchLastY - y
-            s.touchLastY = y
-            s.offset = applyElastic(s.offset + dy / transitionDistance)
-            notify()
-        }
-
-        const onTouchEnd = () => {
-            const s = stateRef.current
-            if (s.phase !== 'touch') return
-            release()
+        const onTouchEnd = (e: TouchEvent) => {
+            const dy = touchStartY - e.changedTouches[0].clientY
+            if (dy > swipeThreshold) step(1)
+            else if (dy < -swipeThreshold) step(-1)
         }
 
         el.addEventListener('wheel', onWheel, { passive: false })
         el.addEventListener('touchstart', onTouchStart, { passive: true })
-        el.addEventListener('touchmove', onTouchMove, { passive: false })
         el.addEventListener('touchend', onTouchEnd)
         el.addEventListener('touchcancel', onTouchEnd)
 
         return () => {
             el.removeEventListener('wheel', onWheel)
             el.removeEventListener('touchstart', onTouchStart)
-            el.removeEventListener('touchmove', onTouchMove)
             el.removeEventListener('touchend', onTouchEnd)
             el.removeEventListener('touchcancel', onTouchEnd)
-            clearTimeout(stateRef.current.wheelEndTimer)
-            cancelAnim()
+            if (wheelResetTimer) clearTimeout(wheelResetTimer)
+            if (stateRef.current.rafId) cancelAnimationFrame(stateRef.current.rafId)
         }
-    }, [transitionDistance, commitThreshold, snapDuration, elasticity, maxOverscroll, ease, pages.length])
+    }, [duration, ease, wheelThreshold, swipeThreshold, pages.length])
 
-    const position = getPosition()
+    const position = stateRef.current.position
 
     return (
         <div ref={containerRef} className={`page-deck ${className}`}>

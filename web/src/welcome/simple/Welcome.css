@@ -218,7 +218,7 @@
   display: none;
 }
 
-/* ===== Frame — fixed rounded border ===== */
+/* ===== Frame — fixed rounded border with liquid-glass edge ===== */
 .welcome-frame {
   position: relative;
   width: calc(100% - 48px);
@@ -226,9 +226,25 @@
   margin: 24px;
   border-radius: 80px;
   background-color: var(--primary-color, #1170C5);
+  background-image:
+    /* top-left specular highlight — catches "ambient light" */
+    radial-gradient(ellipse 70% 50% at 25% -10%, rgba(255, 255, 255, 0.28) 0%, transparent 60%),
+    /* subtle diagonal depth gradient — gives the surface dimension */
+    linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.18) 100%);
   color: #ffffff;
   overflow: hidden;
   box-sizing: border-box;
+  box-shadow:
+    /* outer ambient blue glow — bleeds into the dark surround so there's no hard edge */
+    0 0 110px -10px rgba(74, 158, 255, 0.38),
+    /* deep drop shadow — anchors the frame */
+    0 30px 80px -25px rgba(0, 0, 0, 0.55),
+    /* hairline glass rim around the whole edge */
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    /* soft inner luminance falling from the top */
+    inset 0 50px 70px -60px rgba(255, 255, 255, 0.22),
+    /* inner bottom darkening — subtle convex feel */
+    inset 0 -50px 70px -70px rgba(0, 0, 0, 0.35);
 }
 
 /* ===== Each page fills its slot inside the PageDeck ===== */
@@ -306,6 +322,8 @@
 .omnipresence-content {
   flex: 0 0 45%;
   z-index: 12;
+  transform: var(--exit-flip, none);
+  transform-origin: center top;
 }
 
 .platform-chips {
@@ -562,7 +580,8 @@
   }
 
   .omnipresence-content {
-    transform: scale(0.75);
+    /* Compose the optional exit flip with the existing mobile scale. */
+    transform: var(--exit-flip, none) scale(0.75);
     transform-origin: top center;
     text-align: center;
   }

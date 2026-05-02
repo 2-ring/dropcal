@@ -11,33 +11,19 @@
     top: 0;
     left: 0;
 
-    /* Use dynamic variables passed from React */
-    offset-path: var(--path);
+    /* offset-path is set inline; offset-distance is updated each frame from JS. */
     offset-rotate: auto;
-
-    animation: fp-move-along-path var(--duration) linear infinite;
-    animation-delay: var(--delay);
 
     display: flex;
     align-items: center;
     justify-content: center;
 
     /* Performance Optimizations */
-    will-change: offset-distance, transform;
+    will-change: offset-distance, opacity;
     transform: translateZ(0);
     backface-visibility: hidden;
     perspective: 1000px;
     contain: layout style;
-}
-
-@keyframes fp-move-along-path {
-    from {
-        offset-distance: 0%;
-    }
-
-    to {
-        offset-distance: 100%;
-    }
 }
 
 .fp-item-content {

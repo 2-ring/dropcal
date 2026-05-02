@@ -175,14 +175,26 @@ export function EventStatusBand({
     [event, activeProvider, conflictInfo, formatTimeRange, justCreated],
   )
 
+  // The appear animation should only play on a real hidden→visible
+  // transition, not on initial render with an already-visible status (page
+  // load, scroll-into-view re-mount, etc.). We detect a "real" appearance by
+  // checking whether the previous status was hidden.
+  const prevStatusKindRef = useRef(status.kind)
+  const skipAppearAnimation = prevStatusKindRef.current !== 'hidden'
+
+  useEffect(() => {
+    prevStatusKindRef.current = status.kind
+  }, [status.kind])
+
   return (
-    <AnimatePresence initial={false}>
+    <AnimatePresence>
       {status.kind !== 'hidden' && (
         <StatusBandShell
           key="shell"
           status={status}
           event={event}
           activeProvider={activeProvider}
+          skipAppearAnimation={skipAppearAnimation}
         />
       )}
     </AnimatePresence>
@@ -198,12 +210,22 @@ function StatusBandShell({
   status,
   event,
   activeProvider,
+  skipAppearAnimation,
 }: {
   status: VisibleStatusState
   event: CalendarEvent
   activeProvider: string | undefined
+  skipAppearAnimation: boolean
 }) {
-  const [grown, setGrown] = useState(false)
+  // The very first inner-content flip waits for the wrapper to finish
+  // growing. After that, status changes flip immediately. We track this
+  // with a ref so that subsequent flips don't carry the appear-delay.
+  const isFirstFlipRef = useRef(true)
+  const flipDelay = isFirstFlipRef.current && !skipAppearAnimation ? HEIGHT_DURATION : 0
+
+  useEffect(() => {
+    isFirstFlipRef.current = false
+  }, [])
 
   const visual = STATUS_CONFIG[status.kind]
   const label = status.kind === 'conflict' ? status.message : visual.label
@@ -215,30 +237,19 @@ function StatusBandShell({
   return (
     <motion.div
       className="event-status-band-wrapper"
-      initial={{ height: 0 }}
+      initial={skipAppearAnimation ? false : { height: 0 }}
       animate={{ height: 'auto' }}
       exit={{ height: 0 }}
       transition={{ duration: HEIGHT_DURATION, ease: FLIP_EASE }}
-      onAnimationComplete={(definition) => {
-        // Mark grown only after the open animation reaches its target.
-        if (
-          typeof definition === 'object'
-          && definition !== null
-          && 'height' in definition
-          && definition.height !== 0
-        ) {
-          setGrown(true)
-        }
-      }}
     >
-      <AnimatePresence mode="wait" initial={false}>
+      <AnimatePresence mode="wait" initial={!skipAppearAnimation}>
         <motion.div
           key={status.kind}
           className={`event-status-bar ${visual.className}`}
           initial={{ y: 14, scale: 0.95, opacity: 0 }}
-          animate={grown ? { y: 0, scale: 1, opacity: 1 } : { y: 14, scale: 0.95, opacity: 0 }}
+          animate={{ y: 0, scale: 1, opacity: 1 }}
           exit={{ y: -14, scale: 0.95, opacity: 0 }}
-          transition={{ duration: FLIP_DURATION, ease: FLIP_EASE }}
+          transition={{ duration: FLIP_DURATION, ease: FLIP_EASE, delay: flipDelay }}
         >
           <StatusIcon size={14} weight="bold" />
           <span>{label}</span>
