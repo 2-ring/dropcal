@@ -43,12 +43,11 @@ interface EventsWorkspaceProps {
   inputType?: 'text' | 'image' | 'audio' | 'document' | 'pdf' | 'email'
   inputContent?: string
   onBack?: () => void
-  onAuthRequired?: () => void
   sessionId?: string
   calendars?: SyncCalendar[]
 }
 
-export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsChanged, isLoading = false, loadingConfig = [], expectedEventCount, inputType, inputContent, onBack, onAuthRequired, sessionId, calendars: propCalendars }: EventsWorkspaceProps) {
+export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsChanged, isLoading = false, loadingConfig = [], expectedEventCount, inputType, inputContent, onBack, sessionId, calendars: propCalendars }: EventsWorkspaceProps) {
   const [changeRequest, setChangeRequest] = useState('')
   const [isChatExpanded, setIsChatExpanded] = useState(false)
   const [editingEventIndex, setEditingEventIndex] = useState<number | null>(null)
@@ -435,10 +434,6 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
   // Wrap onConfirm to pass edited events and show loading in the bottom bar
   const handleConfirm = async () => {
     if (onConfirm) {
-      if (!user) {
-        onAuthRequired?.()
-        return
-      }
       const validEditedEvents = editedEvents.filter((e): e is CalendarEvent => e !== null)
 
       setActiveLoading(LOADING_MESSAGES.ADDING_TO_CALENDAR)
@@ -482,11 +477,6 @@ export function EventsWorkspace({ events, onConfirm, onEventDeleted, onEventsCha
 
   // Swipe right: push single event to calendar (create or update)
   const handleSwipeAdd = async (event: CalendarEvent) => {
-    if (!user) {
-      onAuthRequired?.()
-      return
-    }
-
     const eventId = event.id
     if (!eventId) return
 

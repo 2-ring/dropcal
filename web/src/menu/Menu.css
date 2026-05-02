@@ -4,10 +4,10 @@
    when the sidebar opens, matching the .content margin-left transition. */
 .sidebar-collapse-toggle {
   position: fixed;
-  top: calc(var(--page-padding-x, 1rem) + (var(--dock-height, 56px) - 32px) / 2);
+  top: calc(var(--page-padding-x, 1rem) + (var(--dock-height, 56px) - 40px) / 2);
   left: var(--page-padding-x, 1rem);
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -27,7 +27,6 @@
 
 .sidebar-collapse-toggle:hover {
   color: var(--text-secondary);
-  background-color: var(--background-hover);
 }
 
 /* Menu mark logo - inside sidebar, visible when sidebar is open */

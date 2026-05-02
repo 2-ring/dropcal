@@ -10,6 +10,22 @@ export interface Session {
   created_at: string;
 }
 
+// Shape returned by GET /sessions (the list endpoint that backs both web and
+// extension session lists). Mirrors the website's BackendSession.
+export interface ServerSession {
+  id: string;
+  input_type: 'text' | 'image' | 'audio' | 'email';
+  status: 'pending' | 'processing' | 'processed' | 'error';
+  title?: string | null;
+  icon?: string | null;
+  event_ids?: string[];
+  processed_events?: unknown[];
+  extracted_events?: unknown[];
+  added_to_calendar?: boolean;
+  error_message?: string | null;
+  created_at: string;
+}
+
 // Subset of backend CalendarEvent — only fields the popup displays
 export interface CalendarDateTime {
   dateTime?: string;
@@ -111,6 +127,8 @@ export type ExtensionMessage =
   | { type: 'TRACK_SESSION'; sessionId: string; inputType?: 'text' | 'image' | 'page' | 'file'; expectedUserId?: string | null }
   // Phase 2 — history
   | { type: 'GET_HISTORY' }
+  | { type: 'REFRESH_SESSIONS' }
+  | { type: 'GET_SESSION_EVENTS'; sessionId: string }
   // Phase 2 — sidebar
   | { type: 'OPEN_SIDEBAR'; sessionId: string }
   // Settings

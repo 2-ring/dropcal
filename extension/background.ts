@@ -1,10 +1,11 @@
-import type { ActiveJob, AuthState, SessionRecord, SessionHistory } from './types';
+import type { ActiveJob, AuthState, ServerSession, SessionRecord, SessionHistory } from './types';
 import {
   setAuthToken,
   createTextSession,
   uploadImage,
   getSession,
   getSessionEvents,
+  getUserSessions,
   getUserPreferences,
   getUserProfile,
   updateUserPreferences,
@@ -26,7 +27,12 @@ import {
 } from './compat';
 
 const MAX_POLL_DURATION_MS = 5 * 60 * 1000;
-const MAX_HISTORY_SESSIONS = 10;
+const MAX_HISTORY_SESSIONS = 50;
+// Optimistic local-only entries (just submitted, not yet on server) are kept
+// for this long before being dropped if they don't appear in a server refresh.
+const OPTIMISTIC_GRACE_MS = 30_000;
+// Mirrors the website's polling cadence while any session is in-progress.
+const LIST_REFRESH_INTERVAL_MS = 3_000;
 const CONTEXT_MENU_ID = 'send-to-dropcal';
 const DROPCAL_URL = 'https://dropcal.ai';
 const FEEDBACK_EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -36,12 +42,12 @@ clearSessionFallback();
 
 // Recover any sessions stuck in 'polling' after a service worker restart.
 // In-memory poll state (activePolls, rapidTimers) is lost on restart, so
-// sessions that were mid-poll need to be re-polled.
+// re-arm per-session polling for anything still in-progress AND pull the
+// list from the server in case statuses changed while the SW was dead.
 (async () => {
   const history = await getHistory();
   for (const session of history.sessions) {
     if (session.status === 'polling') {
-      // Check if the session has timed out while the worker was dead
       if (Date.now() - session.createdAt > MAX_POLL_DURATION_MS) {
         await updateSessionRecord(session.sessionId, {
           status: 'error',
@@ -53,6 +59,8 @@ clearSessionFallback();
       }
     }
   }
+  // Server may have processed sessions while SW was asleep — reconcile.
+  refreshSessions();
 })();
 
 // Track poll start times for timeout detection. Declared up-front so
@@ -101,8 +109,15 @@ async function getAuth(): Promise<AuthState | null> {
 async function wipeUserData(): Promise<void> {
   stopAllPolling();
   pollStartTimes.clear();
+  if (_listRefreshTimer !== null) {
+    clearTimeout(_listRefreshTimer);
+    _listRefreshTimer = null;
+  }
   await new Promise<void>((resolve) => {
-    storage.local.remove(['sessionHistory', 'notificationQueue', 'themeMode'], resolve);
+    storage.local.remove(
+      ['sessionHistory', 'notificationQueue', 'themeMode', 'isLoadingSessions'],
+      resolve,
+    );
   });
   await new Promise<void>((resolve) => {
     storage.session.remove(['sidebarSessionId', 'activeJob'], resolve);
@@ -142,6 +157,9 @@ async function setAuth(input: AuthInput): Promise<void> {
   const isNewIdentity = oldUserId === null || isUserSwitch;
   if (isNewIdentity) {
     fetchAndStoreTheme();
+    // Pull the new user's session list from the server so the popup matches
+    // the website immediately on sign-in.
+    refreshSessions();
   }
 }
 
@@ -191,6 +209,187 @@ async function ensureAuth(): Promise<boolean> {
 // into user B's history.
 async function authStillMatches(expectedUserId: string | null): Promise<boolean> {
   return ((await getAuth())?.userId ?? null) === expectedUserId;
+}
+
+// ===== Server-Backed Session List =====
+//
+// The server is the source of truth for the session list. Both the website
+// and the extension call GET /sessions and render the same data. The local
+// chrome.storage.local cache exists so the popup renders instantly on open
+// (stale-while-revalidate) and so the sidebar can find a session's cached
+// `events` array without a round-trip.
+
+function mapInputType(t: ServerSession['input_type']): SessionRecord['inputType'] {
+  // Extension's inputType enum is narrower; fold audio/email into 'file'/'text'.
+  if (t === 'image') return 'image';
+  if (t === 'audio') return 'file';
+  if (t === 'email') return 'text';
+  return 'text';
+}
+
+function mapServerStatus(s: ServerSession['status']): SessionRecord['status'] {
+  if (s === 'processed') return 'processed';
+  if (s === 'error') return 'error';
+  return 'polling';
+}
+
+function mapServerToRecord(s: ServerSession, local?: SessionRecord): SessionRecord {
+  const eventCount =
+    s.event_ids?.length ?? s.processed_events?.length ?? s.extracted_events?.length ?? 0;
+  return {
+    sessionId: s.id,
+    status: mapServerStatus(s.status),
+    title: s.title || null,
+    icon: s.icon || null,
+    eventCount,
+    addedToCalendar: !!s.added_to_calendar,
+    // Preserve local-only enrichments — list endpoint doesn't return them.
+    eventSummaries: local?.eventSummaries ?? [],
+    events: local?.events ?? [],
+    errorMessage: s.error_message || local?.errorMessage,
+    dismissedAt: local?.dismissedAt,
+    createdAt: new Date(s.created_at).getTime(),
+    inputType: local?.inputType ?? mapInputType(s.input_type),
+    pageUrl: local?.pageUrl,
+  };
+}
+
+let _refreshInFlight: Promise<void> | null = null;
+let _listRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function refreshSessions(): Promise<void> {
+  // Coalesce concurrent calls — multiple popup opens or transition triggers
+  // shouldn't fan out into parallel network calls.
+  if (_refreshInFlight) return _refreshInFlight;
+
+  _refreshInFlight = (async () => {
+    if (!(await ensureAuth())) return;
+    const expectedUserId = (await getAuth())?.userId ?? null;
+
+    await new Promise<void>((resolve) => {
+      storage.local.set({ isLoadingSessions: true }, resolve);
+    });
+
+    try {
+      const serverSessions = await getUserSessions(MAX_HISTORY_SESSIONS);
+
+      // User switched accounts during the request — drop these results so we
+      // don't leak A's sessions into B's view.
+      if (!(await authStillMatches(expectedUserId))) return;
+
+      await serialized(async () => {
+        const oldHistory = await getHistory();
+        const oldById = new Map(oldHistory.sessions.map((s) => [s.sessionId, s]));
+        const serverIds = new Set(serverSessions.map((s) => s.id));
+
+        const merged: SessionRecord[] = serverSessions.map((s) =>
+          mapServerToRecord(s, oldById.get(s.id)),
+        );
+
+        // Preserve recent optimistic adds that haven't propagated to the
+        // server's list endpoint yet (just-submitted via context menu / popup).
+        for (const local of oldHistory.sessions) {
+          if (serverIds.has(local.sessionId)) continue;
+          if (Date.now() - local.createdAt < OPTIMISTIC_GRACE_MS) {
+            merged.push(local);
+          }
+        }
+
+        merged.sort((a, b) => b.createdAt - a.createdAt);
+
+        // Detect transitions for sessions the user submitted via this
+        // extension. Only those should bump the badge / pop the popup —
+        // surfacing a freshly-processed mobile session shouldn't notify.
+        for (const next of merged) {
+          const prev = oldById.get(next.sessionId);
+          if (!prev) continue;
+          if (prev.status === 'polling' && next.status !== 'polling') {
+            await pushNotificationInternal(next.sessionId, merged);
+            if (next.status === 'processed') action.tryOpenPopup();
+          }
+        }
+
+        // For sessions that just transitioned to processed AND we don't have
+        // events cached, fetch them so the sidebar can render without a
+        // round-trip. Skip if there are too many to avoid burst calls.
+        const needsEvents = merged.filter(
+          (s) => s.status === 'processed' && s.events.length === 0 && s.eventCount > 0,
+        );
+        // Only auto-fetch for the most recent few; older ones can be lazy-loaded
+        // when the sidebar opens.
+        const toFetch = needsEvents.slice(0, 3);
+
+        await new Promise<void>((resolve) => {
+          storage.local.set(
+            { sessionHistory: { sessions: merged.slice(0, MAX_HISTORY_SESSIONS) } },
+            resolve,
+          );
+        });
+
+        for (const s of toFetch) {
+          getSessionEvents(s.sessionId)
+            .then(({ events, count }) => {
+              updateSessionRecord(s.sessionId, {
+                events,
+                eventCount: count,
+                eventSummaries: events.slice(0, 3).map((e) => e.summary),
+              });
+            })
+            .catch(() => {
+              // Lazy-load fallback in sidebar handles failures.
+            });
+        }
+      });
+
+      ensureListRefreshLoop();
+      syncBadge();
+    } catch (err) {
+      console.error('DropCal: refreshSessions failed', err);
+    } finally {
+      await new Promise<void>((resolve) => {
+        storage.local.set({ isLoadingSessions: false }, resolve);
+      });
+    }
+  })();
+
+  try {
+    await _refreshInFlight;
+  } finally {
+    _refreshInFlight = null;
+  }
+}
+
+// Internal pushNotification variant that takes the merged list directly to
+// avoid a redundant getHistory() inside the serialized block.
+async function pushNotificationInternal(
+  sessionId: string,
+  history: SessionRecord[],
+): Promise<void> {
+  if (!history.some((s) => s.sessionId === sessionId)) return;
+  const queue = await getNotificationQueue();
+  if (!queue.includes(sessionId)) {
+    queue.push(sessionId);
+    await saveNotificationQueue(queue);
+  }
+}
+
+// Schedule the next list-refresh tick if any session is still in-progress.
+// Uses setTimeout for sub-minute cadence (alarms minimum is 1 minute).
+// The existing per-session keepalive in compat/polling.ts keeps the SW alive
+// while polling is active; for list-only refreshes we rely on the popup or
+// content-script messages to wake the SW.
+function ensureListRefreshLoop(): void {
+  if (_listRefreshTimer !== null) return;
+
+  const tick = async () => {
+    _listRefreshTimer = null;
+    const history = await getHistory();
+    const stillProcessing = history.sessions.some((s) => s.status === 'polling');
+    if (!stillProcessing) return;
+    await refreshSessions();
+  };
+
+  _listRefreshTimer = setTimeout(tick, LIST_REFRESH_INTERVAL_MS);
 }
 
 // ===== Storage Serialization =====
@@ -690,6 +889,40 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'GET_HISTORY') {
     getHistory().then((history) => {
       sendResponse({ sessions: history.sessions });
+    });
+    return true;
+  }
+
+  // Popup triggers a refresh on open. Returns when the refresh completes so
+  // the popup knows when the cache is up-to-date (it's already rendering
+  // cached data in parallel via storage listeners).
+  if (message.type === 'REFRESH_SESSIONS') {
+    refreshSessions().then(() => sendResponse({ ok: true }));
+    return true;
+  }
+
+  // Sidebar fallback: when a session was created elsewhere (mobile/website)
+  // the extension may not have its events cached. Sidebar requests them.
+  if (message.type === 'GET_SESSION_EVENTS') {
+    const { sessionId } = message;
+    ensureAuth().then(async (hasAuth) => {
+      if (!hasAuth) {
+        sendResponse({ ok: false, error: 'Not authenticated' });
+        return;
+      }
+      try {
+        const { events, count } = await getSessionEvents(sessionId);
+        // Cache for next time
+        await updateSessionRecord(sessionId, {
+          events,
+          eventCount: count,
+          eventSummaries: events.slice(0, 3).map((e) => e.summary),
+        });
+        sendResponse({ ok: true, events });
+      } catch (err) {
+        console.error('DropCal: GET_SESSION_EVENTS failed', err);
+        sendResponse({ ok: false, error: 'Failed to load events' });
+      }
     });
     return true;
   }

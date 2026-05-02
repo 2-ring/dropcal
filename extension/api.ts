@@ -1,4 +1,4 @@
-import type { Session, CalendarEvent } from './types';
+import type { Session, ServerSession, CalendarEvent } from './types';
 
 const API_URL = 'https://api.dropcal.ai';
 
@@ -62,6 +62,17 @@ export async function uploadImage(imageUrl: string): Promise<Session> {
   });
   const data = await handleResponse<{ session: Session }>(response);
   return data.session;
+}
+
+// Fetch the user's recent sessions from the backend (matches what the website
+// loads). Used to keep the extension list in sync with the server.
+export async function getUserSessions(limit: number = 50): Promise<ServerSession[]> {
+  const response = await fetch(`${API_URL}/sessions?limit=${limit}`, {
+    method: 'GET',
+    headers: authHeaders(),
+  });
+  const data = await handleResponse<{ sessions: ServerSession[] }>(response);
+  return data.sessions;
 }
 
 export async function getSession(sessionId: string): Promise<Session> {

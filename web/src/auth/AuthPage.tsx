@@ -10,6 +10,7 @@ import { ArrowLeft } from '@phosphor-icons/react';
 import { useAuth } from './AuthContext';
 import { WordMark } from '../components/WordMark';
 import { MenuButton } from '../menu/MenuButton';
+import { isNativePlatform } from '../utils/platform';
 import './AuthPage.css';
 
 const GoogleIcon = (
@@ -49,19 +50,23 @@ export function AuthPage() {
     }
   }, [user, loading, navigate]);
 
+  const native = isNativePlatform();
+
   return (
     <div className="auth-page">
-      <header className="auth-page-topbar">
-        <button
-          type="button"
-          className="auth-page-back"
-          onClick={() => navigate('/welcome')}
-          aria-label="Back to home"
-        >
-          <ArrowLeft size={16} weight="bold" />
-          Back
-        </button>
-      </header>
+      {!native && (
+        <header className="auth-page-topbar">
+          <button
+            type="button"
+            className="auth-page-back"
+            onClick={() => navigate('/welcome')}
+            aria-label="Back to home"
+          >
+            <ArrowLeft size={16} weight="bold" />
+            Back
+          </button>
+        </header>
+      )}
 
       <main className="auth-page-main">
         <div className="auth-page-content">
@@ -86,11 +91,13 @@ export function AuthPage() {
         </div>
       </main>
 
-      <footer className="auth-page-legal">
-        <Link to="/privacy">Privacy Policy</Link>
-        <span>·</span>
-        <Link to="/terms">Terms of Service</Link>
-      </footer>
+      {!native && (
+        <footer className="auth-page-legal">
+          <Link to="/privacy">Privacy Policy</Link>
+          <span>·</span>
+          <Link to="/terms">Terms of Service</Link>
+        </footer>
+      )}
     </div>
   );
 }

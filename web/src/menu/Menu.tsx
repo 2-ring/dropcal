@@ -159,9 +159,9 @@ export function Menu({
           title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
         >
           {isOpen ? (
-            <ArrowLineLeft size={20} weight="duotone" />
+            <ArrowLineLeft size={26} weight="duotone" />
           ) : (
-            <SidebarIcon size={20} weight="duotone" />
+            <SidebarIcon size={26} weight="duotone" />
           )}
         </button>
       </Tooltip>
