@@ -10,6 +10,8 @@ declare const browser: typeof chrome | undefined;
 
 export interface PanelAdapter {
   open(options: { windowId?: number; sessionId?: string }): Promise<void>;
+  /** Close/dismiss the panel from inside the panel page. */
+  close(): void;
   isSupported: boolean;
 }
 
@@ -26,6 +28,11 @@ function chromeSidePanel(): PanelAdapter {
         await (api.sidePanel as any).open({ windowId });
       }
     },
+    close() {
+      // Chrome's side panel page is a regular extension page; window.close()
+      // closes it.
+      window.close();
+    },
   };
 }
 
@@ -38,6 +45,16 @@ function firefoxSidebar(): PanelAdapter {
       await (browser as any).sidebarAction.open();
       if (sessionId) {
         storage.session.set({ sidebarSessionId: sessionId });
+      }
+    },
+    close() {
+      // window.close() is a no-op inside a Firefox sidebar_action panel.
+      // sidebarAction.close() actually dismisses the sidebar.
+      try {
+        (browser as any).sidebarAction.close();
+      } catch {
+        // Older Firefox or unexpected context — fall back to window.close().
+        window.close();
       }
     },
   };

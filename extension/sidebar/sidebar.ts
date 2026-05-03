@@ -1,6 +1,6 @@
 import type { SessionRecord, CalendarEvent } from '../types';
 import { initTheme } from '../theme';
-import { api, storage } from '../compat';
+import { api, storage, panel } from '../compat';
 
 const DROPCAL_URL = 'https://dropcal.ai';
 
@@ -286,7 +286,7 @@ function syncAddButton(addedToCalendar: boolean): void {
 // ===== Buttons =====
 
 btnBack.addEventListener('click', () => {
-  window.close();
+  panel.close();
 });
 
 btnAddAll.addEventListener('click', () => {
@@ -330,7 +330,7 @@ btnOpenDropcal.addEventListener('click', () => {
       type: 'OPEN_SESSION',
       sessionId: currentSessionId,
     });
-    window.close();
+    panel.close();
   }
 });
 
@@ -365,7 +365,7 @@ storage.local.onChanged.addListener((changes) => {
     } else if (history === undefined || history.sessions.length === 0) {
       // History was wiped (sign-out or account switch). Don't show stale
       // events from a previous user — close the sidebar.
-      window.close();
+      panel.close();
     }
   }
 
@@ -378,7 +378,7 @@ storage.local.onChanged.addListener((changes) => {
 
     // Sign-out or account switch → close so we can't display another user's data.
     if (!isAuthed || (oldUserId !== null && newUserId !== null && oldUserId !== newUserId)) {
-      window.close();
+      panel.close();
     }
   }
 });

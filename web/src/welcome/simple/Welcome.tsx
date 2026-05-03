@@ -6,7 +6,7 @@ import {
     Envelope, ChatCircleText, Camera, FileText, Microphone,
     Link as LinkIcon, WhatsappLogo, SlackLogo, NotionLogo,
     TelegramLogo, LinkedinLogo, DiscordLogo, Globe, Image,
-    EyesIcon, ArrowSquareOut, ArrowLeft,
+    EyesIcon, ArrowSquareOut, CaretLeft,
 } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
@@ -198,8 +198,7 @@ export function Welcome() {
                             </div>
                             <h2 className="omnipresence-title">Never schedule<br />manually again</h2>
                             <p className="omnipresence-subtext">
-                            Class syllabus? Flyer? Instagram story? Email? Random PDF a professor sent at midnight? Drop it in from anywhere and forget
-it ever existed. DropCal schedules it the way you would: your colors, your shorthand, your conventions.                        </p>
+Class syllabus? Flyer? Instagram story? Email? Drop it in from anywhere and forget it ever existed. DropCal schedules it exactly the way you would: your colors, your shorthand, your conventions.                      </p>
                             <CTAButton
                                 text="See how it works"
                                 to="/auth"
@@ -328,7 +327,7 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
                     variants={authBackVariants}
                     style={{ pointerEvents: authInteractive ? 'auto' : 'none' }}
                 >
-                    <ArrowLeft size={20} weight="bold" />
+                    <CaretLeft size={20} weight="bold" />
                     <span>Back</span>
                 </motion.button>
 
@@ -400,13 +399,13 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
                                 </MenuButton>
                             </motion.div>
                             <motion.div variants={authButtonVariants} className="welcome-auth-button-row">
-                                <MenuButton onClick={() => signIn('microsoft')} icon={AuthMicrosoftIcon} variant="signin">
-                                    Sign in with Microsoft
+                                <MenuButton onClick={() => signIn('apple')} icon={AuthAppleIcon} variant="signin">
+                                    Sign in with Apple
                                 </MenuButton>
                             </motion.div>
                             <motion.div variants={authButtonVariants} className="welcome-auth-button-row">
-                                <MenuButton onClick={() => signIn('apple')} icon={AuthAppleIcon} variant="signin">
-                                    Sign in with Apple
+                                <MenuButton onClick={() => signIn('microsoft')} icon={AuthMicrosoftIcon} variant="signin">
+                                    Sign in with Microsoft
                                 </MenuButton>
                             </motion.div>
                         </motion.div>
