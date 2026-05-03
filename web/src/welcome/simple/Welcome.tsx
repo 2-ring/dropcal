@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { motion, type Variants } from 'framer-motion'
 import {
     List, X, Mailbox, FingerprintSimple, Flask,
     Envelope, ChatCircleText, Camera, FileText, Microphone,
@@ -70,6 +71,51 @@ const AuthAppleIcon = (
         <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
     </svg>
 )
+
+// Auth animations.
+// Container drives the rhythm; children inherit the active variant name.
+const authContainerVariants: Variants = {
+    hidden: {
+        transition: { staggerChildren: 0.04, staggerDirection: -1 },
+    },
+    visible: {
+        transition: { staggerChildren: 0.08, delayChildren: 0.08 },
+    },
+}
+
+// Icon + heading + subheading shrink/fade in unison — same shape as the
+// omnipresence content's exit animation.
+const authTextVariants: Variants = {
+    hidden: { scale: 0.85, opacity: 0 },
+    visible: {
+        scale: 1,
+        opacity: 1,
+        transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+    },
+}
+
+// Button group — nested stagger so the three pills roll in sequentially.
+const authButtonGroupVariants: Variants = {
+    hidden: { transition: { staggerChildren: 0.04, staggerDirection: -1 } },
+    visible: { transition: { staggerChildren: 0.07, delayChildren: 0.18 } },
+}
+
+// Each provider pill — same up-and-in feel as the calendar event cards.
+const authButtonVariants: Variants = {
+    hidden: { opacity: 0, y: 16, scale: 0.96 },
+    visible: {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        transition: { type: 'spring', stiffness: 350, damping: 25 },
+    },
+}
+
+// Back button — simple cross-fade.
+const authBackVariants: Variants = {
+    hidden: { opacity: 0, transition: { duration: 0.2 } },
+    visible: { opacity: 1, transition: { duration: 0.25 } },
+}
 
 export function Welcome() {
     const navigate = useNavigate()
@@ -202,17 +248,8 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
 
     const PAGE_COUNT = pages.length
 
-    // Auth panel. Lives outside the deck. Uses the same animation primitive
-    // (shellProgress) but is its own visual layer with its own intrinsic
-    // entrance/exit. progress = 0 when active, 1 when fully exited.
-    const authProgress = 1 - shellProgress
-    const authBlockStyle = {
-        transform: `scale(${1 - authProgress * 0.15})`,
-        transformOrigin: 'center center' as const,
-        opacity: Math.max(0, 1 - authProgress * 1.4),
-        willChange: 'transform, opacity',
-        pointerEvents: shellProgress > 0.5 ? 'auto' as const : 'none' as const,
-    }
+    /** Auth layer is interactive once the shell crosses the midpoint of the transition. */
+    const authInteractive = shellProgress > 0.5
 
     return (
         <div className="welcome-simple">
@@ -278,17 +315,22 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
                 (page-to-page, page-to-auth, auth-to-page) using the same exit/enter
                 machinery. Each page defines its own animation via `progress`. */}
             <div className="welcome-frame">
-                {/* Back button — fades in only on the auth page. */}
-                <button
+                {/* Back button — bare white icon + text, fades in/out. */}
+                <motion.button
                     type="button"
-                    className={`welcome-auth-back ${authOpen ? '' : 'hidden'}`}
+                    className="welcome-auth-back"
                     onClick={() => navigate('/welcome')}
                     aria-label="Back"
+                    aria-hidden={!authOpen}
                     tabIndex={authOpen ? 0 : -1}
+                    initial={false}
+                    animate={authOpen ? 'visible' : 'hidden'}
+                    variants={authBackVariants}
+                    style={{ pointerEvents: authInteractive ? 'auto' : 'none' }}
                 >
-                    <ArrowLeft size={18} weight="bold" />
+                    <ArrowLeft size={20} weight="bold" />
                     <span>Back</span>
-                </button>
+                </motion.button>
 
                 {/* Page dots — fade out as the shell transitions to auth. */}
                 <div
@@ -329,30 +371,47 @@ it ever existed. DropCal schedules it the way you would: your colors, your short
                     pageTransform={() => ({})}
                 />
 
-                {/* Auth panel — sibling layer, not a deck slide. Driven by the same
-                    shellProgress tween. Renders its own intrinsic entrance/exit. */}
-                <div className="welcome-auth-layer" style={authBlockStyle} aria-hidden={!authOpen}>
+                {/* Auth panel — sibling layer to the deck. Container variants
+                    drive a staggered entrance: text shrinks+fades in, then the
+                    three provider pills roll up one after the other. */}
+                <motion.div
+                    className="welcome-auth-layer"
+                    aria-hidden={!authOpen}
+                    initial={false}
+                    animate={authOpen ? 'visible' : 'hidden'}
+                    variants={authContainerVariants}
+                    style={{ pointerEvents: authInteractive ? 'auto' : 'none' }}
+                >
                     <div className="welcome-auth-content">
-                        <div className="welcome-auth-greeting">
-                            <Logo size={48} color="#ffffff" />
-                            <h1 className="display-text welcome-auth-heading">Welcome</h1>
-                        </div>
-                        <p className="welcome-auth-subheading">
-                            Pick a provider to continue. We'll only ask for the calendar permissions DropCal needs.
-                        </p>
-                        <div className="welcome-auth-buttons">
-                            <MenuButton onClick={() => signIn('google')} icon={AuthGoogleIcon} variant="signin">
-                                Sign in with Google
-                            </MenuButton>
-                            <MenuButton onClick={() => signIn('microsoft')} icon={AuthMicrosoftIcon} variant="signin">
-                                Sign in with Microsoft
-                            </MenuButton>
-                            <MenuButton onClick={() => signIn('apple')} icon={AuthAppleIcon} variant="signin">
-                                Sign in with Apple
-                            </MenuButton>
-                        </div>
+                        <motion.div className="welcome-auth-text" variants={authTextVariants}>
+                            <div className="welcome-auth-greeting">
+                                <Logo size={48} color="#ffffff" />
+                                <h1 className="welcome-auth-heading">Welcome</h1>
+                            </div>
+                            <p className="welcome-auth-subheading">
+                                Pick a provider to continue. We'll only ask for the calendar permissions DropCal needs.
+                            </p>
+                        </motion.div>
+
+                        <motion.div className="welcome-auth-buttons" variants={authButtonGroupVariants}>
+                            <motion.div variants={authButtonVariants} className="welcome-auth-button-row">
+                                <MenuButton onClick={() => signIn('google')} icon={AuthGoogleIcon} variant="signin">
+                                    Sign in with Google
+                                </MenuButton>
+                            </motion.div>
+                            <motion.div variants={authButtonVariants} className="welcome-auth-button-row">
+                                <MenuButton onClick={() => signIn('microsoft')} icon={AuthMicrosoftIcon} variant="signin">
+                                    Sign in with Microsoft
+                                </MenuButton>
+                            </motion.div>
+                            <motion.div variants={authButtonVariants} className="welcome-auth-button-row">
+                                <MenuButton onClick={() => signIn('apple')} icon={AuthAppleIcon} variant="signin">
+                                    Sign in with Apple
+                                </MenuButton>
+                            </motion.div>
+                        </motion.div>
                     </div>
-                </div>
+                </motion.div>
             </div>
 
             <div className="welcome-legal">

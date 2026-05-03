@@ -11,8 +11,7 @@
   "permissions": [
     "contextMenus",
     "storage",
-    "alarms",
-    "notifications"
+    "alarms"
   ],
   "host_permissions": [
     "https://api.dropcal.ai/*"
